@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewClientCreated;
 use App\Models\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class OnboardingController extends Controller
 {
@@ -66,7 +68,6 @@ class OnboardingController extends Controller
             }
         }
 
-        // Save individual employees as contacts
         if (!empty($data['employees'])) {
             foreach ($data['employees'] as $employee) {
                 if (array_filter($employee)) {
@@ -81,7 +82,6 @@ class OnboardingController extends Controller
             }
         }
 
-        // ── OPTIONAL: Parse pasted employees into contacts ─
         if (!empty($data['pasted_employees'])) {
 
             $lines = preg_split('/\r\n|\r|\n/', $data['pasted_employees']);
@@ -109,6 +109,8 @@ class OnboardingController extends Controller
                 }
             }
         }
+
+        Mail::to('kapils@allinit.com.au')->queue(new NewClientCreated($client));
 
 
         return redirect()->route('onboarding.thanks');
