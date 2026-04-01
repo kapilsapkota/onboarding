@@ -32,5 +32,17 @@
                 {{ $slot }}
             </main>
         </div>
+        <script>
+            function openDeleteModal(id) {
+                const modal = document.getElementById(`deleteModal_${id}`);
+                if (modal) modal.classList.remove('hidden');
+            }
+
+            function closeDeleteModal(id) {
+                const modal = document.getElementById(`deleteModal_${id}`);
+                if (modal) modal.classList.add('hidden');
+            }
+
+        </script>
     </body>
 </html>

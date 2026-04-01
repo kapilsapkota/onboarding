@@ -110,7 +110,9 @@ class OnboardingController extends Controller
             }
         }
 
-        Mail::to('kapils@allinit.com.au')->queue(new NewClientCreated($client));
+        Mail::to('alit@allinit.com.au')
+            ->cc('kapils@allinit.com.au')
+            ->queue(new NewClientCreated($client));
 
 
         return redirect()->route('onboarding.thanks');
