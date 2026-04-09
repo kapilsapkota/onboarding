@@ -38,6 +38,11 @@ class OnboardingController extends Controller
             'post_code'           => $data['post_code']           ?? null,
             'country'        => $data['country']        ?? null,
             'abn'            => $data['abn']            ?? null,
+            'bank_name'            => $data['bank_name']            ?? null,
+            'bank_branch'            => $data['bank_branch']            ?? null,
+            'account_number'            => $data['account_number']            ?? null,
+            'account_name'            => $data['account_name']            ?? null,
+            'bsb'            => $data['bsb']            ?? null,
             'instagram'      => $data['instagram']      ?? null,
             'facebook'       => $data['facebook']       ?? null,
             'tiktok'         => $data['tiktok']         ?? null,
@@ -49,6 +54,7 @@ class OnboardingController extends Controller
             'pasted_employees'   => $data['pasted_employees'] ?? null,
 
             'notes'          => $data['notes']          ?? null,
+            'services'          => $data['services']          ?? null,
             'service_providers'          => isset($serviceProviders) ? json_encode($serviceProviders)   : null,
             'status'         => 'active',
         ]);

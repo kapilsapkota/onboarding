@@ -34,6 +34,16 @@ class Client extends Model
         'address_second',
         'state',
         'service_providers',
+        'services',
+        'bank_name',
+        'bank_branch',
+        'account_name',
+        'account_number',
+        'bsb',
+    ];
+
+    protected $casts = [
+        'services' => 'array',
     ];
 
     public function contacts(): HasMany

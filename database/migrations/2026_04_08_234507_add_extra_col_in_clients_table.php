@@ -16,6 +16,12 @@ return new class extends Migration
             $table->string('address_second')->nullable();
             $table->string('state')->nullable();
             $table->text('service_providers')->nullable();
+            $table->text('services')->nullable();
+            $table->string('account_name')->nullable();
+            $table->string('account_number')->nullable();
+            $table->string('bsb')->nullable();
+            $table->string('bank_name')->nullable();
+            $table->string('bank_branch')->nullable();
         });
     }
 

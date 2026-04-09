@@ -202,6 +202,7 @@
                     ['Main Contact',        'Primary point of contact'],
                     ['Accounts Payable',    'Finance contact details'],
                     ['Tech Contact',        'Technical point of contact'],
+                    ['Services',            'Services required'],
                     ['Employees',           'Staff list & bulk upload'],
                 ] as $i => $step)
                     <div class="step-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 {{ $i === 0 ? 'is-active' : '' }}"
@@ -295,33 +296,81 @@
                         </div>
 
                         <div class="p-5 space-y-4">
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details</p>
+                            <div class="p-4 border-l-4 border-orange-50 bg-orange-50 text-sm text-black">
+                                <p>
+                                    By providing your bank details, you agree to the Direct Debit Request and the Direct Debit Request
+                                    service agreement. You authorize <strong>Stripe Payments Australia Pty Ltd</strong> ACN 160 180 343
+                                    (Direct Debit User ID number 507156) to debit your account through the Bulk Electronic Clearing
+                                    System (BECS) on behalf of <strong>All in IT Solutions</strong> (the “Merchant”) for any amounts
+                                    separately communicated to you by the Merchant.
+                                </p>
+                                <p>
+                                    You certify that you are either an account holder or an authorized signatory on the account listed
+                                    below. For more details, please refer to the
+                                    <a href="https://stripe.com/au/legal/becs-dd-service-agreement"
+                                       class="text-blue-600 hover:underline" target="_blank">
+                                        BECS Direct Debit Service Agreement
+                                    </a>.
+                                </p>
+                            </div>
+                            <!-- Account Information -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols- gap-4">
+                                <div>
+                                    <label class="field-label">Bank Name</label>
+                                    <input type="text" name="bank_name" value="{{ old('bank_name') }}" placeholder="Bank Name" class="wld-input">
+                                </div>
+                                <div>
+                                    <label class="field-label">Branch</label>
+                                    <input type="text" name="bank_branch" value="{{ old('bank_branch') }}" placeholder="Add if known." class="wld-input">
+                                </div>
+                            </div>
+
+                            <!-- BSB and Bank Name -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="field-label">Account Name</label>
+                                    <input type="text" name="account_name" value="{{ old('account_name') }}"
+                                           placeholder="Account Name" class="wld-input">
+                                </div>
+                                <div>
+                                    <label class="field-label">BSB</label>
+                                    <input type="text" name="bsb" value="{{ old('bsb') }}" placeholder="BSB" class="wld-input">
+                                </div>
+
+                                <div>
+                                    <label class="field-label">Account Number</label>
+                                    <input type="text" name="account_number" value="{{ old('account_number') }}"
+                                           placeholder="Account Number" class="wld-input">
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="p-5 space-y-4">
                             <p class="text-xs font-bold text-black uppercase tracking-widest">
                                 Service Provider(s)
                             </p>
 
                             @php
-                                $providers = [
-                                    'All in IT Solutions',
-                                    'Fyre Digital',
-                                    'Ryze IT',
-                                    'Five Point Agency',
-                                    'Meerkat Marketing',
-                                    'WLD Marketing',
-                                    'Print 360',
-                                    'All Business Ads'
-                                ];
+                                $providers = \App\Models\Company::select('name','logo')->get();
                             @endphp
 
-                            <div class="space-y-3">
-                                @foreach($providers as $provider)
-                                    <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                        <input type="checkbox"
-                                               name="service_providers[]"
-                                               value="{{ $provider }}"
-                                               class="accent-black"
-                                            {{ collect(old('service_providers'))->contains($provider) ? 'checked' : '' }}>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                @foreach($providers as $index => $provider)
+                                    <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-105">
+                                        <!-- Logo Image -->
+                                        <img src="{{ asset('images/'.$provider->logo) }}" alt="{{ $provider->name }} Logo" class="h-8 w-12 object-contain">
 
-                                        <span class="text-sm text-gray-800">{{ $provider }}</span>
+                                        <!-- Checkbox and Provider Name -->
+                                        <div>
+                                            <input type="checkbox"
+                                                   name="service_providers[]"
+                                                   value="{{ $provider->name }}"
+                                                   class="accent-black"
+                                                {{ collect(old('service_providers'))->contains($provider->name) ? 'checked' : '' }}>
+                                            <span class="text-sm text-gray-800 ml-2">{{ $provider->name }}</span>
+                                        </div>
                                     </label>
                                 @endforeach
                             </div>
@@ -577,14 +626,77 @@
                         </div>
                     </div>
 
-                    @include('clients._onboarding-nav', ['step' => 4, 'totalSteps' => 5, 'back' => true, 'next' => 'nextStep()', 'nextLabel' => 'Continue'])
+                    @include('clients._onboarding-nav', ['step' => 4, 'totalSteps' => 6, 'back' => true, 'next' => 'nextStep()', 'nextLabel' => 'Continue'])
+                </div>
+
+                <div class="step-pane" id="pane-5">
+                    <div class="mb-5">
+                        <h2 class="text-xl font-bold text-black tracking-tight">Services List</h2>
+                        <p class="text-sm text-gray-500 mt-1">Check all the services required.</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4" id="tech-fields">
+                        <div class="p-5 space-y-4">
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">
+                                Services
+                            </p>
+
+                            @php
+                                $services = [
+                                        'Domain Management',
+                                        'Website Hosting',
+                                        'Office 365 Licensing',
+                                        'Google Workspace Licensing',
+                                        'Adobe Licensing',
+                                        'Dropbox Licensing',
+                                        'Graphic Design',
+                                        'Website Design & Development',
+                                        'Printing Services',
+                                        'Online Marketing',
+                                        'Hardware & Software',
+                                        'Managed IT Services',
+                                        'Uniforms',
+                                        'Signage',
+                                        'Professional Services',
+                                        'Cyber Security',
+                                        'Telecommunication Services',
+                                        'Internet Data Services',
+                                        'Cloud Based Solutions',
+                                        'Audio Visual',
+                                        'Photography & Videography',
+                                        'AI Development & Automation',
+                                ];
+                            @endphp
+
+                                <!-- Grid Container for Two Sections -->
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                @foreach($services as $index => $service)
+                                    <div class="space-y-3">
+                                        <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                            <input type="checkbox"
+                                                   name="services[]"
+                                                   value="{{ $service }}"
+                                                   class="accent-black"
+                                                {{ collect(old('services'))->contains($service) ? 'checked' : '' }}>
+
+                                            <span class="text-sm text-gray-800">{{ $service }}</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {{-- Final submit --}}
+                    @include('clients._onboarding-nav', ['step' => 5, 'totalSteps' => 6, 'back' => true, 'next' => 'nextStep()', 'nextLabel' => 'Continue'])
                 </div>
 
                 {{-- ══════════════════════════════════════
                      STEP 5 — Employees
                 ══════════════════════════════════════ --}}
 
-                <div class="step-pane" id="pane-5">
+                <div class="step-pane" id="pane-6">
                     <div class="mb-5">
                         <h2 class="text-xl font-bold text-black tracking-tight">Employees List</h2>
                         <p class="text-sm text-gray-500 mt-1">Add staff members individually or upload a file with your contacts list.</p>
@@ -686,14 +798,15 @@ John Doe | john@company.com | +61412345678"
 
 <script>
     let currentStep = 1;
-    const totalSteps = 5;
-    const pcts   = ['20%', '40%', '60%', '80%', '100%'];
+    const totalSteps = 6;
+    const pcts = ['16.67%', '33.33%', '50%', '66.67%', '83.33%', '100%']; // Updated percentages for each step
     const stepLabels = [
-        'Step 1 of 5 — Company Information',
-        'Step 2 of 5 — Main Contact',
-        'Step 3 of 5 — Accounts Payable',
-        'Step 4 of 5 — Tech Contact',
-        'Step 5 of 5 — Employees',
+        'Step 1 of 6 — Company Information',
+        'Step 2 of 6 — Main Contact',
+        'Step 3 of 6 — Accounts Payable',
+        'Step 4 of 6 — Tech Contact',
+        'Step 5 of 6 — Services',
+        'Step 6 of 6 — Employees',
     ];
 
     function updateUI() {
