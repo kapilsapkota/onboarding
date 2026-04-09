@@ -11,7 +11,7 @@ class OnboardingController extends Controller
 {
     public function show()
     {
-        return view('clients.onboarding');
+        return view('welcome');
     }
 
     public function store(Request $request)
@@ -24,13 +24,17 @@ class OnboardingController extends Controller
         }
 
         $websites = collect($data['websites'] ?? [])->filter()->values()->toArray();
+        $serviceProviders = collect($data['service_providers'] ?? [])->filter()->values()->toArray();
 
         $client = Client::create([
             'company_name'   => $data['company_name']   ?? null,
+            'company_phone'   => $data['company_phone']   ?? null,
             'industry'       => $data['industry']       ?? null,
             'website'        =>  !empty($websites) ? json_encode($websites) : null,
             'address'        => $data['address']        ?? null,
+            'address_second'        => $data['address_second']        ?? null,
             'city'           => $data['city']           ?? null,
+            'state'           => $data['state']           ?? null,
             'post_code'           => $data['post_code']           ?? null,
             'country'        => $data['country']        ?? null,
             'abn'            => $data['abn']            ?? null,
@@ -45,6 +49,7 @@ class OnboardingController extends Controller
             'pasted_employees'   => $data['pasted_employees'] ?? null,
 
             'notes'          => $data['notes']          ?? null,
+            'service_providers'          => isset($serviceProviders) ? json_encode($serviceProviders)   : null,
             'status'         => 'active',
         ]);
 

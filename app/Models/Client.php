@@ -30,6 +30,10 @@ class Client extends Model
         'pasted_employees',
         'notes',
         'status',
+        'company_phone',
+        'address_second',
+        'state',
+        'service_providers',
     ];
 
     public function contacts(): HasMany

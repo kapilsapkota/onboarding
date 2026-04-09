@@ -160,7 +160,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #6b7280;
+            color: #111;
             margin-bottom: 0.375rem;
         }
 
@@ -192,7 +192,7 @@
 
             {{-- Brand text only --}}
             <div class="mb-8 lg:mb-10">
-                <h1 class="text-lg font-bold text-gray-900 mt-1 leading-tight">Company Onboarding</h1>
+                <h1 class="text-lg font-bold text-black mt-1 leading-tight">Company Onboarding</h1>
             </div>
 
             {{-- Step list --}}
@@ -206,15 +206,15 @@
                 ] as $i => $step)
                     <div class="step-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 {{ $i === 0 ? 'is-active' : '' }}"
                          data-step="{{ $i + 1 }}">
-                        <div class="step-bubble w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-gray-100 text-gray-400 transition-all duration-150 {{ $i === 0 ? 'step-bubble-active' : '' }}">
+                        <div class="step-bubble w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-gray-100 text-black transition-all duration-150 {{ $i === 0 ? 'step-bubble-active' : '' }}">
                             <span class="step-num">{{ $i + 1 }}</span>
                             <svg class="step-check hidden w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
                         <div class="min-w-0">
-                            <p class="step-label text-sm truncate text-gray-400 {{ $i === 0 ? 'step-label-active' : '' }}">{{ $step[0] }}</p>
-                            <p class="text-xs text-gray-400 truncate mt-0.5">{{ $step[1] }}</p>
+                            <p class="step-label text-sm truncate text-black {{ $i === 0 ? 'step-label-active' : '' }}">{{ $step[0] }}</p>
+                            <p class="text-xs text-black truncate mt-0.5">{{ $step[1] }}</p>
                         </div>
                     </div>
                     @if($i < 4)
@@ -224,7 +224,7 @@
             </nav>
 
             <div class="hidden lg:block mt-auto pt-6 border-t border-gray-100">
-                <p class="text-xs text-gray-400 leading-relaxed">Nothing is mandatory — submit with whatever you have and we'll follow up on the rest.</p>
+                <p class="text-xs text-black leading-relaxed">Nothing is mandatory — submit with whatever you have and we'll follow up on the rest.</p>
             </div>
         </div>
     </aside>
@@ -238,7 +238,7 @@
                 <div class="flex justify-between items-center mb-1.5">
                     <span class="text-xs font-bold uppercase tracking-widest" id="progress-label"
                           style="color:var(--gold)">Step 1 of 5</span>
-                    <span class="text-xs text-gray-400" id="progress-pct">20%</span>
+                    <span class="text-xs text-black" id="progress-pct">20%</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                     <div id="progress-fill" class="h-1.5 rounded-full" style="width:20%"></div>
@@ -253,17 +253,27 @@
                 ══════════════════════════════════════ --}}
                 <div class="step-pane active" id="pane-1">
                     <div class="mb-5">
-                        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Company Information</h2>
+                        <h2 class="text-xl font-bold text-black tracking-tight">Company Information</h2>
                         <p class="text-sm text-gray-500 mt-1">Start with the core details about your business.</p>
                     </div>
 
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 mb-4">
 
                         <div class="p-5 space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                             <div>
                                 <label class="field-label">Company Name</label>
                                 <input type="text" name="company_name" value="{{ old('company_name') }}"
                                        placeholder="e.g. Acme Pty Ltd" class="wld-input">
+                            </div>
+
+                            <div>
+                                <label class="field-label">Main Phone</label>
+                                <input type="text" name="company_phone" value="{{ old('company_phone') }}"
+                                       placeholder="e.g. 1300..." class="wld-input">
+                            </div>
+
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -285,7 +295,40 @@
                         </div>
 
                         <div class="p-5 space-y-4">
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Website(s)</p>
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">
+                                Service Provider(s)
+                            </p>
+
+                            @php
+                                $providers = [
+                                    'All in IT Solutions',
+                                    'Fyre Digital',
+                                    'Ryze IT',
+                                    'Five Point Agency',
+                                    'Meerkat Marketing',
+                                    'WLD Marketing',
+                                    'Print 360',
+                                    'All Business Ads'
+                                ];
+                            @endphp
+
+                            <div class="space-y-3">
+                                @foreach($providers as $provider)
+                                    <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                        <input type="checkbox"
+                                               name="service_providers[]"
+                                               value="{{ $provider }}"
+                                               class="accent-black"
+                                            {{ collect(old('service_providers'))->contains($provider) ? 'checked' : '' }}>
+
+                                        <span class="text-sm text-gray-800">{{ $provider }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="p-5 space-y-4">
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">Website(s)</p>
                             <div id="websites-container" class="space-y-3">
                                 <div class="flex gap-2 website-row">
                                     <input type="url" name="websites[]" value="{{ old('websites.0') }}"
@@ -302,16 +345,37 @@
                         </div>
 
                         <div class="p-5 space-y-4">
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Address</p>
-                            <div>
-                                <label class="field-label">Street Address</label>
-                                <input type="text" name="address" value="{{ old('address') }}"
-                                       placeholder="Unit / Street" class="wld-input">
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">Address</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols- gap-4">
+                                <div>
+                                    <label class="field-label">Address Line 1</label>
+                                    <input type="text" name="address" value="{{ old('address') }}"
+                                           placeholder="Unit / Street" class="wld-input">
+                                </div>
+                                <div>
+                                    <label class="field-label">Address Line 2</label>
+                                    <input type="text" name="address_second" value="{{ old('address_second') }}"
+                                           placeholder="Unit / Street" class="wld-input">
+                                </div>
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <label class="field-label">City / Suburb</label>
                                     <input type="text" name="city" value="{{ old('city') }}" placeholder="Sydney" class="wld-input">
+                                </div>
+                                <div>
+                                    <label class="field-label">State</label>
+                                    <select name="state" class="wld-input">
+                                        <option value="">Select State</option>
+                                        <option value="NSW" {{ old('state') == 'NSW' ? 'selected' : '' }}>New South Wales</option>
+                                        <option value="VIC" {{ old('state') == 'VIC' ? 'selected' : '' }}>Victoria</option>
+                                        <option value="QLD" {{ old('state') == 'QLD' ? 'selected' : '' }}>Queensland</option>
+                                        <option value="WA" {{ old('state') == 'WA' ? 'selected' : '' }}>Western Australia</option>
+                                        <option value="SA" {{ old('state') == 'SA' ? 'selected' : '' }}>South Australia</option>
+                                        <option value="TAS" {{ old('state') == 'TAS' ? 'selected' : '' }}>Tasmania</option>
+                                        <option value="ACT" {{ old('state') == 'ACT' ? 'selected' : '' }}>Australian Capital Territory</option>
+                                        <option value="NT" {{ old('state') == 'NT' ? 'selected' : '' }}>Northern Territory</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="field-label">Post Code</label>
@@ -325,7 +389,7 @@
                         </div>
 
                         <div class="p-5 space-y-4">
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Social Profiles</p>
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">Social Profiles</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 @foreach([
                                     ['instagram','Instagram','@'],
@@ -337,7 +401,7 @@
                                     <div>
                                         <label class="field-label">{{ $slabel }}</label>
                                         <div class="flex rounded-lg border border-gray-200 overflow-hidden wld-input-group transition">
-                                            <span class="inline-flex items-center px-2.5 bg-gray-50 text-gray-400 text-xs border-r border-gray-200 flex-shrink-0 font-mono">{{ $sprefix }}</span>
+                                            <span class="inline-flex items-center px-2.5 bg-gray-50 text-black text-xs border-r border-gray-200 flex-shrink-0 font-mono">{{ $sprefix }}</span>
                                             <input type="text" name="{{ $sname }}" value="{{ old($sname) }}"
                                                    placeholder="handle"
                                                    class="wld-input">
@@ -370,7 +434,7 @@
                 ══════════════════════════════════════ --}}
                 <div class="step-pane" id="pane-2">
                     <div class="mb-5">
-                        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Main Contact</h2>
+                        <h2 class="text-xl font-bold text-black tracking-tight">Main Contact</h2>
                         <p class="text-sm text-gray-500 mt-1">The primary person we'll be communicating with.</p>
                     </div>
 
@@ -418,7 +482,7 @@
                 ══════════════════════════════════════ --}}
                 <div class="step-pane" id="pane-3">
                     <div class="mb-5">
-                        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Accounts Payable Contact</h2>
+                        <h2 class="text-xl font-bold text-black tracking-tight">Accounts Payable Contact</h2>
                         <p class="text-sm text-gray-500 mt-1">Who handles invoices and payments?</p>
                     </div>
 
@@ -470,7 +534,7 @@
                 ══════════════════════════════════════ --}}
                 <div class="step-pane" id="pane-4">
                     <div class="mb-5">
-                        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Tech Contact</h2>
+                        <h2 class="text-xl font-bold text-black tracking-tight">Tech Contact</h2>
                         <p class="text-sm text-gray-500 mt-1">Who manages your website, systems, or IT?</p>
                     </div>
 
@@ -522,7 +586,7 @@
 
                 <div class="step-pane" id="pane-5">
                     <div class="mb-5">
-                        <h2 class="text-xl font-bold text-gray-900 tracking-tight">Employees List</h2>
+                        <h2 class="text-xl font-bold text-black tracking-tight">Employees List</h2>
                         <p class="text-sm text-gray-500 mt-1">Add staff members individually or upload a file with your contacts list.</p>
                     </div>
 
@@ -530,7 +594,7 @@
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
                         <div class="card-head">
                             <h3>Add Individually</h3>
-                            <span class="text-xs text-gray-400">Name, Email, Mobile</span>
+                            <span class="text-xs text-black">Name, Email, Mobile</span>
                         </div>
                         <div class="p-5 space-y-3" id="employees-container">
                             <div class="employee-row">
@@ -563,7 +627,7 @@
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
                         <div class="card-head">
                             <h3>Paste Employees</h3>
-                            <span class="text-xs text-gray-400">Quick add from Excel, email, etc.</span>
+                            <span class="text-xs text-black">Quick add from Excel, email, etc.</span>
                         </div>
                         <div class="p-5">
         <textarea id="paste-employees"
@@ -576,7 +640,7 @@ John Doe | john@company.com | +61412345678"
                                 Paste & Add Employees
                             </button>
 
-                            <p class="text-xs text-gray-400 mt-2">
+                            <p class="text-xs text-black mt-2">
                                 Supported: comma (,) or pipe (|) separated → Name, Email, Mobile
                             </p>
                         </div>
@@ -586,7 +650,7 @@ John Doe | john@company.com | +61412345678"
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
                         <div class="card-head">
                             <h3>Bulk Upload</h3>
-                            <span class="text-xs text-gray-400">CSV or PDF accepted</span>
+                            <span class="text-xs text-black">CSV or PDF accepted</span>
                         </div>
                         <div class="p-5">
                             <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg py-8 cursor-pointer hover:border-yellow-400 transition group">
@@ -594,11 +658,11 @@ John Doe | john@company.com | +61412345678"
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
                                 <span class="text-sm font-medium text-gray-500 group-hover:text-yellow-600 transition">Click to upload staff contacts file</span>
-                                <span class="text-xs text-gray-400">CSV or PDF, max 10MB</span>
+                                <span class="text-xs text-black">CSV or PDF, max 10MB</span>
                                 <input type="file" name="staff_contacts_file" accept=".csv,.pdf" class="hidden"
                                        onchange="document.getElementById('file-name').textContent = this.files[0]?.name || ''">
                             </label>
-                            <p id="file-name" class="text-xs text-center text-gray-400 mt-2"></p>
+                            <p id="file-name" class="text-xs text-center text-black mt-2"></p>
                         </div>
                     </div>
 

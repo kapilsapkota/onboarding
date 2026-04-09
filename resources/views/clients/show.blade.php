@@ -51,7 +51,8 @@
                             @foreach([
                                 ['Company',       $client->company_name,                                                                    'text'],
                                 ['Industry',      $client->industry,                                                                        'text'],
-                                ['Website',       $client->website,                                                                         'link'],
+                                ['Service Providers',      collect(json_decode($client->service_providers))->filter()->join(', '),  'text'],                                                                      
+                                ['Website',      collect(json_decode($client->website))->filter()->join(', '),                                                                         'link'],
                                 ['Address',       collect([$client->address, $client->city, $client->country])->filter()->join(', '),        'text'],
                                 ['ABN',           $client->abn ?? null,                                                                     'text'],
                                 ['Billing Email', $client->billing_email ?? null,                                                           'copy'],

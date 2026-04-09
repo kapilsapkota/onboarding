@@ -32,6 +32,12 @@
                                value="{{ old('company_name', $client->company_name) }}">
                     </div>
 
+                    <div>
+                        <label class="{{ $label }}">Company Phone</label>
+                        <input class="{{ $input }}" name="company_phone"
+                               value="{{ old('company_phone', $client->company_phone) }}">
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="{{ $label }}">Industry</label>
@@ -51,12 +57,24 @@
                             <input class="{{ $input }}" name="address" placeholder="Address"
                                    value="{{ old('address', $client->address) }}">
                         </div>
+                        <div>
+                            <label class="{{ $label }}">Address Line 2</label>
+                            <input class="{{ $input }}" name="address_second" placeholder="Address Line 2"
+                                   value="{{ old('address_second', $client->address_second) }}">
+                        </div>
 
                        <div>
                            <label class="{{ $label }}">City</label>
                            <input class="{{ $input }}" name="city" placeholder="City"
                                   value="{{ old('city', $client->city) }}">
                        </div>
+
+                        <div>
+                            <label class="{{ $label }}">State</label>
+                            <input class="{{ $input }}" name="state" placeholder="State"
+                                   value="{{ old('state', $client->state) }}">
+                        </div>
+
 
                         <div>
                             <label class="{{ $label }}">Post Code</label>
@@ -68,6 +86,43 @@
                             <label class="{{ $label }}">Country</label>
                             <input class="{{ $input }}" name="country" placeholder="Country"
                                    value="{{ old('country', $client->country) }}">
+                        </div>
+
+                        <div class="p-5 space-y-4">
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">
+                                Service Provider(s)
+                            </p>
+
+                            @php
+                                $providers = [
+                                    'All in IT Solutions',
+                                    'Fyre Digital',
+                                    'Ryze IT',
+                                    'Five Point Agency',
+                                    'Meerkat Marketing',
+                                    'WLD Marketing',
+                                    'Print 360',
+                                    'All Business Ads'
+                                ];
+                            @endphp
+
+                            <div class="space-y-3">
+                                @foreach($providers as $provider)
+                                    <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                        <input type="checkbox"
+                                               name="service_providers[]"
+                                               value="{{ $provider }}"
+                                               class="accent-black"
+                                                {{ collect(old('service_providers'))->contains($provider)
+                                                    ||
+                                                   collect(json_decode($client->service_providers))->contains($provider)
+                                                   ? 'checked' : '' }}
+                                        >
+
+                                        <span class="text-sm text-gray-800">{{ $provider }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
