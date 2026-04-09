@@ -642,30 +642,8 @@
                             </p>
 
                             @php
-                                $services = [
-                                        'Domain Management',
-                                        'Website Hosting',
-                                        'Office 365 Licensing',
-                                        'Google Workspace Licensing',
-                                        'Adobe Licensing',
-                                        'Dropbox Licensing',
-                                        'Graphic Design',
-                                        'Website Design & Development',
-                                        'Printing Services',
-                                        'Online Marketing',
-                                        'Hardware & Software',
-                                        'Managed IT Services',
-                                        'Uniforms',
-                                        'Signage',
-                                        'Professional Services',
-                                        'Cyber Security',
-                                        'Telecommunication Services',
-                                        'Internet Data Services',
-                                        'Cloud Based Solutions',
-                                        'Audio Visual',
-                                        'Photography & Videography',
-                                        'AI Development & Automation',
-                                ];
+                                $services = config('services.offered_services');
+                                sort($services);
                             @endphp
 
                                 <!-- Grid Container for Two Sections -->

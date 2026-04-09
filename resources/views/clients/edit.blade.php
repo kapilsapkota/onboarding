@@ -20,9 +20,6 @@
             @csrf
             @method('PUT')
 
-            {{-- =========================
-                Company Info
-            ========================== --}}
             <div class="{{ $card }}">
                 <div class="p-5 space-y-4">
 
@@ -44,11 +41,84 @@
                             <input class="{{ $input }}" name="industry"
                                    value="{{ old('industry', $client->industry) }}">
                         </div>
+                        @php
+                            $websites = old('website', $client->website ? json_decode($client->website, true) : []);
+                        @endphp
+
                         <div>
-                            <label class="{{ $label }}">Website</label>
-                            <input class="{{ $input }}" name="website"
-                                   value="{{ old('website', $client->website) }}">
+                            <label class="{{ $label }}">Websites</label>
+
+                            <div id="website-wrapper" class="space-y-2">
+                                @forelse($websites as $index => $site)
+                                    <div class="flex items-center gap-2">
+                                        <input type="text"
+                                               name="website[]"
+                                               value="{{ $site }}"
+                                               class="{{ $input }} flex-1"
+                                               placeholder="https://example.com">
+
+                                        <button type="button"
+                                                onclick="removeWebsite(this)"
+                                                class="text-red-500 hover:text-red-700 text-sm font-bold">
+                                            ✕
+                                        </button>
+                                    </div>
+                                @empty
+                                    <div class="flex items-center gap-2">
+                                        <input type="text"
+                                               name="website[]"
+                                               class="{{ $input }} flex-1"
+                                               placeholder="https://example.com">
+
+                                        <button type="button"
+                                                onclick="removeWebsite(this)"
+                                                class="text-red-500 hover:text-red-700 text-sm font-bold">
+                                            ✕
+                                        </button>
+                                    </div>
+                                @endforelse
+                            </div>
+
+                            <button type="button"
+                                    onclick="addWebsite()"
+                                    class="mt-2 text-yellow-600 hover:underline text-sm font-medium">
+                                + Add Website
+                            </button>
                         </div>
+                        <script>
+                            function addWebsite() {
+                                const wrapper = document.getElementById('website-wrapper');
+
+                                const div = document.createElement('div');
+                                div.className = 'flex items-center gap-2';
+
+                                div.innerHTML = `
+            <input type="text"
+                   name="website[]"
+                   class="{{ $input }} flex-1"
+                   placeholder="https://example.com">
+
+            <button type="button"
+                    onclick="removeWebsite(this)"
+                    class="text-red-500 hover:text-red-700 text-sm font-bold">
+                ✕
+            </button>
+        `;
+
+                                wrapper.appendChild(div);
+                            }
+
+                            function removeWebsite(button) {
+                                const wrapper = document.getElementById('website-wrapper');
+
+                                // Prevent removing last input
+                                if (wrapper.children.length > 1) {
+                                    button.parentElement.remove();
+                                } else {
+                                    button.parentElement.querySelector('input').value = '';
+                                }
+                            }
+                        </script>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -129,6 +199,45 @@
                 </div>
             </div>
 
+{{--            Bank Details Card--}}
+            <div class="{{ $card }}">
+                <div class="p-5">
+                    <h3 class="font-semibold mb-4">Bank Details</h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="{{ $label }}">Bank Name</label>
+                            <input class="{{ $input }}" name="bank_name"
+                                   value="{{ old('bank_name', $client->bank_name) }}">
+                        </div>
+
+                        <div>
+                            <label class="{{ $label }}">Branch</label>
+                            <input class="{{ $input }}" name="bank_branch"
+                                   value="{{ old('bank_branch', $client->bank_branch) }}">
+                        </div>
+
+                        <div>
+                            <label class="{{ $label }}">Account Name</label>
+                            <input class="{{ $input }}" name="account_name"
+                                   value="{{ old('account_name', $client->account_name) }}">
+                        </div>
+
+                        <div>
+                            <label class="{{ $label }}">Account Number</label>
+                            <input class="{{ $input }}" name="account_number"
+                                   value="{{ old('account_number', $client->account_number) }}">
+                        </div>
+
+                        <div>
+                            <label class="{{ $label }}">BSB</label>
+                            <input class="{{ $input }}" name="bsb"
+                                   value="{{ old('bsb', $client->bsb) }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- =========================
                 MAIN CONTACT
             ========================== --}}
@@ -139,21 +248,34 @@
                     <input type="hidden" name="contacts[0][contact_type]" value="Main Contact">
 
                     <div class="grid grid-cols-2 gap-4">
-                        <input class="{{ $input }}" name="contacts[0][full_name]"
-                               placeholder="Name"
-                               value="{{ old('contacts.0.full_name', $mainContact->full_name ?? '') }}">
+                        <div>
+                            <label class="{{$label}}">Full Name</label>
+                            <input class="{{ $input }}" name="contacts[0][full_name]"
+                                   placeholder="Name"
+                                   value="{{ old('contacts.0.full_name', $mainContact->full_name ?? '') }}">
+                        </div>
 
-                        <input class="{{ $input }}" name="contacts[0][email]"
-                               placeholder="Email"
-                               value="{{ old('contacts.0.email', $mainContact->email ?? '') }}">
+                        <div>
+                            <label class="{{$label}}">Email</label>
+                            <input class="{{ $input }}" name="contacts[0][email]"
+                                   placeholder="Email"
+                                   value="{{ old('contacts.0.email', $mainContact->email ?? '') }}">
+                        </div>
 
-                        <input class="{{ $input }}" name="contacts[0][phone]"
-                               placeholder="Phone"
-                               value="{{ old('contacts.0.phone', $mainContact->phone ?? '') }}">
+                        <div>
+                            <label class="{{$label}}">Phone</label>
+                            <input class="{{ $input }}" name="contacts[0][phone]"
+                                   placeholder="Phone"
+                                   value="{{ old('contacts.0.phone', $mainContact->phone ?? '') }}">
+                        </div>
 
-                        <input class="{{ $input }}" name="contacts[0][role]"
-                               placeholder="Role"
-                               value="{{ old('contacts.0.role', $mainContact->role ?? '') }}">
+                        <div>
+                            <label class="{{$label}}">Role</label>
+                            <input class="{{ $input }}" name="contacts[0][role]"
+                                   placeholder="Role"
+                                   value="{{ old('contacts.0.role', $mainContact->role ?? '') }}">
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -204,6 +326,35 @@
                         <input class="{{ $input }}" name="contacts[2][phone]"
                                placeholder="Phone"
                                value="{{ old('contacts.2.phone', $techContact->phone ?? '') }}">
+                    </div>
+                </div>
+            </div>
+
+            @php
+            $allServices = config('services.offered_services');
+            sort($allServices);
+                $selectedServices = old(
+                    'services',
+                    $client->services ?? []
+                );
+            @endphp
+
+            <div class="{{ $card }}">
+                <div class="p-5">
+                    <h3 class="font-semibold mb-4">Services</h3>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        @foreach($allServices as $service)
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox"
+                                       name="services[]"
+                                       value="{{ $service }}"
+                                       class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                                    {{ in_array($service, $selectedServices) ? 'checked' : '' }}>
+
+                                {{ $service }}
+                            </label>
+                        @endforeach
                     </div>
                 </div>
             </div>

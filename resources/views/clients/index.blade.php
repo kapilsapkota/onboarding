@@ -179,12 +179,15 @@
                                         {{ $client->company_name ?: '—' }}
                                     </div>
                                     @if($client->website)
-                                        <div class="text-xs mt-0.5">
-                                            <a href="{{ $client->website }}" target="_blank"
-                                               class="text-yellow-600 dark:text-yellow-400 hover:underline">
-                                                ↗ {{ parse_url($client->website, PHP_URL_HOST) ?? $client->website }}
-                                            </a>
-                                        </div>
+                                        @php $websites = json_decode($client->website); @endphp
+                                        @foreach($websites as $website)
+                                            <div class="text-xs mt-0.5">
+                                                <a href="{{ $website }}" target="_blank"
+                                                   class="text-yellow-600 dark:text-yellow-400 hover:underline">
+                                                    ↗ {{ parse_url($website, PHP_URL_HOST) ?? $website }}
+                                                </a>
+                                            </div>
+                                        @endforeach
                                     @endif
                                 </td>
 
