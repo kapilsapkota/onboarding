@@ -341,18 +341,20 @@
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Selected Services</h3>
                         </div>
                         <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach($client->services as $service)
-                                <div class="flex items-center justify-between px-5 py-3">
+                            @if($client->services)
+                                @foreach($client->services as $service)
+                                    <div class="flex items-center justify-between px-5 py-3">
                                     <span class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide flex-shrink-0">
                                         {{ $service }}
                                     </span>
-                                    @if(in_array($service, $client->services))
-                                        <span class="text-sm text-green-500 dark:text-green-600 flex-1">✓</span>
-                                    @else
-                                        <span class="text-sm text-green-500 dark:text-green-600 flex-1">—</span>
-                                    @endif
-                                </div>
-                            @endforeach
+                                        @if(in_array($service, $client->services))
+                                            <span class="text-sm text-green-500 dark:text-green-600 flex-1">✓</span>
+                                        @else
+                                            <span class="text-sm text-green-500 dark:text-green-600 flex-1">—</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @endif
                         </div>
                     </div>
 
