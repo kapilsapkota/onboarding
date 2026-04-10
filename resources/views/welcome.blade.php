@@ -276,7 +276,7 @@
                             <div>
                                 <label class="field-label">Company Name <span class="text-red-600">*</span></label>
                                 <input type="text" name="company_name" value="{{ old('company_name') }}"
-                                       placeholder="e.g. Acme Pty Ltd" autofocus class="wld-input" required>
+                                       placeholder="e.g. Acme Pty Ltd" autofocus class="wld-input">
                             </div>
 
                             <div>
