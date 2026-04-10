@@ -225,7 +225,7 @@
             </nav>
 
             <div class="hidden lg:block mt-auto pt-6 border-t border-gray-100">
-                <p class="text-xs text-black leading-relaxed">Nothing is mandatory — submit with whatever you have and we'll follow up on the rest.</p>
+                <p class="text-xs text-black leading-relaxed">Nothing is mandatory except company name — submit with whatever you have and we'll follow up on the rest.</p>
             </div>
         </div>
     </aside>
@@ -244,11 +244,21 @@
                 <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                     <div id="progress-fill" class="h-1.5 rounded-full" style="width:20%"></div>
                 </div>
+
+                @if ($errors->any())
+                    <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+                        <ul>
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
             </div>
 
             <form action="{{ route('onboarding.store') }}" method="POST" enctype="multipart/form-data" id="onboarding-form">
                 @csrf
-
                 {{-- ══════════════════════════════════════
                      STEP 1 — Company Information
                 ══════════════════════════════════════ --}}
@@ -264,9 +274,9 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                             <div>
-                                <label class="field-label">Company Name</label>
+                                <label class="field-label">Company Name <span class="text-red-600">*</span></label>
                                 <input type="text" name="company_name" value="{{ old('company_name') }}"
-                                       placeholder="e.g. Acme Pty Ltd" class="wld-input">
+                                       placeholder="e.g. Acme Pty Ltd" autofocus class="wld-input" required>
                             </div>
 
                             <div>
@@ -296,24 +306,24 @@
                         </div>
 
                         <div class="p-5 space-y-4">
-                            <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details</p>
-                            <div class="p-4 border-l-4 border-orange-50 bg-orange-50 text-sm text-black">
-                                <p>
-                                    By providing your bank details, you agree to the Direct Debit Request and the Direct Debit Request
-                                    service agreement. You authorize <strong>Stripe Payments Australia Pty Ltd</strong> ACN 160 180 343
-                                    (Direct Debit User ID number 507156) to debit your account through the Bulk Electronic Clearing
-                                    System (BECS) on behalf of <strong>All in IT Solutions</strong> (the “Merchant”) for any amounts
-                                    separately communicated to you by the Merchant.
-                                </p>
-                                <p>
-                                    You certify that you are either an account holder or an authorized signatory on the account listed
-                                    below. For more details, please refer to the
-                                    <a href="https://stripe.com/au/legal/becs-dd-service-agreement"
-                                       class="text-blue-600 hover:underline" target="_blank">
-                                        BECS Direct Debit Service Agreement
-                                    </a>.
-                                </p>
-                            </div>
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for Direct Debits</p>
+{{--                            <div class="p-4 border-l-4 border-orange-50 bg-orange-50 text-sm text-black">--}}
+{{--                                <p>--}}
+{{--                                    By providing your bank details, you agree to the Direct Debit Request and the Direct Debit Request--}}
+{{--                                    service agreement. You authorize <strong>Stripe Payments Australia Pty Ltd</strong> ACN 160 180 343--}}
+{{--                                    (Direct Debit User ID number 507156) to debit your account through the Bulk Electronic Clearing--}}
+{{--                                    System (BECS) on behalf of <strong>All in IT Solutions</strong> (the “Merchant”) for any amounts--}}
+{{--                                    separately communicated to you by the Merchant.--}}
+{{--                                </p>--}}
+{{--                                <p>--}}
+{{--                                    You certify that you are either an account holder or an authorized signatory on the account listed--}}
+{{--                                    below. For more details, please refer to the--}}
+{{--                                    <a href="https://stripe.com/au/legal/becs-dd-service-agreement"--}}
+{{--                                       class="text-blue-600 hover:underline" target="_blank">--}}
+{{--                                        BECS Direct Debit Service Agreement--}}
+{{--                                    </a>.--}}
+{{--                                </p>--}}
+{{--                            </div>--}}
                             <!-- Account Information -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols- gap-4">
                                 <div>

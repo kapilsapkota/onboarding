@@ -16,6 +16,9 @@ class OnboardingController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'company_name' => 'required',
+        ]);
         $data = $request->all();
 
         $staffFilePath = null;
