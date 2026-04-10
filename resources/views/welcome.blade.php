@@ -231,7 +231,7 @@
     </aside>
 
     {{-- ── Main ── --}}
-    <main class="flex-1 py-8 px-4 sm:px-8 lg:px-12">
+    <main class="flex-1 py-8 px-4 sm:px-8 lg:px-12 pb-16">
         <div class="max-w-7xl mx-auto">
 
             {{-- Progress --}}
@@ -747,7 +747,7 @@ John Doe | john@company.com | +61412345678"
                     </div>
 
                     {{-- Bulk upload --}}
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
                         <div class="card-head">
                             <h3>Bulk Upload</h3>
                             <span class="text-xs text-black">CSV or PDF accepted</span>
@@ -767,8 +767,7 @@ John Doe | john@company.com | +61412345678"
                     </div>
 
                     {{-- Final submit --}}
-                    <div class="flex justify-between pt-2 pb-6">
-                        <button type="button" onclick="prevStep()" class="btn-ghost">
+                    <div class="flex justify-between pt-2 pb-6" style="position: relative; z-index: 10;">                        <button type="button" onclick="prevStep()" class="btn-ghost">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                             Back
                         </button>
