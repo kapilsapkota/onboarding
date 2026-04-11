@@ -645,7 +645,7 @@
                         <p class="text-sm text-gray-500 mt-1">Check all the services required.</p>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4" id="tech-fields">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4" id="service-fields">
                         <div class="p-5 space-y-4">
                             <p class="text-xs font-bold text-black uppercase tracking-widest">
                                 Services
@@ -985,35 +985,35 @@ John Doe | john@company.com | +61412345678"
         }
     });
     // Create row
-    function addEmployeeRow(name = '', email = '', phone = '') {
-        const container = document.getElementById('employees-container');
-
-        const row = document.createElement('div');
-        row.classList.add('employee-row');
-
-        row.innerHTML = `
-        <div>
-            <label class="field-label">Full Name</label>
-            <input type="text" name="employees[${employeeIndex}][name]" value="${name}" class="wld-input">
-        </div>
-        <div>
-            <label class="field-label">Email</label>
-            <input type="email" name="employees[${employeeIndex}][email]" value="${email}" class="wld-input">
-        </div>
-        <div>
-            <label class="field-label">Mobile</label>
-            <input type="tel" name="employees[${employeeIndex}][phone]" value="${phone}" class="wld-input">
-        </div>
-        <div style="display:flex; align-items:flex-end;">
-            <button type="button" onclick="this.closest('.employee-row').remove()" class="text-red-500 text-xs">
-                Remove
-            </button>
-        </div>
-    `;
-
-        container.appendChild(row);
-        employeeIndex++;
-    }
+    // function addEmployeeRow(name = '', email = '', phone = '') {
+    //     const container = document.getElementById('employees-container');
+    //
+    //     const row = document.createElement('div');
+    //     row.classList.add('employee-row');
+    //
+    //     row.innerHTML = `
+    //     <div>
+    //         <label class="field-label">Full Name</label>
+    //         <input type="text" name="employees[${employeeIndex}][name]" value="${name}" class="wld-input">
+    //     </div>
+    //     <div>
+    //         <label class="field-label">Email</label>
+    //         <input type="email" name="employees[${employeeIndex}][email]" value="${email}" class="wld-input">
+    //     </div>
+    //     <div>
+    //         <label class="field-label">Mobile</label>
+    //         <input type="tel" name="employees[${employeeIndex}][phone]" value="${phone}" class="wld-input">
+    //     </div>
+    //     <div style="display:flex; align-items:flex-end;">
+    //         <button type="button" onclick="this.closest('.employee-row').remove()" class="text-red-500 text-xs">
+    //             Remove
+    //         </button>
+    //     </div>
+    // `;
+    //
+    //     container.appendChild(row);
+    //     employeeIndex++;
+    // }
 
     function normalisePhone(raw) {
         if (!raw) return null;
