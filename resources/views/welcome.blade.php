@@ -747,25 +747,32 @@ John Doe | john@company.com | +61412345678"
                     </div>
 
                     {{-- Bulk upload --}}
+                    {{-- Bulk upload --}}
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
                         <div class="card-head">
                             <h3>Bulk Upload</h3>
                             <span class="text-xs text-black">CSV or PDF accepted</span>
                         </div>
                         <div class="p-5">
-                            <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg py-8 cursor-pointer hover:border-yellow-400 transition group">
+                            <div class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg py-8 group"
+                                 onclick="document.getElementById('staff_contacts_file').click();"
+                                 style="cursor: pointer;">
                                 <svg class="w-8 h-8 text-gray-300 group-hover:text-yellow-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
-                                <span class="text-sm font-medium text-gray-500 group-hover:text-yellow-600 transition">Click to upload staff contacts file</span>
+                                <span class="text-sm font-medium text-gray-500">Click to upload staff contacts file</span>
                                 <span class="text-xs text-black">CSV or PDF, max 10MB</span>
-                                <input type="file" name="staff_contacts_file" accept=".csv,.pdf" class="hidden"
+                                {{-- ✅ Input is now completely outside the clickable area --}}
+                                <input type="file"
+                                       id="staff_contacts_file"
+                                       name="staff_contacts_file"
+                                       accept=".csv,.pdf"
+                                       class="hidden"
                                        onchange="document.getElementById('file-name').textContent = this.files[0]?.name || ''">
-                            </label>
+                            </div>
                             <p id="file-name" class="text-xs text-center text-black mt-2"></p>
                         </div>
                     </div>
-
                     {{-- Final submit --}}
                     <div class="flex justify-between pt-2 pb-6" style="position: relative; z-index: 10;">                        <button type="button" onclick="prevStep()" class="btn-ghost">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
