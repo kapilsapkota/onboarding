@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Company Onboarding — {{ config('app.name', 'AIIT') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
             border-radius: 0.5rem;
             color: #111827;
             font-family: 'Inter', sans-serif;
-            font-size: 0.875rem;
+            font-size: 1rem;
             padding: 0.625rem 0.875rem;
             outline: none;
             transition: border-color 0.15s, box-shadow 0.15s;
@@ -34,6 +34,9 @@
         .wld-input:focus {
             border-color: var(--gold);
             box-shadow: 0 0 0 3px var(--gold-ring);
+        }
+        select.wld-input {
+            font-size: 1rem; /* Must be explicitly 16px on iOS */
         }
 
         .wld-input::placeholder { color: #9ca3af; }
@@ -180,6 +183,23 @@
 
         /* Progress */
         #progress-fill { background: var(--gold); transition: width 0.4s ease; }
+        /* Prevent layout shift when keyboard opens */
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Fix iOS input zoom and scroll behaviour */
+        input, select, textarea {
+            font-size: 1rem !important;
+            touch-action: manipulation;
+        }
+        @media (max-width: 1024px) {
+            aside {
+                position: relative !important;
+                height: auto !important;
+            }
+        }
     </style>
 </head>
 <body class="antialiased bg-gray-50 min-h-screen">
@@ -257,7 +277,10 @@
 
             </div>
 
-            <form action="{{ route('onboarding.store') }}" method="POST" enctype="multipart/form-data" id="onboarding-form">
+            <form action="{{ route('onboarding.store') }}" method="POST"
+                  enctype="multipart/form-data"
+                  id="onboarding-form"
+                  novalidate>
                 @csrf
                 {{-- ══════════════════════════════════════
                      STEP 1 — Company Information
