@@ -57,6 +57,11 @@ return [
         'Audio Visual',
         'Photography & Videography',
         'AI Development & Automation',
-    ]
+    ],
+    'stripe' => [
+        'key'    => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
 
 ];

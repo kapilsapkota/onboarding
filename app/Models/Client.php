@@ -40,6 +40,10 @@ class Client extends Model
         'account_name',
         'account_number',
         'bsb',
+        'stripe_customer_id',
+        'stripe_payment_method_id',
+        'mandate_id',
+        'mandate_status',
     ];
 
     protected $casts = [
@@ -67,5 +71,9 @@ class Client extends Model
     {
         return $this->contacts->firstWhere('is_primary', true)?->full_name
             ?? $this->contacts->first()?->full_name;
+    }
+    public function charges()
+    {
+        return $this->hasMany(ClientCharge::class)->latest();
     }
 }

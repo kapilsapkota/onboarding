@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ProfileController;
@@ -8,6 +9,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+// routes/web.php
+Route::post('/onboarding/setup-intent', [OnboardingController::class, 'createSetupIntent'])
+    ->name('onboarding.setup-intent');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -35,5 +39,7 @@ Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function (
     Route::put('/clients/{client}', [ClientController::class, 'update'])->name('update');
     Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->name('destroy');
     Route::patch('/clients/{client}/status', [ClientController::class, 'updateStatus'])->name('status');
+
+    Route::post('/admin/clients/{client}/charge', [AdminChargeController::class, 'charge'])->name('charge');
 });
 

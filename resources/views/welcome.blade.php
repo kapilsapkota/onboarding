@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Company Onboarding — {{ config('app.name', 'AIIT') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -201,6 +202,7 @@
             }
         }
     </style>
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="antialiased bg-gray-50 min-h-screen">
 
@@ -360,23 +362,81 @@
                             </div>
 
                             <!-- BSB and Bank Name -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="field-label">Account Name</label>
-                                    <input type="text" name="account_name" value="{{ old('account_name') }}"
-                                           placeholder="Account Name" class="wld-input">
-                                </div>
-                                <div>
-                                    <label class="field-label">BSB</label>
-                                    <input type="text" name="bsb" value="{{ old('bsb') }}" placeholder="BSB" class="wld-input">
+{{--                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">--}}
+{{--                                <div>--}}
+{{--                                    <label class="field-label">Account Name</label>--}}
+{{--                                    <input type="text" name="account_name" value="{{ old('account_name') }}"--}}
+{{--                                           placeholder="Account Name" class="wld-input">--}}
+{{--                                </div>--}}
+{{--                                <div>--}}
+{{--                                    <label class="field-label">BSB</label>--}}
+{{--                                    <input type="text" name="bsb" value="{{ old('bsb') }}" placeholder="BSB" class="wld-input">--}}
+{{--                                </div>--}}
+
+{{--                                <div>--}}
+{{--                                    <label class="field-label">Account Number</label>--}}
+{{--                                    <input type="text" name="account_number" value="{{ old('account_number') }}"--}}
+{{--                                           placeholder="Account Number" class="wld-input">--}}
+{{--                                </div>--}}
+
+{{--                            </div>--}}
+
+                            <div class="p-5 space-y-4">
+                                <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for Direct Debits</p>
+
+                                {{-- ✅ REQUIRED by Stripe — must be visible to the user --}}
+                                <div class="p-4 border-l-4 border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-2 rounded-r-lg">
+                                    <p>
+                                        By providing your bank details and submitting this form, you agree to the
+                                        <a href="https://stripe.com/au/legal/becs-dd-service-agreement"
+                                           class="underline font-medium" target="_blank">
+                                            BECS Direct Debit Service Agreement
+                                        </a>
+                                        and authorise <strong>Stripe Payments Australia Pty Ltd</strong> ACN 160 180 343
+                                        (Direct Debit User ID number 507156) to debit your account through BECS on behalf of
+                                        <strong>All in IT Solutions</strong> for amounts separately communicated to you.
+                                    </p>
+                                    <p>You certify that you are an account holder or authorised signatory on the account listed below.</p>
                                 </div>
 
-                                <div>
-                                    <label class="field-label">Account Number</label>
-                                    <input type="text" name="account_number" value="{{ old('account_number') }}"
-                                           placeholder="Account Number" class="wld-input">
+                                {{-- Account holder name (plain text field — needed for Stripe) --}}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="field-label">Account Name</label>
+                                        <input type="text" name="account_name" id="becs_account_name"
+                                               value="{{ old('account_name') }}"
+                                               placeholder="e.g. Acme Pty Ltd" class="wld-input">
+                                    </div>
+                                    <div>
+                                        <label class="field-label">Account Holder Email</label>
+                                        <input type="email" name="billing_email" id="becs_billing_email"
+                                               value="{{ old('billing_email') }}"
+                                               placeholder="accounts@company.com" class="wld-input">
+                                    </div>
                                 </div>
 
+                                {{-- Stripe auBankAccount Element — replaces manual BSB/account fields --}}
+                                <div>
+                                    <label class="field-label">BSB & Account Number</label>
+                                    <div id="becs-bank-element"
+                                         class="wld-input"
+                                         style="padding-top: 0.7rem; padding-bottom: 0.7rem; min-height: 2.75rem;">
+                                        {{-- Stripe.js mounts here --}}
+                                    </div>
+                                    <div id="becs-error" class="text-red-500 text-xs mt-1.5"></div>
+                                </div>
+
+                                {{-- Hidden fields — populated by JS after Stripe confirms --}}
+                                <input type="hidden" name="stripe_payment_method_id" id="stripe_payment_method_id">
+                                <input type="hidden" name="stripe_customer_id" id="stripe_customer_id">
+                                <input type="hidden" name="mandate_id" id="mandate_id">
+                                <input type="hidden" name="stripe_setup_intent_id"   id="stripe_setup_intent_id">
+
+                                {{-- Keep these for your records too --}}
+                                <input type="hidden" name="bank_name"      id="hidden_bank_name">
+                                <input type="hidden" name="bank_branch"    id="hidden_bank_branch">
+                                <input type="hidden" name="bsb"            id="hidden_bsb">
+                                <input type="hidden" name="account_number" id="hidden_account_number">
                             </div>
                         </div>
 
@@ -1051,6 +1111,98 @@ John Doe | john@company.com | +61412345678"
 
         return null;
     }
+    // ── Stripe BECS Setup ──────────────────────────────────────────
+    const stripe   = Stripe('{{ config("services.stripe.key") }}');
+    const elements = stripe.elements();
+
+    const becsElement = elements.create('auBankAccount', {
+        style: {
+            base: {
+                color:           '#111827',
+                fontSize:        '16px',
+                fontFamily:      'Inter, sans-serif',
+                '::placeholder': { color: '#9ca3af' },
+            }
+        }
+    });
+    becsElement.mount('#becs-bank-element');
+
+    becsElement.on('change', (e) => {
+        const el = document.getElementById('becs-error');
+        el.textContent = e.error ? e.error.message : '';
+
+        if (e.value?.bsbNumber) {
+            document.getElementById('hidden_bsb').value = e.value.bsbNumber;
+        }
+    });
+
+    document.getElementById('onboarding-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const submitBtn  = this.querySelector('button[type="submit"]');
+        const accountName  = document.getElementById('becs_account_name')?.value?.trim();
+        const billingEmail = document.getElementById('becs_billing_email')?.value?.trim();
+
+        // If no bank details provided, just submit normally (bank is optional)
+        const pmId = document.getElementById('stripe_payment_method_id').value;
+        if (pmId) {
+            // Already confirmed (e.g. re-submit attempt) — go straight through
+            this.submit();
+            return;
+        }
+
+        // Show loading state
+        submitBtn.disabled    = true;
+        submitBtn.textContent = 'Setting up mandate…';
+
+        try {
+            // 1. Get a SetupIntent from your backend
+            const siRes = await fetch('{{ route("onboarding.setup-intent") }}', {
+                method:  'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                        || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    company_name:  document.querySelector('[name="company_name"]')?.value,
+                    billing_email: billingEmail,
+                })
+            });
+
+            const { client_secret, customer_id, error: siError } = await siRes.json();
+
+            if (siError) throw new Error(siError);
+
+            // Store client_id for the confirm step
+
+            document.getElementById('stripe_customer_id').value = customer_id;
+
+            const { setupIntent, error } = await stripe.confirmAuBecsDebitSetup(client_secret, {
+                payment_method: {
+                    au_becs_debit:   becsElement,
+                    billing_details: {
+                        name:  accountName  || document.querySelector('[name="company_name"]')?.value,
+                        email: billingEmail || '',
+                    },
+                },
+            });
+
+            if (error) throw new Error(error.message);
+
+            document.getElementById('stripe_payment_method_id').value = setupIntent.payment_method;
+            document.getElementById('stripe_setup_intent_id').value   = setupIntent.id;
+
+            this.submit(); // Normal form POST continues
+
+        } catch (err) {
+            document.getElementById('becs-error').textContent = err.message;
+            submitBtn.disabled    = false;
+            submitBtn.textContent = 'Submit Profile';
+        }
+    });
+    // ── End Stripe ─────────────────────────────────────────────────
 </script>
 
 </body>
