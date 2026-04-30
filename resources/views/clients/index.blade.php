@@ -28,7 +28,6 @@
             gap: 10px;
         }
 
-        /* 🔥 THIS is the key fix */
         .dataTables_length select {
             flex-shrink: 0;
             width: auto;
@@ -405,6 +404,7 @@
                 scrollX: true,
                 lengthChange: true,
                 paging: true,
+                stateSave: true,
                 dom:
                     '<"flex flex-wrap items-center justify-center mb-4"f>' +
                     '<"flex flex-wrap items-center justify-between gap-3 mb-4"' +
