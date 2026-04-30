@@ -59,34 +59,6 @@
 
     <x-message></x-message>
 
-    {{-- Stats row --}}
-    @php
-        $total    = \App\Models\Client::count();
-        $active   = \App\Models\Client::where('status','active')->count();
-        $inactive = \App\Models\Client::where('status','inactive')->count();
-        $contacts = \App\Models\ClientContact::count();
-    @endphp
-
-    <div class="py-6">
-        <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-10">
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                @foreach([
-                    ['label' => 'Total Clients',   'value' => $total,    'color' => 'yellow'],
-                    ['label' => 'Active',           'value' => $active,   'color' => 'green'],
-                    ['label' => 'Inactive',         'value' => $inactive, 'color' => 'gray'],
-                    ['label' => 'Total Contacts',   'value' => $contacts, 'color' => 'blue'],
-                ] as $stat)
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5 border-l-4 border-{{ $stat['color'] }}-400 flex items-center gap-4">
-                        <div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 leading-tight">{{ $stat['label'] }}</p>
-                            <h3 class="text-2xl sm:text-3xl font-bold mt-0.5 text-gray-800 dark:text-gray-100">{{ number_format($stat['value']) }}</h3>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-
     {{-- Filters --}}
 {{--    <div class="pb-4">--}}
 {{--        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">--}}
@@ -176,7 +148,7 @@
 {{--    </div>--}}
 
     {{-- Table --}}
-    <div class="pb-8">
+    <div class="py-6">
         <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-10">
 
 {{--            <div class="mb-3 flex flex-wrap gap-2 items-center justify-between">--}}
@@ -319,17 +291,65 @@
 
                                 {{-- Actions --}}
                                 <td class="px-4 py-4 text-right text-sm font-medium">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <x-show-button href="{{ route('clients.show', $client) }}">View</x-show-button>
-                                        <x-edit-button href="{{ route('clients.edit', $client) }}">Edit</x-edit-button>
-                                        <x-delete-modal-button
-                                            :model="$client"
-                                            :action="route('clients.destroy', $client)"
-                                            title="Delete Client"
-                                            :display_name="$client->company_name ?? 'this client'"
-                                        >Delete</x-delete-modal-button>
+                                    <div class="flex justify-end items-center">
+
+                                        {{-- Desktop buttons --}}
+                                        <div class="hidden sm:flex items-center gap-2">
+                                            <x-show-button href="{{ route('clients.show', $client) }}">View</x-show-button>
+                                            <x-edit-button href="{{ route('clients.edit', $client) }}">Edit</x-edit-button>
+                                            <x-delete-modal-button
+                                                :model="$client"
+                                                :action="route('clients.destroy', $client)"
+                                                title="Delete Client"
+                                                :display_name="$client->company_name ?? 'this client'"
+                                            >Delete</x-delete-modal-button>
+                                        </div>
+
+                                        {{-- Mobile dropdown --}}
+                                        <div class="relative sm:hidden" x-data="{ open: false }">
+                                            <button @click="open = !open"
+                                                    class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none"
+                                                     stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M12 6h.01M12 12h.01M12 18h.01" />
+                                                </svg>
+                                            </button>
+
+                                            <div x-show="open"
+                                                 @click.away="open = false"
+                                                 x-transition
+                                                 class="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-md shadow-lg z-50">
+
+                                                <x-show-button href="{{ route('clients.show', $client) }}">View</x-show-button>
+
+                                                <x-edit-button href="{{ route('clients.edit', $client) }}">Edit</x-edit-button>
+
+                                                <div class="px-4 py-2">
+                                                    <x-delete-modal-button
+                                                        :model="$client"
+                                                        :action="route('clients.destroy', $client)"
+                                                        title="Delete Client"
+                                                        :display_name="$client->company_name ?? 'this client'"
+                                                    >Delete</x-delete-modal-button>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </td>
+{{--                                <td class="px-4 py-4 text-right text-sm font-medium">--}}
+{{--                                    <div class="flex items-center justify-end gap-2">--}}
+{{--                                        <x-show-button href="{{ route('clients.show', $client) }}">View</x-show-button>--}}
+{{--                                        <x-edit-button href="{{ route('clients.edit', $client) }}">Edit</x-edit-button>--}}
+{{--                                        <x-delete-modal-button--}}
+{{--                                            :model="$client"--}}
+{{--                                            :action="route('clients.destroy', $client)"--}}
+{{--                                            title="Delete Client"--}}
+{{--                                            :display_name="$client->company_name ?? 'this client'"--}}
+{{--                                        >Delete</x-delete-modal-button>--}}
+{{--                                    </div>--}}
+{{--                                </td>--}}
                             </tr>
                             @endforeach
 
@@ -367,8 +387,7 @@
                 setTimeout(() => btn.style.color = '', 2000);
             });
         }
-    </script>
-    <script>
+
         $(document).ready(function () {
             if ($.fn.DataTable.isDataTable('#clients-table')) {
                 $('#clients-table').DataTable().destroy();
@@ -383,7 +402,7 @@
                     [10, 25, 50, 100, "All"]
                 ],
                 scrollY: '50vh',
-                scroller: true,
+                scrollX: true,
                 lengthChange: true,
                 paging: true,
                 dom:
