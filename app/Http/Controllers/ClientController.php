@@ -51,7 +51,7 @@ class ClientController extends Controller
                 break;
         }
 
-        $clients = $query->paginate(20)->withQueryString();
+        $clients = $query->get();
 
         return view('clients.index', compact('clients'));
     }
