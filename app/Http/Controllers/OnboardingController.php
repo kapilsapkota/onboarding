@@ -123,8 +123,16 @@ class OnboardingController extends Controller
                 }
             }
         }
+        $recipients = [
+            'info@fivepoint.agency',
+            'info@ryzeit.com.au',
+            'info@allinit.com.au',
+            'alit@allinit.com.au',
+            'ea@allinit.com.au',
+            'info@starset.com.au'
+        ];
 
-        Mail::to('alit@allinit.com.au')
+        Mail::to($recipients)
             ->cc('kapils@allinit.com.au')
             ->queue(new NewClientCreated($client));
 
