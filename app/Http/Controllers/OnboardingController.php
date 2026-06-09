@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewClientCreated;
 use App\Models\Client;
+use App\Models\User;
 use App\Services\StripeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Stripe\Customer;
 use Stripe\SetupIntent;
 use Stripe\Stripe;
@@ -206,6 +210,104 @@ class OnboardingController extends Controller
         } catch (\Exception $e) {
             \Log::error('Stripe SetupIntent error: ' . $e->getMessage());
 
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    public function directDebitStore(Request $request)
+    {
+        $request->validate([
+            'full_name' => 'required|string',
+            'company_name' => 'required|string',
+            'email' => 'required|email',
+            'mobile' => 'required|string',
+            'account_name' => 'required|string',
+            'bsb' => 'required|string',
+            'account_number' => 'required|string',
+        ]);
+
+        $data = $request->all();
+
+        // Create client
+        $client = Client::create([
+            'company_name'   => $data['company_name'] ?? null,
+            'billing_email'   => $data['email'] ?? null,
+            'account_number' => preg_replace('/\D/', '', $data['account_number']),
+            'account_name'   => $data['account_name'] ?? null,
+            'bsb'            => preg_replace('/\D/', '', $data['bsb']),
+            'status'         => 'active',
+            'mandate_status' => $request->stripe_payment_method_id ? 'active' : 'pending',
+            'stripe_payment_method_id' => $data['stripe_payment_method_id'] ?? null,
+            'stripe_customer_id' => $data['stripe_customer_id'] ?? null,
+        ]);
+
+        // Create contact (main contact from the form)
+        $client->contacts()->create([
+            'full_name'    => $data['full_name'],
+            'email'        => $data['email'],
+            'phone'        => $data['mobile'],
+            'contact_type' => 'Main Contact',
+            'is_primary'   => true,
+        ]);
+
+        if ($request->filled('stripe_payment_method_id')) {
+            try {
+                $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+                $paymentMethodId = $request->input('stripe_payment_method_id');
+                $customerId      = $request->input('stripe_customer_id');
+
+                if ($customerId) {
+                    $paymentMethod = $stripe->paymentMethods->retrieve($paymentMethodId);
+
+                    if (!$paymentMethod->customer) {
+                        $stripe->paymentMethods->attach(
+                            $paymentMethodId,
+                            ['customer' => $customerId]
+                        );
+                    }
+
+                    $client->update([
+                        'stripe_customer_id'       => $customerId,
+                        'stripe_payment_method_id' => $paymentMethodId,
+                        'mandate_status'           => 'active',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Stripe error: ' . $e->getMessage());
+                $client->update(['mandate_status' => 'failed']);
+            }
+        }
+
+        // Send email notification
+        Mail::to('alit@allinit.com.au')
+            ->cc('kapils@allinit.com.au')
+            ->queue(new NewClientCreated($client));
+
+        return redirect()->route('onboarding.thanks');
+    }
+
+    public function createCustomer(Request $request)
+    {
+        $request->validate([
+            'company_name' => 'required|string',
+            'email' => 'required|email',
+            'payment_method_id' => 'required|string'
+        ]);
+
+        try {
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+            $customer = $stripe->customers->create([
+                'name' => $request->company_name,
+                'email' => $request->email,
+                'payment_method' => $request->payment_method_id,
+                'invoice_settings' => [
+                    'default_payment_method' => $request->payment_method_id
+                ]
+            ]);
+
+            return response()->json(['customer_id' => $customer->id]);
+        } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

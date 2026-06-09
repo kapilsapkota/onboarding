@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\XeroConnectionController;
 use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OnboardingController;
@@ -9,7 +10,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
-// routes/web.php
+Route::get('/ddr', function () {
+    return view('ddr');
+});
+Route::post('/onboarding/create-customer', [OnboardingController::class, 'createCustomer'])->name('onboarding.create-customer');
+Route::post('/onboarding/direct-debit', [OnboardingController::class, 'directDebitStore'])->name('onboarding.direct-debit');
+
 Route::post('/onboarding/setup-intent', [OnboardingController::class, 'createSetupIntent'])
     ->name('onboarding.setup-intent');
 
@@ -25,13 +31,11 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
-// ─── Public Onboarding ────────────────────────────────────────────────────────
 Route::redirect('/onboarding', '/');
 Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
 Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
 Route::get('/onboarding/thanks', [OnboardingController::class, 'thanks'])->name('onboarding.thanks');
 
-// ─── Admin: Clients (protected by auth middleware) ────────────────────────────
 Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function () {
     Route::get('/clients', [ClientController::class, 'index'])->name('index');
     Route::get('/clients/{client}', [ClientController::class, 'show'])->name('show');
@@ -43,3 +47,16 @@ Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function (
     Route::post('/admin/clients/{client}/charge', [AdminChargeController::class, 'charge'])->name('charge');
 });
 
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+
+    // Xero OAuth
+    Route::prefix('xero')->name('xero.')->group(function () {
+        Route::get('/', [XeroConnectionController::class, 'index'])->name('index');
+        Route::get('/connect', [XeroConnectionController::class, 'connect'])->name('connect');
+        Route::get('/callback', [XeroConnectionController::class, 'callback'])->name('callback');
+        Route::post('/{connection}/refresh', [XeroConnectionController::class, 'refresh'])->name('refresh');
+        Route::delete('/{connection}/disconnect', [XeroConnectionController::class, 'disconnect'])->name('disconnect');
+        Route::get('/{xeroConnection}/tenants/{tenant}/contacts', [XeroConnectionController::class, 'contacts'])->name('contacts');
+    });
+});
+Route::get('/xero/auth/callback',   [XeroConnectionController::class, 'callback'])->name('xero.auth.callback');

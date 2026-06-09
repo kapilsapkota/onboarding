@@ -384,7 +384,7 @@
                             <div class="p-5 space-y-4">
                                 <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for Direct Debits</p>
 
-                                {{-- ✅ REQUIRED by Stripe — must be visible to the user --}}
+                                {{-- REQUIRED by Stripe — must be visible to the user --}}
                                 <div class="p-4 border-l-4 border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-2 rounded-r-lg">
                                     <p>
                                         By providing your bank details and submitting this form, you agree to the
@@ -876,6 +876,7 @@ John Doe | john@company.com | +61412345678"
 <script>
     let currentStep = 1;
     const totalSteps = 6;
+    let becsComplete = false;
     const pcts = ['16.67%', '33.33%', '50%', '66.67%', '83.33%', '100%']; // Updated percentages for each step
     const stepLabels = [
         'Step 1 of 6 — Company Information',
@@ -885,6 +886,7 @@ John Doe | john@company.com | +61412345678"
         'Step 5 of 6 — Services',
         'Step 6 of 6 — Employees',
     ];
+
 
     function updateUI() {
         // Panes
@@ -928,7 +930,50 @@ John Doe | john@company.com | +61412345678"
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function nextStep() { if (currentStep < totalSteps) { currentStep++; updateUI(); } }
+    function nextStep() {
+
+        // Step 1 validation
+        if (currentStep === 1) {
+
+            const companyName = document.querySelector('[name="company_name"]').value.trim();
+            const accountName = document.getElementById('becs_account_name').value.trim();
+            const billingEmail = document.getElementById('becs_billing_email').value.trim();
+
+            if (!companyName) {
+                alert('Company Name is required.');
+                return;
+            }
+
+            if (!accountName) {
+                alert('Account Name is required.');
+                return;
+            }
+
+            if (!billingEmail) {
+                alert('Account Holder Email is required.');
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(billingEmail)) {
+                alert('Please enter a valid Account Holder Email.');
+                return;
+            }
+
+            if (!becsComplete) {
+                document.getElementById('becs-error').textContent =
+                    'Please enter a valid BSB and Account Number before continuing.';
+                return;
+            }
+        }
+
+        if (currentStep < totalSteps) {
+            currentStep++;
+            updateUI();
+        }
+    }
+
     function prevStep() { if (currentStep > 1) { currentStep--; updateUI(); } }
 
     // ── Same-as-main toggle ──
@@ -1128,6 +1173,8 @@ John Doe | john@company.com | +61412345678"
     becsElement.mount('#becs-bank-element');
 
     becsElement.on('change', (e) => {
+        becsComplete = e.complete;
+
         const el = document.getElementById('becs-error');
         el.textContent = e.error ? e.error.message : '';
 
@@ -1143,10 +1190,8 @@ John Doe | john@company.com | +61412345678"
         const accountName  = document.getElementById('becs_account_name')?.value?.trim();
         const billingEmail = document.getElementById('becs_billing_email')?.value?.trim();
 
-        // If no bank details provided, just submit normally (bank is optional)
         const pmId = document.getElementById('stripe_payment_method_id').value;
         if (pmId) {
-            // Already confirmed (e.g. re-submit attempt) — go straight through
             this.submit();
             return;
         }
@@ -1156,7 +1201,6 @@ John Doe | john@company.com | +61412345678"
         submitBtn.textContent = 'Setting up mandate…';
 
         try {
-            // 1. Get a SetupIntent from your backend
             const siRes = await fetch('{{ route("onboarding.setup-intent") }}', {
                 method:  'POST',
                 headers: {
