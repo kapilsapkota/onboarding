@@ -12,12 +12,19 @@ class XeroTenant extends Model
         'tenant_name',
         'tenant_type',
         'is_active',
-        'last_contact_sync_at',
+        'dd_bank_account_id',
+        'dd_bank_account_name',
+        'last_contact_synced_at',
         'last_invoice_synced_at',
         'last_payment_synced_at',
         'last_repeating_invoice_synced_at'
     ];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+        'last_contact_synced_at' => 'datetime',
+        'last_invoice_synced_at' => 'datetime',
+    ];
     public function connection()
     {
         return $this->belongsTo(XeroConnection::class, 'xero_connection_id');
@@ -25,5 +32,9 @@ class XeroTenant extends Model
     public function getRouteKeyName()
     {
         return 'id'; // or tenant_id if needed
+    }
+    public function hasDdBankAccount(): bool
+    {
+        return ! empty($this->dd_bank_account_id);
     }
 }

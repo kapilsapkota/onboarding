@@ -15,11 +15,11 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    @role('super-admin')
+{{--                    @role('super-admin')--}}
                     <x-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.index')">
                         {{ __('Clients') }}
                     </x-nav-link>
-                    @endrole
+{{--                    @endrole--}}
 
                     <x-nav-link :href="route('admin.xero.index')" :active="request()->routeIs('admin.xero.index')">
                         {{ __('Xero Integration') }}

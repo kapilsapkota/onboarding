@@ -47,13 +47,13 @@ class XeroContact extends Model
 
     protected $casts = [
         'is_supplier' => 'boolean',
-        'is_customer'  => 'boolean',
-        'is_matched'   => 'boolean',
+        'is_customer' => 'boolean',
+        'is_matched'  => 'boolean',
 
-        'match_score'  => 'float',
+        'match_score' => 'float',
 
-        'addresses'    => 'array',
-        'phones'       => 'array',
+        'addresses' => 'array',
+        'phones'    => 'array',
 
         'xero_updated_at' => 'datetime',
         'synced_at'       => 'datetime',
@@ -108,7 +108,7 @@ class XeroContact extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Scopes (important for large orgs)
+    | Scopes
     |--------------------------------------------------------------------------
     */
 
@@ -139,14 +139,21 @@ class XeroContact extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Accessors (optional convenience)
+    | Accessors
     |--------------------------------------------------------------------------
     */
 
     public function getDisplayNameAttribute(): string
     {
+        // Bug 5 fixed: the original used trim("{$this->first_name} {$this->last_name}"),
+        // which always produces a non-empty string (at minimum a single space " "),
+        // so the ?? chain never fell through to $this->name.
+        // Build a full name only when at least one part is present.
+        $fullName = trim("{$this->first_name} {$this->last_name}");
+
         return $this->company_name
-            ?? trim("{$this->first_name} {$this->last_name}")
-            ?? $this->name;
+            ?? ($fullName !== '' ? $fullName : null)
+            ?? $this->name
+            ?? '';
     }
 }

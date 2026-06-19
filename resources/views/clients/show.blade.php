@@ -439,119 +439,319 @@
             </div>
 
             {{-- ── Charges / Billing ── --}}
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Charges</h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">BECS Direct Debit — AUD</p>
-                    </div>
+{{--            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">--}}
+{{--                <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-700">--}}
+{{--                    <div>--}}
+{{--                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Charges</h3>--}}
+{{--                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">BECS Direct Debit — AUD</p>--}}
+{{--                    </div>--}}
 
-                    {{-- Charge form --}}
-                    <form action="{{ route('clients.charge', $client) }}" method="POST"
-                          class="flex flex-wrap items-end gap-2">
-                        @csrf
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Amount (AUD)</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400">$</span>
-                                <input type="number" name="amount" min="1" step="0.01" placeholder="0.00"
-                                       class="pl-7 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg
-                                  focus:outline-none focus:ring-2 focus:ring-yellow-400
-                                  dark:bg-gray-700 dark:text-gray-200 w-32"
-                                       required>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>
-                            <input type="text" name="description" placeholder="e.g. Invoice #42 — May retainer"
-                                   class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg
-                              focus:outline-none focus:ring-2 focus:ring-yellow-400
-                              dark:bg-gray-700 dark:text-gray-200 w-64"
-                                   maxlength="255" required>
-                        </div>
-                        <button type="submit"
-                                onclick="return confirm('Charge this client? This action will initiate a BECS direct debit.')"
-                                class="px-4 py-2 text-xs font-semibold text-white rounded-lg transition"
-                                style="background:#C9A84C">
-                            Charge Client
-                        </button>
-                    </form>
+{{--                    --}}{{-- Charge form --}}
+{{--                    <form action="{{ route('clients.charge', $client) }}" method="POST"--}}
+{{--                          class="flex flex-wrap items-end gap-2">--}}
+{{--                        @csrf--}}
+{{--                        <div>--}}
+{{--                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Amount (AUD)</label>--}}
+{{--                            <div class="relative">--}}
+{{--                                <span class="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400">$</span>--}}
+{{--                                <input type="number" name="amount" min="1" step="0.01" placeholder="0.00"--}}
+{{--                                       class="pl-7 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg--}}
+{{--                                  focus:outline-none focus:ring-2 focus:ring-yellow-400--}}
+{{--                                  dark:bg-gray-700 dark:text-gray-200 w-32"--}}
+{{--                                       required>--}}
+{{--                            </div>--}}
+{{--                        </div>--}}
+{{--                        <div>--}}
+{{--                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>--}}
+{{--                            <input type="text" name="description" placeholder="e.g. Invoice #42 — May retainer"--}}
+{{--                                   class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg--}}
+{{--                              focus:outline-none focus:ring-2 focus:ring-yellow-400--}}
+{{--                              dark:bg-gray-700 dark:text-gray-200 w-64"--}}
+{{--                                   maxlength="255" required>--}}
+{{--                        </div>--}}
+{{--                        <button type="submit"--}}
+{{--                                onclick="return confirm('Charge this client? This action will initiate a BECS direct debit.')"--}}
+{{--                                class="px-4 py-2 text-xs font-semibold text-white rounded-lg transition"--}}
+{{--                                style="background:#C9A84C">--}}
+{{--                            Charge Client--}}
+{{--                        </button>--}}
+{{--                    </form>--}}
+{{--                </div>--}}
+
+{{--                --}}{{-- Transactions table --}}
+{{--                @if($client->charges->isEmpty())--}}
+{{--                    <div class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">--}}
+{{--                        No charges recorded yet.--}}
+{{--                    </div>--}}
+{{--                @else--}}
+{{--                    <div class="overflow-x-auto">--}}
+{{--                        <table id="chargesTable" class="display table-auto w-full text-sm text-gray-800 dark:text-gray-200">--}}
+{{--                            <thead>--}}
+{{--                            <tr class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">--}}
+{{--                                <th class="px-5 py-3 text-left font-medium">Date</th>--}}
+{{--                                <th class="px-5 py-3 text-left font-medium">PaymentIntent ID</th>--}}
+{{--                                <th class="px-5 py-3 text-left font-medium">Description</th>--}}
+{{--                                <th class="px-5 py-3 text-right font-medium">Amount</th>--}}
+{{--                                <th class="px-5 py-3 text-left font-medium">Status</th>--}}
+{{--                            </tr>--}}
+{{--                            </thead>--}}
+{{--                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">--}}
+{{--                            @foreach($client->charges as $charge)--}}
+{{--                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">--}}
+{{--                                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">--}}
+{{--                                        {{ $charge->created_at->format('d M Y, g:ia') }}--}}
+{{--                                    </td>--}}
+{{--                                    <td class="px-5 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">--}}
+{{--                                <span class="flex items-center gap-1.5">--}}
+{{--                                    {{ $charge->payment_intent_id }}--}}
+{{--                                    <button onclick="copyText('{{ $charge->payment_intent_id }}', this)"--}}
+{{--                                            class="text-gray-300 hover:text-yellow-500 transition" title="Copy">--}}
+{{--                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
+{{--                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"--}}
+{{--                                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>--}}
+{{--                                        </svg>--}}
+{{--                                    </button>--}}
+{{--                                </span>--}}
+{{--                                    </td>--}}
+{{--                                    <td class="px-5 py-3 text-gray-700 dark:text-gray-300">--}}
+{{--                                        {{ $charge->description }}--}}
+{{--                                    </td>--}}
+{{--                                    <td class="px-5 py-3 text-right font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap">--}}
+{{--                                        ${{ $charge->amount_in_dollars }} AUD--}}
+{{--                                    </td>--}}
+{{--                                    <td class="px-5 py-3">--}}
+{{--                                        @php--}}
+{{--                                            $statusStyles = [--}}
+{{--                                                'succeeded'              => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',--}}
+{{--                                                'processing'             => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',--}}
+{{--                                                'requires_payment_method'=> 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',--}}
+{{--                                                'requires_action'        => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500',--}}
+{{--                                                'canceled'               => 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',--}}
+{{--                                            ];--}}
+{{--                                            $style = $statusStyles[$charge->status] ?? 'bg-gray-100 text-gray-500';--}}
+{{--                                        @endphp--}}
+{{--                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $style }}">--}}
+{{--                                    {{ ucfirst(str_replace('_', ' ', $charge->status)) }}--}}
+{{--                                </span>--}}
+{{--                                    </td>--}}
+{{--                                </tr>--}}
+{{--                            @endforeach--}}
+{{--                            </tbody>--}}
+{{--                        </table>--}}
+{{--                    </div>--}}
+
+{{--                    <script>--}}
+{{--                        $(document).ready(function () {--}}
+{{--                            $('#chargesTable').DataTable({--}}
+{{--                                responsive: true,--}}
+{{--                                pageLength: 10,--}}
+{{--                                order: [[0, 'desc']],--}}
+{{--                                lengthChange: false,--}}
+{{--                                dom: 'Bfrtip',--}}
+{{--                                buttons: ['copy', 'csv', 'excel']--}}
+{{--                            });--}}
+{{--                        });--}}
+{{--                    </script>--}}
+{{--                @endif--}}
+{{--            </div>--}}
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden mt-6">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        Xero Approved Invoices — {{ $client->xeroContacts()->first()?->name ?? '' }}
+                    </h3>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Synced from Xero (ACCREC)
+                    </p>
                 </div>
 
-                {{-- Transactions table --}}
-                @if($client->charges->isEmpty())
-                    <div class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
-                        No charges recorded yet.
+                @if($invoices->isEmpty())
+                    <div class="px-5 py-10 text-center text-sm text-gray-400">
+                        No invoices found in Xero.
                     </div>
                 @else
                     <div class="overflow-x-auto">
-                        <table id="chargesTable" class="display table-auto w-full text-sm text-gray-800 dark:text-gray-200">
+                        <table class="table-auto w-full text-sm">
                             <thead>
-                            <tr class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">
-                                <th class="px-5 py-3 text-left font-medium">Date</th>
-                                <th class="px-5 py-3 text-left font-medium">PaymentIntent ID</th>
-                                <th class="px-5 py-3 text-left font-medium">Description</th>
-                                <th class="px-5 py-3 text-right font-medium">Amount</th>
-                                <th class="px-5 py-3 text-left font-medium">Status</th>
+                            <tr class="text-xs uppercase bg-gray-50 dark:bg-gray-700/50 text-gray-500">
+                                <th class="px-5 py-3 text-left">Date</th>
+                                <th class="px-5 py-3 text-left">Invoice #</th>
+                                <th class="px-5 py-3 text-left">Line Items</th>
+                                <th class="px-5 py-3 text-left">Status</th>
+                                <th class="px-5 py-3 text-left">Recurring</th>
+                                <th class="px-5 py-3 text-right">Total</th>
+                                <th class="px-5 py-3 text-right">Due</th>
+                                <th class="px-5 py-3 text-right">Payment</th>
+                                <th class="px-5 py-3 text-right">Action</th>
                             </tr>
                             </thead>
+
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach($client->charges as $charge)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                        {{ $charge->created_at->format('d M Y, g:ia') }}
+                            @foreach($invoices as $invoice)
+                                @php
+                                    $dd = $invoice->latestDirectDebitPayment;
+                                @endphp
+
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+
+                                    {{-- Date --}}
+                                    <td class="px-5 py-3 text-gray-500 whitespace-nowrap">
+                                        {{ $invoice->invoice_date?->format('d M Y') ?? '—' }}
                                     </td>
-                                    <td class="px-5 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">
-                                <span class="flex items-center gap-1.5">
-                                    {{ $charge->payment_intent_id }}
-                                    <button onclick="copyText('{{ $charge->payment_intent_id }}', this)"
-                                            class="text-gray-300 hover:text-yellow-500 transition" title="Copy">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                        </svg>
-                                    </button>
-                                </span>
+
+                                    {{-- Invoice number --}}
+                                    <td class="px-5 py-3 font-mono text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                        {{ $invoice->xero_invoice_number ?? '—' }}
                                     </td>
-                                    <td class="px-5 py-3 text-gray-700 dark:text-gray-300">
-                                        {{ $charge->description }}
+
+                                    {{-- Line items --}}
+                                    <td class="px-5 py-3 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
+                                        @forelse($invoice->line_items ?? [] as $item)
+                                            <div class="truncate">
+                                                {{ $item['description'] ?? '—' }}
+                                                @if(!empty($item['quantity']))
+                                                    × {{ $item['quantity'] }}
+                                                @endif
+                                                @if(isset($item['line_amount']))
+                                                    — ${{ number_format($item['line_amount'], 2) }}
+                                                @endif
+                                            </div>
+                                        @empty
+                                            <span class="text-gray-400">—</span>
+                                        @endforelse
                                     </td>
-                                    <td class="px-5 py-3 text-right font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap">
-                                        ${{ $charge->amount_in_dollars }} AUD
-                                    </td>
+
+                                    {{-- Xero status --}}
                                     <td class="px-5 py-3">
                                         @php
-                                            $statusStyles = [
-                                                'succeeded'              => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                                                'processing'             => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                                                'requires_payment_method'=> 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                                'requires_action'        => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500',
-                                                'canceled'               => 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
-                                            ];
-                                            $style = $statusStyles[$charge->status] ?? 'bg-gray-100 text-gray-500';
+                                            $statusColour = match($invoice->status) {
+                                                'AUTHORISED' => 'bg-blue-100 text-blue-700',
+                                                'PAID'       => 'bg-green-100 text-green-700',
+                                                'DRAFT'      => 'bg-gray-100 text-gray-500',
+                                                'VOIDED'     => 'bg-red-100 text-red-500',
+                                                default      => 'bg-gray-100 text-gray-500',
+                                            };
                                         @endphp
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $style }}">
-                                    {{ ucfirst(str_replace('_', ' ', $charge->status)) }}
+                                        <span class="text-xs px-2 py-0.5 rounded font-medium {{ $statusColour }}">
+                                    {{ $invoice->status }}
                                 </span>
                                     </td>
+
+                                    {{-- Recurring --}}
+                                    <td class="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+                                        @if($invoice->xero_repeating_invoice_id && $invoice->repeatingInvoice)
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                        {{ $invoice->repeatingInvoice->schedule_summary }}
+                                    </span>
+                                        @else
+                                            <span class="text-gray-300">—</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Total --}}
+                                    <td class="px-5 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                        ${{ number_format($invoice->total ?? 0, 2) }}
+                                        @if($invoice->currency_code && $invoice->currency_code !== 'AUD')
+                                            <span class="text-gray-400 text-xs ml-1">{{ $invoice->currency_code }}</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Amount due --}}
+                                    <td class="px-5 py-3 text-right whitespace-nowrap
+                                {{ ($invoice->amount_due ?? 0) > 0 ? 'font-semibold text-gray-800 dark:text-gray-200' : 'text-gray-400' }}">
+                                        ${{ number_format($invoice->amount_due ?? 0, 2) }}
+                                    </td>
+
+                                    {{-- DD payment status --}}
+                                    <td class="px-5 py-3 text-right whitespace-nowrap">
+                                        @if($dd)
+                                            @php
+                                                $ddColour = match($dd->status) {
+                                                    'settled'    => 'bg-green-100 text-green-700',
+                                                    'processing' => 'bg-yellow-100 text-yellow-700',
+                                                    'pending'    => 'bg-blue-100 text-blue-700',
+                                                    'failed'     => 'bg-red-100 text-red-700',
+                                                    'cancelled'  => 'bg-gray-100 text-gray-500',
+                                                    default      => 'bg-gray-100 text-gray-500',
+                                                };
+                                            @endphp
+                                            <span class="text-xs px-2 py-0.5 rounded font-medium {{ $ddColour }}"
+                                                  title="{{ $dd->failure_reason ?? $dd->gateway_payment_id ?? '' }}">
+                                        {{ ucfirst($dd->status) }}
+                                    </span>
+                                            @if($dd->initiated_by_type === 'manual' && $dd->initiatedByUser)
+                                                <div class="text-gray-400 text-xs mt-0.5">
+                                                    by {{ $dd->initiatedByUser->name }}
+                                                </div>
+                                            @endif
+                                        @else
+                                            <span class="text-gray-300 text-xs">—</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Action --}}
+                                    {{-- Action --}}
+                                    <td class="px-5 py-3 text-right whitespace-nowrap">
+                                        @if($invoice->status === 'AUTHORISED' && ($invoice->amount_due ?? 0) > 0)
+                                            @if(! $dd || $dd->status === 'failed')
+
+                                                @if(! $client->stripe_payment_method_id)
+                                                    <span class="text-xs text-gray-400" title="No BECS payment method on file">
+                    No DD method
+                </span>
+                                                @else
+                                                    <form method="POST"
+                                                          action="{{ route('clients.invoices.charge', [$client, $invoice]) }}"
+                                                          onsubmit="return confirm('Charge ${{ number_format($invoice->amount_due, 2) }} AUD via direct debit?')">
+                                                        @csrf
+                                                        <button type="submit"
+                                                                class="px-3 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors">
+                                                            {{ $dd?->status === 'failed' ? 'Retry Charge' : 'Charge Now' }}
+                                                        </button>
+                                                    </form>
+                                                @endif
+
+                                            @elseif($dd->status === 'processing' || $dd->status === 'pending')
+                                                <span class="text-xs text-yellow-600 font-medium">Processing…</span>
+
+                                            @elseif($dd->status === 'settled')
+                                                @if($dd->xero_payment_id)
+                                                    {{-- Successfully posted to Xero --}}
+                                                    <span class="text-xs text-green-600 font-medium">Collected</span>
+                                                @else
+                                                    {{-- Settled but not in Xero yet — show sync button --}}
+                                                    <div class="flex flex-col items-end gap-1">
+                                                        <span class="text-xs text-green-600 font-medium">Collected</span>
+                                                        <form method="POST"
+                                                              action="{{ route('clients.invoices.syncXero', [$client, $invoice]) }}"
+                                                              onsubmit="return confirm('Queue Xero sync for invoice {{ $invoice->xero_invoice_number }}?')">
+                                                            @csrf
+                                                            <button type="submit"
+                                                                    class="px-2 py-0.5 text-xs border border-blue-400 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                                    title="{{ $dd->xero_post_attempted ? 'Previous sync failed: ' . $dd->xero_post_error : 'Not yet synced to Xero' }}">
+                                                                {{ $dd->xero_post_attempted ? '↻ Retry Xero Sync' : '↑ Sync to Xero' }}
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                @endif
+                                            @endif
+
+                                        @elseif($invoice->status === 'PAID')
+                                            <span class="text-xs text-green-600">Paid in Xero</span>
+                                        @else
+                                            <span class="text-xs text-gray-300">—</span>
+                                        @endif
+                                    </td>
+
                                 </tr>
                             @endforeach
                             </tbody>
                         </table>
                     </div>
-
-                    <script>
-                        $(document).ready(function () {
-                            $('#chargesTable').DataTable({
-                                responsive: true,
-                                pageLength: 10,
-                                order: [[0, 'desc']],
-                                lengthChange: false,
-                                dom: 'Bfrtip',
-                                buttons: ['copy', 'csv', 'excel']
-                            });
-                        });
-                    </script>
                 @endif
             </div>
         </div>

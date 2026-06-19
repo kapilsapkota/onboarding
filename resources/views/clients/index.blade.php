@@ -161,6 +161,8 @@
                             <th class="px-4 py-3 font-semibold hidden md:table-cell">Email</th>
                             <th class="px-4 py-3 font-semibold hidden lg:table-cell">Phone</th>
                             <th class="px-4 py-3 font-semibold">Status</th>
+                            <th class="px-4 py-3 font-semibold">Xero Status</th>
+                            <th class="px-4 py-3 font-semibold">Stripe Status</th>
                             <th class="px-4 py-3 font-semibold hidden md:table-cell">Added</th>
                             <th class="px-4 py-3 font-semibold text-right">Actions</th>
                         </tr>
@@ -273,6 +275,43 @@
                                     @endif
                                 </td>
 
+                                <td class="px-4 py-4">
+                                    @forelse($client->xeroContacts as $xeroContact)
+                                        <div class="mb-1">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                {{ $xeroContact->name ?? $xeroContact->contact_name ?? 'Unnamed' }}
+            </span>
+                                        </div>
+                                    @empty
+                                        <span class="text-xs text-gray-400">No Xero contacts</span>
+                                    @endforelse
+                                </td>
+
+                                {{-- STRIPE STATUS --}}
+                                <td class="px-4 py-4">
+
+                                    @php
+                                        $hasCustomer = !empty($client->stripe_customer_id);
+                                        $hasPaymentMethod = !empty($client->stripe_payment_method_id);
+                                    @endphp
+
+                                    @if($hasCustomer && $hasPaymentMethod)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            Stripe Connected
+        </span>
+
+                                    @elseif($hasCustomer && !$hasPaymentMethod)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+            Customer Only
+        </span>
+
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+            Not Connected
+        </span>
+                                    @endif
+
+                                </td>
                                 {{-- Added --}}
                                 <td class="px-4 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap hidden md:table-cell">
                                     {{ $client->created_at->format('M d, Y') }}

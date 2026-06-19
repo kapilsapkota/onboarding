@@ -2,10 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\WriteXeroPayment;
 use App\Models\Client;
 use App\Models\ClientContact;
+use App\Models\XeroContact;
+use App\Models\XeroInvoice;
+use App\Models\XeroTenant;
+use App\Services\XeroService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class ClientController extends Controller
 {
@@ -56,10 +63,38 @@ class ClientController extends Controller
         return view('clients.index', compact('clients'));
     }
 
-    public function show(Client $client)
+    public function show(Client $client): View
     {
-        $client->load(['contacts', 'charges']);
-        return view('clients.show', compact('client'));
+        $client->load(['contacts', 'charges', 'xeroContacts']);
+
+        $invoices = collect();
+        $xeroContact = $client->xeroContacts->first();
+
+        if ($xeroContact) {
+            $invoices = XeroInvoice::query()
+                ->where('xero_contact_xero_id', $xeroContact->xero_contact_id)
+                ->receivable()
+                ->whereNotIn('status', ['DELETED', 'VOIDED'])
+                ->with([
+                    'latestDirectDebitPayment', // ← fixed: one-per-invoice via hasOne+latestOfMany
+                    'repeatingInvoice',
+                ])
+                ->orderByDesc('invoice_date')
+                ->get();
+        }
+
+        return view('clients.show', compact('client', 'invoices'));
+    }
+    function xeroDateToCarbon(?string $xeroDate): ?\Carbon\Carbon
+    {
+        if (!$xeroDate) return null;
+
+        preg_match('/\d+/', $xeroDate, $matches);
+
+        if (!isset($matches[0])) return null;
+
+        // Xero gives milliseconds
+        return \Carbon\Carbon::createFromTimestampMs((int) $matches[0]);
     }
 
     public function edit(Client $client)
@@ -164,5 +199,22 @@ class ClientController extends Controller
     {
         $client->update(['status' => $request->status]);
         return back()->with('success', 'Status updated.');
+    }
+
+    public function syncXero(Client $client, XeroInvoice $invoice): RedirectResponse
+    {
+        $dd = $invoice->directDebitPayments()
+            ->where('status', 'settled')
+            ->whereNull('xero_payment_id')
+            ->latest()
+            ->first();
+
+        if (! $dd) {
+            return back()->with('error', 'No settled payment found that needs Xero sync.');
+        }
+
+        WriteXeroPayment::dispatch($dd->id)->onQueue('payments');
+
+        return back()->with('success', "Xero sync queued for invoice {$invoice->xero_invoice_number}.");
     }
 }

@@ -68,6 +68,8 @@ return [
         'client_secret' => env('XERO_CLIENT_SECRET'),
         'redirect_uri' => env('XERO_REDIRECT_URI'),
         'scopes' => env('XERO_SCOPES'),
+        'webhook_secret' => env('XERO_WEBHOOK_SECRET'),
+        'stripe_fee_expense_code' => env('XERO_STRIPE_FEE_EXPENSE_CODE', '404'),
     ]
 
 ];

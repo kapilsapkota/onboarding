@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('xero_user_id')->nullable();
             $table->string('xero_user_email')->nullable();
             $table->string('xero_user_name')->nullable();
+            $table->text('json')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

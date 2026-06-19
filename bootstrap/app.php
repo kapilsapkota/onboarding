@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->validateCsrfTokens(except: [
+            '/webhooks/stripe',
+            '/webhooks/xero',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

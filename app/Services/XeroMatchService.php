@@ -14,8 +14,6 @@ class XeroMatchService
         $contactName  = strtolower($contact['Name'] ?? '');
 
         foreach ($customers as $customer) {
-            Log::info('Checking match for', ['contact' => $contactEmail, 'customer' => $customer->billing_email]);;
-
             $score = 0;
 
             // 1. EMAIL MATCH (strongest)

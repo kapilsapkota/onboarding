@@ -77,4 +77,9 @@ class Client extends Model
     {
         return $this->hasMany(ClientCharge::class)->latest();
     }
+
+    public function xeroContacts(): HasMany
+    {
+        return $this->hasMany(XeroContact::class);
+    }
 }

@@ -61,6 +61,19 @@
                                                 Connection #{{ $conn->id }}
                                             </div>
 
+                                            @if($conn->xero_user_name || $conn->xero_user_email)
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                    Connected as
+                                                    <span class="font-medium text-gray-700 dark:text-gray-300">
+                {{ $conn->xero_user_name ?? $conn->xero_user_email }}
+            </span>
+                                                    @if($conn->xero_user_name && $conn->xero_user_email)
+                                                        <span class="text-gray-400">({{ $conn->xero_user_email }})</span>
+                                                    @endif
+                                                </div>
+                                            @endif
+
+
                                             {{-- STATUS --}}
                                             <div class="flex items-center gap-2 mt-1">
 
@@ -122,25 +135,60 @@
                                 </div>
 
                                 {{-- TENANTS (SCALABLE BLOCK) --}}
+                                {{-- TENANTS (SCALABLE BLOCK) --}}
                                 @if($conn->relationLoaded('tenants') && $conn->tenants->count())
 
                                     <div class="mt-4 border-t pt-4">
 
-                                        <div class="text-sm font-medium mb-2">
-                                            Tenants
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                            Organisations
                                         </div>
 
-                                        <div class="flex flex-wrap gap-2">
+                                        <div class="space-y-2">
 
                                             @foreach($conn->tenants as $tenant)
 
-                                                <a href="{{ route('admin.xero.contacts', [
-                                                        'xeroConnection' => $conn,
-                                                        'tenant' => $tenant
-                                                    ]) }}"
-                                                   class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                    {{ $tenant->tenant_name }}
-                                                </a>
+                                                <div class="flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2">
+
+                                                    {{-- Tenant name + DD badge --}}
+                                                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                            {{ $tenant->tenant_name }}
+                        </span>
+
+                                                        @if($tenant->dd_bank_account_id)
+                                                            <span class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900 px-2 py-0.5 text-xs text-green-700 dark:text-green-300">
+                                <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                </svg>
+                                {{ $tenant->dd_bank_account_name }}
+                            </span>
+                                                        @else
+                                                            <span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                                No DD account
+                            </span>
+                                                        @endif
+                                                    </div>
+
+                                                    {{-- Actions --}}
+                                                    <div class="flex items-center gap-2">
+
+                                                        <a href="{{ route('admin.xero.contacts', [
+                                'xeroConnection' => $conn,
+                                'tenant'         => $tenant,
+                            ]) }}"
+                                                           class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                            Contacts
+                                                        </a>
+
+                                                        <a href="{{ route('xero.tenants.edit', $tenant) }}"
+                                                           class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                            Settings
+                                                        </a>
+
+                                                    </div>
+
+                                                </div>
 
                                             @endforeach
 
@@ -149,7 +197,6 @@
                                     </div>
 
                                 @endif
-
                                 {{-- TOKEN BAR --}}
                                 @if($conn->is_active && ! $conn->isTokenExpired())
 

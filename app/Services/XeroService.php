@@ -8,6 +8,9 @@ use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\XeroConnection;
 use App\Models\XeroTenant;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -61,33 +64,55 @@ class XeroService
 
         return $response->json();
     }
-
     public function refreshToken(XeroConnection $connection): XeroConnection
     {
-        if (!$connection->isTokenExpired()) {
+        if ($connection->token_expires_at && $connection->token_expires_at->gt(now()->addMinutes(5))) {
             return $connection;
         }
 
-        Log::info('Refreshing Xero token', ['tenant_id' => $connection->tenant_id]);
+        return Cache::lock('xero-refresh-' . $connection->id, 10)->get(function () use ($connection) {
+            $connection = $connection->fresh();
 
-        $response = Http::asForm()
-            ->withBasicAuth($this->clientId, $this->clientSecret)
-            ->post(self::TOKEN_URL, [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $connection->refresh_token,
-            ]);
+            if ($connection->token_expires_at && $connection->token_expires_at->gt(now()->addMinutes(5))) {
+                return $connection;
+            }
 
-        $response->throw();
-        $data = $response->json();
+            Log::info('Refreshing Xero token', ['tenant_id' => $connection->tenant_id]);
 
-        $connection->update([
-            'access_token' => $data['access_token'],
-            'refresh_token' => $data['refresh_token'],
-            'token_expires_at' => now()->addSeconds($data['expires_in']),
-        ]);
+            try {
+                $response = Http::asForm()
+                    ->withBasicAuth($this->clientId, $this->clientSecret)
+                    ->post(self::TOKEN_URL, [
+                        'grant_type' => 'refresh_token',
+                        'refresh_token' => $connection->refresh_token,
+                    ]);
 
-        return $connection->fresh();
+                $response->throw();
+                $data = $response->json();
+
+                $connection->update([
+                    'access_token' => $data['access_token'],
+                    'refresh_token' => $data['refresh_token'],
+                    'token_expires_at' => now()->addSeconds($data['expires_in']),
+                ]);
+
+                return $connection;
+
+            } catch (RequestException $e) {
+                if ($e->response->status() === 400 || $e->response->status() === 401) {
+                    Log::error('Xero refresh token is invalid or revoked.', [
+                        'connection_id' => $connection->id,
+                        'response' => $e->response->body()
+                    ]);
+
+                    $connection->update(['is_active' => false]);
+                }
+
+                throw $e;
+            }
+        });
     }
+
 
     public function getTenants(string $accessToken): array
     {
@@ -321,16 +346,106 @@ class XeroService
 
     public function getContacts(XeroConnection $connection, XeroTenant $tenant): array
     {
+
         $connection = $this->refreshToken($connection);
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders([
                 'Xero-tenant-id' => $tenant->tenant_id,
             ])
-            ->get(self::BASE_URL . '/Contacts');
+            ->get(self::BASE_URL . '/Contacts',
+            [
+                'status' => 'ACTIVE',
+                'isCustomer' => 'true',
+            ]);
 
         return $response->successful()
             ? $response->json('Contacts', [])
             : [];
+    }
+
+    public function getContactInvoices(XeroTenant $tenant, string $contactId): array
+    {
+        $connection = $this->refreshToken($tenant->connection);
+
+        $response = Http::withToken($connection->access_token)
+            ->withHeaders([
+                'Xero-tenant-id' => $tenant->tenant_id,
+            ])
+            ->get(self::BASE_URL . '/Invoices', [
+                'where' => 'Contact.ContactID=Guid("' . $contactId . '")',
+                'Statuses' => 'AUTHORISED',
+                'Type' => 'ACCREC',
+            ]);
+
+        if ($response->failed()) {
+            Log::error('Xero contact invoices failed', [
+                'contact_id' => $contactId,
+                'body' => $response->body(),
+            ]);
+
+            return [];
+        }
+
+        return $response->json('Invoices', []);
+    }
+    public function getActiveConnection(Client $client): ?XeroConnection
+    {
+        return XeroConnection::where('user_id', Auth::id())
+            ->whereNotNull('access_token')
+            ->first();
+    }
+
+    /**
+     * Returns all BANK type accounts for the given tenant.
+     * Each item: ['account_id' => uuid, 'name' => string, 'code' => string]
+     */
+    public function getBankAccounts(XeroTenant $tenant): array
+    {
+        $connection = $this->refreshToken($tenant->connection);
+
+        $response = Http::withToken($connection->access_token)
+            ->withHeaders([
+                'Xero-tenant-id' => $tenant->tenant_id,
+            ])
+            ->get(self::BASE_URL . '/Accounts', [
+                'where' => 'Type=="BANK"',
+            ]);
+
+        if ($response->failed()) {
+            Log::error('XeroService: failed to fetch bank accounts', [
+                'tenant_id' => $tenant->tenant_id,
+                'body'      => $response->body(),
+            ]);
+            return [];
+        }
+
+        return collect($response->json('Accounts', []))
+            ->map(fn ($a) => [
+                'account_id' => $a['AccountID'],
+                'name'       => $a['Name'],
+                'code'       => $a['Code'] ?? null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Fetch the authenticated Xero user's profile from the userinfo endpoint.
+     * Use this on token refresh since refresh grants don't return a new id_token.
+     */
+    public function getUserInfo(string $accessToken): array
+    {
+        $response = Http::withToken($accessToken)
+            ->get('https://identity.xero.com/connect/userinfo');
+
+        if ($response->failed()) {
+            Log::warning('XeroService: could not fetch userinfo', [
+                'status' => $response->status(),
+            ]);
+            return [];
+        }
+
+        return $response->json();
     }
 }

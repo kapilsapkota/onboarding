@@ -338,7 +338,6 @@
         submitBtn.textContent = 'Setting up mandate...';
 
         try {
-            // Step 1: Create SetupIntent (calls your existing endpoint - same as onboarding)
             const siRes = await fetch('{{ route("onboarding.setup-intent") }}', {
                 method: 'POST',
                 headers: {
@@ -349,6 +348,7 @@
                 body: JSON.stringify({
                     company_name: companyName,
                     billing_email: email,
+                    billing_name : fullName,
                 })
             });
 

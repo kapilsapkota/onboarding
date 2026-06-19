@@ -18,6 +18,7 @@ class XeroConnection extends Model
         'xero_user_id',
         'xero_user_email',
         'xero_user_name',
+        'json'
     ];
 
     protected $hidden = ['access_token', 'refresh_token'];

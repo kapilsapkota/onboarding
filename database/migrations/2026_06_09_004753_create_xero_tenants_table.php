@@ -24,6 +24,10 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_contact_synced_at')->nullable();
             $table->timestamp('last_invoice_synced_at')->nullable();
+            $table->timestamp('last_payment_synced_at')->nullable();
+
+            $table->string('dd_bank_account_id')->nullable();
+            $table->string('dd_bank_account_name')->nullable();
 
             $table->unique(['xero_connection_id', 'tenant_id']);
             $table->timestamps();
