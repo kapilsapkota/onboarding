@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\DirectDebitPaymentController;
 use App\Http\Controllers\Admin\XeroConnectionController;
 use App\Http\Controllers\Admin\XeroContactController;
+use App\Http\Controllers\Admin\XeroInvoiceController;
+use App\Http\Controllers\Admin\XeroSyncController;
 use App\Http\Controllers\Admin\XeroTenantSettingsController;
 use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\ClientController;
@@ -25,6 +28,7 @@ Route::post('/onboarding/setup-intent', [OnboardingController::class, 'createSet
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -58,7 +62,6 @@ Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function (
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-
     // Xero OAuth
     Route::prefix('xero')->name('xero.')->group(function () {
         Route::get('/', [XeroConnectionController::class, 'index'])->name('index');
@@ -69,16 +72,28 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
         Route::get('/{xeroConnection}/tenants/{tenant}/contacts', [XeroContactController::class, 'contacts'])->name('contacts');
         Route::post('/tenants/{tenant}/contacts', [XeroContactController::class, 'syncTenant'])->name('contacts.sync');
-        Route::post('assign-contact', [XeroContactController::class, 'assign'])
-            ->name('contacts.assign');
+        Route::post('/assign-contact', [XeroContactController::class, 'assign'])->name('contacts.assign');
         Route::post('bulk-assign', [XeroContactController::class, 'bulkAssign'])
             ->name('contacts.bulk-assign');
         Route::delete('contacts/{xeroContact}/match', [XeroContactController::class, 'clearMatch'])
             ->name('contacts.clear-match');
+        Route::post('/contacts/auto-match', [XeroContactController::class, 'autoMatch'])
+            ->name('contacts.auto-match');
 
+        Route::post('/sync-invoices', [XeroInvoiceController::class, 'sync'])->name('sync-invoices');
+        Route::post('/tenant/{tenant}/sync', [XeroSyncController::class, 'sync'])->name('tenants.sync');
+
+        Route::get('tenants/{tenant}/bank-settings', [XeroTenantSettingsController::class, 'edit'])
+            ->name('tenants.bank-settings');
+        Route::put('tenants/{tenant}/bank-settings', [XeroTenantSettingsController::class, 'update'])
+            ->name('tenants.bank-settings-update');
     });
+    Route::resource('directDebitPayment', DirectDebitPaymentController::class)->only(['index', 'show']);
+    Route::post('directDebitPayment/{directDebitPayment}/cancel',       [DirectDebitPaymentController::class, 'cancel'])->name('directDebitPayment.cancel');
+    Route::post('directDebitPayment/{directDebitPayment}/retry',        [DirectDebitPaymentController::class, 'retry'])->name('directDebitPayment.retry');
+    Route::post('directDebitPayment/{directDebitPayment}/post-to-xero', [DirectDebitPaymentController::class, 'postToXero'])->name('directDebitPayment.post-to-xero');
 });
-// routes/web.php
+
 Route::prefix('settings/xero/tenants/{tenant}')
     ->name('xero.tenants.')
     ->group(function () {

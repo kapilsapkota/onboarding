@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DirectDebitPayment extends Model
 {
@@ -70,17 +71,17 @@ class DirectDebitPayment extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function invoice()
+    public function invoice() : BelongsTo
     {
         return $this->belongsTo(XeroInvoice::class, 'xero_invoice_id');
     }
 
-    public function tenant()
+    public function tenant() : BelongsTo
     {
         return $this->belongsTo(XeroTenant::class, 'xero_tenant_id');
     }
 
-    public function client()
+    public function client() : BelongsTo
     {
         return $this->belongsTo(Client::class);
     }
@@ -95,7 +96,7 @@ class DirectDebitPayment extends Model
         return $this->hasMany(DirectDebitPayment::class, 'retry_of_id');
     }
 
-    public function initiatedByUser()
+    public function initiatedByUser() : BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'initiated_by_user_id');
     }

@@ -569,6 +569,18 @@
                     <div class="px-5 py-10 text-center text-sm text-gray-400">
                         No invoices found in Xero.
                     </div>
+
+                    <form action="{{ route('admin.xero.sync-invoices') }}" method="POST" class="inline-block">
+                        @csrf
+                        <button type="submit"
+                                onclick="this.disabled=true; this.innerHTML='<svg class=\'animate-spin h-4 w-4 mr-2 inline\' viewBox=\'0 0 24 24\'></svg> Syncing...'; this.form.submit();"
+                                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"></path>
+                            </svg>
+                            Sync Fresh Invoices
+                        </button>
+                    </form>
                 @else
                     <div class="overflow-x-auto">
                         <table class="table-auto w-full text-sm">

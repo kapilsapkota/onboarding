@@ -5,8 +5,8 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-6">
+        <div class="max-w-full mx-auto sm:px-6 lg:px-8">
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100 flex items-center justify-between">
@@ -21,12 +21,12 @@
                     <div class="flex items-center gap-4">
 
                         {{-- XERO STATUS --}}
-                        @if(auth()->user()->xero_connected ?? false)
+                        @if($xeroConnection = \App\Models\XeroConnection::first())
                             <span class="text-green-600 font-medium">
                             Connected to Xero
                         </span>
 
-                            <form method="POST" action="{{ route('admin.xero.disconnect') }}">
+                            <form method="POST" action="{{ route('admin.xero.disconnect', $xeroConnection) }}">
                                 @csrf
                                 <button type="submit"
                                         class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">

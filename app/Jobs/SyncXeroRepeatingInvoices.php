@@ -73,7 +73,7 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
             }
         });
 
-        $tenant->update(['last_repeating_sync_at' => now()]);
+        $tenant->update(['last_repeating_invoice_synced_at' => now()]);
     }
 
     // -------------------------------------------------------------------------
@@ -140,10 +140,10 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
             ->where('xero_tenant_id', $tenant->id)
             ->where('xero_contact_xero_id', $repeating->xero_contact_xero_id)
             ->where('type', $repeating->type)
-            ->whereNull('xero_repeating_invoice_id')    // never overwrite a confirmed link
+            ->whereNull('xero_repeating_invoice_id')
             ->where('total', $repeating->total)
             ->when($repeating->schedule_start_date, fn ($q) =>
-            $q->where('invoice_date', '>=', $repeating->schedule_start_date)
+                $q->where('invoice_date', '>=', $repeating->schedule_start_date)
             )
             ->update(['xero_repeating_invoice_id' => $repeating->id]);
     }

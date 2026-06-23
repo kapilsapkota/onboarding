@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\HandleFailedDirectDebitPayment;
 use App\Jobs\WriteXeroPayment;
 use App\Models\DirectDebitPayment;
 use App\Services\StripeBecsService;
@@ -11,26 +12,10 @@ use Illuminate\Support\Facades\Log;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 
-/**
- * Receives Stripe webhook events and routes them to the right action.
- *
- * Register in routes/api.php (outside the 'auth' middleware):
- *   Route::post('/webhooks/stripe', StripeWebhookController::class)
- *       ->name('webhooks.stripe');
- *
- * Add to config/app.php middleware exception list (or VerifyCsrfToken):
- *   '/api/webhooks/stripe'
- *
- * Stripe Dashboard → Developers → Webhooks → Add endpoint:
- *   URL: https://yourapp.com/api/webhooks/stripe
- *   Events to listen for:
- *     - payment_intent.succeeded
- *     - payment_intent.payment_failed
- *     - mandate.updated
- */
 class StripeWebhookController extends Controller
 {
     public function __construct(private StripeBecsService $stripe) {}
+
     public function __invoke(Request $request): Response
     {
         $payload   = $request->getContent();
@@ -46,12 +31,19 @@ class StripeWebhookController extends Controller
 
         Log::info('StripeWebhook: received event', ['type' => $event->type]);
 
-        match ($event->type) {
-            'payment_intent.succeeded'       => $this->handleSucceeded($event->data->object),
-            'payment_intent.payment_failed'  => $this->handleFailed($event->data->object),
-            'mandate.updated'                => $this->handleMandateUpdated($event->data->object),
-            default                          => null,
-        };
+        try {
+            match ($event->type) {
+                'payment_intent.succeeded'      => $this->handleSucceeded($event->data->object),
+                'payment_intent.payment_failed' => $this->handleFailed($event->data->object),
+                'mandate.updated'               => $this->handleMandateUpdated($event->data->object),
+                default                         => null,
+            };
+        } catch (\Throwable $e) {
+            Log::error('StripeWebhook: unhandled exception in event handler', [
+                'type'  => $event->type,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return response('OK', 200);
     }
@@ -72,13 +64,14 @@ class StripeWebhookController extends Controller
             ]);
             return;
         }
+
         $balanceTx = $this->stripe->getBalanceTransaction($intent['id']);
 
         $ddPayment->markSettled($balanceTx);
         $ddPayment->invoice->markPaymentSettled();
 
         Log::info('StripeWebhook: payment_intent.succeeded — marked settled', [
-            'id'               => $ddPayment->id,
+            'id'                => $ddPayment->id,
             'payment_intent_id' => $intent->id,
         ]);
 
@@ -93,25 +86,35 @@ class StripeWebhookController extends Controller
             return;
         }
 
+        // Idempotency guard — Stripe can deliver the same event more than once.
+        if ($ddPayment->status === 'failed') {
+            Log::info('StripeWebhook: payment_intent.payment_failed — already failed, skipping', [
+                'id' => $ddPayment->id,
+            ]);
+            return;
+        }
+
         $lastError = $intent->last_payment_error;
         $reason    = $lastError?->message ?? 'Payment failed';
-        $code      = $lastError?->code ?? null;
+        $code      = $lastError?->code    ?? null;
 
         $ddPayment->markFailed($reason, $code);
         $ddPayment->invoice->markPaymentFailed($reason);
 
         Log::warning('StripeWebhook: payment_intent.payment_failed', [
-            'id'               => $ddPayment->id,
+            'id'                => $ddPayment->id,
             'payment_intent_id' => $intent->id,
-            'code'             => $code,
-            'reason'           => $reason,
+            'code'              => $code,
+            'reason'            => $reason,
         ]);
+
+        // Hand off to a job — email delivery and Xero invoice creation are
+        // too slow and fallible to run synchronously in the webhook handler.
+        HandleFailedDirectDebitPayment::dispatch($ddPayment->id);
     }
 
     private function handleMandateUpdated(object $mandate): void
     {
-        // If a BECS mandate becomes inactive (customer cancelled with their bank),
-        // we should flag the client so we don't attempt future debits.
         if (($mandate->status ?? null) !== 'inactive') {
             return;
         }
@@ -124,15 +127,13 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        // Null out the payment method on the client so the next scheduled
-        // debit is skipped and staff are alerted.
         \App\Models\Client::where('stripe_payment_method_id', $paymentMethodId)
             ->update([
                 'stripe_payment_method_id' => null,
-                'stripe_mandate_status'    => 'inactive',
+                'mandate_status'           => 'inactive',
             ]);
 
-        Log::warning('StripeWebhook: mandate.updated — mandate inactive, cleared from client', [
+        Log::warning('StripeWebhook: mandate.updated — inactive, cleared from client', [
             'payment_method_id' => $paymentMethodId,
         ]);
     }
@@ -141,20 +142,27 @@ class StripeWebhookController extends Controller
 
     private function findByIntent(object $intent): ?DirectDebitPayment
     {
-        // Primary lookup: metadata we stamped at PaymentIntent creation time
         $ddPaymentId = $intent->metadata['dd_payment_id'] ?? null;
 
         if ($ddPaymentId) {
-            $ddPayment = DirectDebitPayment::with(['invoice', 'invoice.tenant', 'invoice.tenant.connection'])
-                ->find((int) $ddPaymentId);
+            $ddPayment = DirectDebitPayment::with([
+                'invoice',
+                'invoice.client',
+                'invoice.tenant',
+                'invoice.tenant.connection',
+            ])->find((int) $ddPaymentId);
 
             if ($ddPayment) {
                 return $ddPayment;
             }
         }
 
-        // Fallback: look up by the gateway_payment_id column
-        return DirectDebitPayment::with(['invoice', 'invoice.tenant', 'invoice.tenant.connection'])
+        return DirectDebitPayment::with([
+            'invoice',
+            'invoice.client',
+            'invoice.tenant',
+            'invoice.tenant.connection',
+        ])
             ->where('gateway_payment_id', $intent->id)
             ->first();
     }

@@ -72,7 +72,11 @@ class XeroContactController extends Controller
 
         $xeroContact = XeroContact::where('xero_contact_id', $data['contact_id'])
             ->where('xero_tenant_id', $data['tenant_id'])
-            ->firstOrFail();
+            ->first();
+
+        if(!$xeroContact){
+            return response()->json(['ok' => false, 'message' => 'No matching contacts found.'], 404);
+        }
 
         $client = Client::findOrFail($data['customer_id']);
 

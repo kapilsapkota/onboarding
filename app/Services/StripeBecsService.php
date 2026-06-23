@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\DirectDebitPayment;
+use App\Models\XeroInvoice;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiErrorException;
 use Stripe\StripeClient;
@@ -32,7 +33,7 @@ class StripeBecsService
      */
     public function charge(DirectDebitPayment $ddPayment): string
     {
-        $client = Client::find($ddPayment->client_id);
+        $client = Client::with('xeroContacts.tenant')->find($ddPayment->client_id);
         if (! $client) {
             throw new \RuntimeException(
                 "Client [{$client->id}] not found."
@@ -53,10 +54,14 @@ class StripeBecsService
             'currency'             => strtolower($ddPayment->currency_code),
             'customer'             => $client->stripe_customer_id,
             'payment_method'       => $client->stripe_payment_method_id,
+            'statement_descriptor' => 'Direct Debit App',
             'payment_method_types' => ['au_becs_debit'],
             'confirm'              => true,
             'off_session'          => true,
             'metadata'             => [
+                'EmailAddress'        => $client->billing_email,
+                'Invoice number' => $ddPayment->xero_invoice_number,
+                'OrgName' => $ddPayment->tenant?->name,
                 'dd_payment_id'       => $ddPayment->id,
                 'xero_invoice_number' => $ddPayment->xero_invoice_number,
                 'our_reference'       => $ddPayment->our_reference,

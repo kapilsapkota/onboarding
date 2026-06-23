@@ -25,6 +25,7 @@ return new class extends Migration
             $table->timestamp('last_contact_synced_at')->nullable();
             $table->timestamp('last_invoice_synced_at')->nullable();
             $table->timestamp('last_payment_synced_at')->nullable();
+            $table->timestamp('last_repeating_invoice_synced_at')->nullable();
 
             $table->string('dd_bank_account_id')->nullable();
             $table->string('dd_bank_account_name')->nullable();

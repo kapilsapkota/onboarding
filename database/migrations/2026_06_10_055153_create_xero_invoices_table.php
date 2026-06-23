@@ -54,6 +54,7 @@ return new class extends Migration
 
             $table->unsignedBigInteger('client_id')->nullable()->index();
             $table->boolean('is_reconciled')->default(false)->index();
+            $table->string('xero_repeating_invoice_id')->nullable();
 
             $table->timestamps();
 

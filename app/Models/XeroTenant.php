@@ -24,6 +24,8 @@ class XeroTenant extends Model
         'is_active' => 'boolean',
         'last_contact_synced_at' => 'datetime',
         'last_invoice_synced_at' => 'datetime',
+        'last_repeating_invoice_synced_at' => 'datetime',
+        'last_payment_synced_at' => 'datetime',
     ];
     public function connection()
     {
@@ -36,5 +38,10 @@ class XeroTenant extends Model
     public function hasDdBankAccount(): bool
     {
         return ! empty($this->dd_bank_account_id);
+    }
+
+    public function contacts()
+    {
+        return $this->hasMany(XeroContact::class, 'xero_tenant_id', 'xero_tenant_id');
     }
 }

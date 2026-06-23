@@ -47,7 +47,7 @@ class XeroPaymentWriteBackService
                 'AccountID' => $bankAccountId,
             ],
             'Date' => $ddPayment->settled_at->format('Y-m-d'),
-            'Amount' => (float)$ddPayment->amount,
+            'Amount' => (float) $ddPayment->amount,
             'Reference' => $this->buildReference($ddPayment),
             'IsReconciled' => false,
         ];

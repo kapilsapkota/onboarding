@@ -1,8 +1,8 @@
 <?php
 
-
 namespace App\Services;
 
+use App\Exceptions\XeroAuthException;
 use App\Models\Client;
 use App\Models\Customer;
 use App\Models\Payment;
@@ -13,24 +13,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class XeroService
 {
-    private const BASE_URL = 'https://api.xero.com/api.xro/2.0';
+    private const BASE_URL    = 'https://api.xero.com/api.xro/2.0';
     private const IDENTITY_URL = 'https://api.xero.com/connections';
-    private const TOKEN_URL = 'https://identity.xero.com/connect/token';
+    private const TOKEN_URL   = 'https://identity.xero.com/connect/token';
     private const AUTHORIZE_URL = 'https://login.xero.com/identity/connect/authorize';
 
     public function __construct(
-        private string $clientId = '',
+        private string $clientId     = '',
         private string $clientSecret = '',
-        private string $redirectUri = '',
-    )
-    {
-        $this->clientId = config('services.xero.client_id');
+        private string $redirectUri  = '',
+    ) {
+        $this->clientId     = config('services.xero.client_id');
         $this->clientSecret = config('services.xero.client_secret');
-        $this->redirectUri = config('services.xero.redirect_uri');
+        $this->redirectUri  = config('services.xero.redirect_uri');
     }
 
     // ─────────────────────────────────────────────
@@ -41,10 +39,10 @@ class XeroService
     {
         $params = http_build_query([
             'response_type' => 'code',
-            'client_id' => $this->clientId,
-            'redirect_uri' => $this->redirectUri,
-            'scope' => 'openid profile email accounting.transactions accounting.contacts offline_access',
-            'state' => csrf_token(),
+            'client_id'     => $this->clientId,
+            'redirect_uri'  => $this->redirectUri,
+            'scope'         => 'openid profile email accounting.transactions accounting.contacts offline_access',
+            'state'         => csrf_token(),
         ]);
 
         return self::AUTHORIZE_URL . '?' . $params;
@@ -55,8 +53,8 @@ class XeroService
         $response = Http::asForm()
             ->withBasicAuth($this->clientId, $this->clientSecret)
             ->post(self::TOKEN_URL, [
-                'grant_type' => 'authorization_code',
-                'code' => $code,
+                'grant_type'   => 'authorization_code',
+                'code'         => $code,
                 'redirect_uri' => $this->redirectUri,
             ]);
 
@@ -64,134 +62,207 @@ class XeroService
 
         return $response->json();
     }
+
+    /**
+     * Ensure the connection holds a valid, non-expired access token.
+     *
+     * Flow:
+     *   1. Token still has 5+ minutes left → return as-is (no network call).
+     *   2. Token is expiring / expired → acquire a distributed lock and refresh.
+     *   3. If another process already refreshed while we waited for the lock,
+     *      re-fetch the row and skip the HTTP call (double-checked locking).
+     *   4. If Xero returns 400/401 → mark needs_reauth = true, throw XeroAuthException.
+     *   5. Lock could not be acquired within 15 s → re-fetch (the other process
+     *      most likely succeeded) and return whatever we get.
+     *
+     * @throws XeroAuthException  When the refresh token is revoked/expired.
+     * @throws RequestException   On any other Xero HTTP error.
+     */
     public function refreshToken(XeroConnection $connection): XeroConnection
     {
-        if ($connection->token_expires_at && $connection->token_expires_at->gt(now()->addMinutes(5))) {
+        // Fast path — token is still fresh.
+        if ($connection->token_expires_at?->gt(now()->addMinutes(5))) {
             return $connection;
         }
 
-        return Cache::lock('xero-refresh-' . $connection->id, 10)->get(function () use ($connection) {
+        $lockKey = 'xero-refresh-' . $connection->id;
+
+        // Try to acquire the lock for up to 15 seconds.
+        $refreshed = Cache::lock($lockKey, 30)->block(15, function () use ($connection) {
+            // Re-fetch inside the lock so we get the latest token (another process
+            // may have just refreshed it while we were waiting).
             $connection = $connection->fresh();
 
-            if ($connection->token_expires_at && $connection->token_expires_at->gt(now()->addMinutes(5))) {
+            // Double-check: maybe another process already refreshed it.
+            if ($connection->token_expires_at?->gt(now()->addMinutes(5))) {
                 return $connection;
             }
 
-            Log::info('Refreshing Xero token', ['tenant_id' => $connection->tenant_id]);
+            // At this point we hold the lock and the token is genuinely stale.
+            Log::info('XeroService: refreshing access token', ['connection_id' => $connection->id]);
 
             try {
                 $response = Http::asForm()
                     ->withBasicAuth($this->clientId, $this->clientSecret)
                     ->post(self::TOKEN_URL, [
-                        'grant_type' => 'refresh_token',
+                        'grant_type'    => 'refresh_token',
                         'refresh_token' => $connection->refresh_token,
                     ]);
 
                 $response->throw();
+
                 $data = $response->json();
 
                 $connection->update([
-                    'access_token' => $data['access_token'],
-                    'refresh_token' => $data['refresh_token'],
+                    'access_token'     => $data['access_token'],
+                    'refresh_token'    => $data['refresh_token'],
                     'token_expires_at' => now()->addSeconds($data['expires_in']),
+                    // Clear any previous reauth flag on successful refresh.
+                    'needs_reauth'     => false,
+                    'reauth_reason'    => null,
                 ]);
 
-                return $connection;
+                return $connection->fresh();
 
             } catch (RequestException $e) {
-                if ($e->response->status() === 400 || $e->response->status() === 401) {
-                    Log::error('Xero refresh token is invalid or revoked.', [
+                $status = $e->response->status();
+
+                // 400 / 401 means the refresh token itself is dead (revoked,
+                // rotated, or the Xero app was disconnected). Nothing we can do
+                // automatically — an admin must re-authorize via OAuth.
+                if (in_array($status, [400, 401], true)) {
+                    $reason = 'Refresh token revoked or expired (HTTP ' . $status . '). Re-authorization required.';
+
+                    Log::error('XeroService: refresh token is invalid, marking needs_reauth', [
                         'connection_id' => $connection->id,
-                        'response' => $e->response->body()
+                        'status'        => $status,
+                        'body'          => $e->response->body(),
                     ]);
 
-                    $connection->update(['is_active' => false]);
+                    $connection->update([
+                        'is_active'     => false,
+                        'needs_reauth'  => true,
+                        'reauth_reason' => $reason,
+                    ]);
+
+                    throw new XeroAuthException($reason);
                 }
 
+                // Any other HTTP error (5xx, rate-limit, etc.) — surface it but
+                // do NOT mark needs_reauth; a transient outage shouldn't force
+                // the admin to click through OAuth again.
                 throw $e;
             }
         });
+
+        // Lock::block() returns null only if the lock was NOT acquired within
+        // the timeout. In that case another process was likely refreshing; grab
+        // the freshest row we can and proceed — it's probably valid now.
+        if ($refreshed === null) {
+            Log::warning('XeroService: could not acquire refresh lock, using fresh row', [
+                'connection_id' => $connection->id,
+            ]);
+
+            $connection = $connection->fresh();
+
+            // If the fresh row still needs reauth, raise now rather than
+            // attempting API calls with a dead token.
+            if ($connection->needs_reauth) {
+                throw new XeroAuthException($connection->reauth_reason ?? 'Re-authorization required.');
+            }
+
+            return $connection;
+        }
+
+        return $refreshed;
     }
 
+    // ─────────────────────────────────────────────
+    // Connection helpers
+    // ─────────────────────────────────────────────
 
     public function getTenants(string $accessToken): array
     {
-        $response = Http::withToken($accessToken)
-            ->get(self::IDENTITY_URL);
-
+        $response = Http::withToken($accessToken)->get(self::IDENTITY_URL);
         $response->throw();
 
         return $response->json();
+    }
+
+    /**
+     * Return the single active, reauth-free Xero connection, or null.
+     * Callers that need a connection should check for null and redirect
+     * the admin to reconnect.
+     */
+    public function getActiveConnection(?Client $client = null): ?XeroConnection
+    {
+        return XeroConnection::where('is_active', true)
+            ->where('needs_reauth', false)
+            ->whereNotNull('access_token')
+            ->whereNotNull('refresh_token')
+            ->first();
     }
 
     // ─────────────────────────────────────────────
     // Contact matching
     // ─────────────────────────────────────────────
 
-    /**
-     * Attempt to find a Xero contact matching a customer.
-     * Returns array of candidates with a match confidence score.
-     */
     public function findMatchingContacts(XeroConnection $connection, Customer $customer): array
     {
         $connection = $this->refreshToken($connection);
-
         $candidates = [];
 
-        // 1. Exact email match
         if ($customer->email) {
             $byEmail = $this->searchContacts($connection, $customer->email);
             foreach ($byEmail as $contact) {
                 $candidates[$contact['ContactID']] = [
                     'contact' => $contact,
-                    'score' => 100,
-                    'method' => 'email',
-                    'reason' => 'Exact email match',
+                    'score'   => 100,
+                    'method'  => 'email',
+                    'reason'  => 'Exact email match',
                 ];
             }
         }
 
-        if (!empty($candidates)) {
+        if (! empty($candidates)) {
             return array_values($candidates);
         }
 
-        // 2. Name match (company name preferred, fall back to individual name)
         $searchName = $customer->company_name ?? $customer->name;
-        $byName = $this->searchContacts($connection, $searchName);
+        $byName     = $this->searchContacts($connection, $searchName);
         foreach ($byName as $contact) {
             $score = $this->similarityScore($searchName, $contact['Name'] ?? '');
             if ($score >= 60) {
                 $candidates[$contact['ContactID']] = [
                     'contact' => $contact,
-                    'score' => $score,
-                    'method' => 'name',
-                    'reason' => "Name similarity {$score}%",
+                    'score'   => $score,
+                    'method'  => 'name',
+                    'reason'  => "Name similarity {$score}%",
                 ];
             }
         }
 
-        // 3. ABN match if available
         if ($customer->abn) {
             $byAbn = $this->searchContacts($connection, $customer->abn);
             foreach ($byAbn as $contact) {
                 $existing = $candidates[$contact['ContactID']] ?? null;
-                $score = 95;
+                $score    = 95;
                 if ($existing) {
-                    $candidates[$contact['ContactID']]['score'] = max($existing['score'], $score);
+                    $candidates[$contact['ContactID']]['score']  = max($existing['score'], $score);
                     $candidates[$contact['ContactID']]['method'] = 'abn';
                     $candidates[$contact['ContactID']]['reason'] = 'ABN match';
                 } else {
                     $candidates[$contact['ContactID']] = [
                         'contact' => $contact,
-                        'score' => $score,
-                        'method' => 'abn',
-                        'reason' => 'ABN match',
+                        'score'   => $score,
+                        'method'  => 'abn',
+                        'reason'  => 'ABN match',
                     ];
                 }
             }
         }
 
-        usort($candidates, fn($a, $b) => $b['score'] <=> $a['score']);
+        usort($candidates, fn ($a, $b) => $b['score'] <=> $a['score']);
 
         return array_values($candidates);
     }
@@ -201,7 +272,7 @@ class XeroService
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
             ->get(self::BASE_URL . '/Contacts', [
-                'searchTerm' => $term,
+                'searchTerm'      => $term,
                 'includeArchived' => false,
             ]);
 
@@ -214,27 +285,20 @@ class XeroService
 
     private function similarityScore(string $a, string $b): int
     {
-        similar_text(
-            strtolower(trim($a)),
-            strtolower(trim($b)),
-            $percent
-        );
+        similar_text(strtolower(trim($a)), strtolower(trim($b)), $percent);
 
-        return (int)round($percent);
+        return (int) round($percent);
     }
 
-    /**
-     * Create a new Xero contact from a Customer record.
-     */
     public function createContact(XeroConnection $connection, Client $customer): array
     {
         $connection = $this->refreshToken($connection);
 
         $payload = [
-            'Name' => $customer->company_name ?? $customer->name,
+            'Name'         => $customer->company_name ?? $customer->name,
             'EmailAddress' => $customer->billing_email,
-            'Phones' => $customer->phone ? [[
-                'PhoneType' => 'DEFAULT',
+            'Phones'       => $customer->phone ? [[
+                'PhoneType'   => 'DEFAULT',
                 'PhoneNumber' => $customer->phone,
             ]] : [],
         ];
@@ -252,9 +316,6 @@ class XeroService
     // Invoice & Payment
     // ─────────────────────────────────────────────
 
-    /**
-     * Fetch an invoice from Xero by its ID.
-     */
     public function getInvoice(XeroConnection $connection, string $invoiceId): array
     {
         $connection = $this->refreshToken($connection);
@@ -268,9 +329,6 @@ class XeroService
         return $response->json('Invoices.0', []);
     }
 
-    /**
-     * Fetch all outstanding (AUTHORISED) invoices for a Xero contact.
-     */
     public function getOutstandingInvoices(XeroConnection $connection, string $xeroContactId): array
     {
         $connection = $this->refreshToken($connection);
@@ -279,8 +337,8 @@ class XeroService
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
             ->get(self::BASE_URL . '/Invoices', [
                 'ContactIDs' => $xeroContactId,
-                'Statuses' => 'AUTHORISED',
-                'Type' => 'ACCREC',
+                'Statuses'   => 'AUTHORISED',
+                'Type'       => 'ACCREC',
             ]);
 
         if ($response->failed()) {
@@ -290,24 +348,24 @@ class XeroService
         return $response->json('Invoices', []);
     }
 
-    /**
-     * Mark a Xero invoice as paid after a successful Stripe charge.
-     */
     public function markInvoicePaid(XeroConnection $connection, Payment $payment): bool
     {
         $connection = $this->refreshToken($connection);
 
-        if (!$payment->xero_invoice_id) {
-            Log::warning('markInvoicePaid: no xero_invoice_id', ['payment_id' => $payment->id]);
+        if (! $payment->xero_invoice_id) {
+            Log::warning('XeroService: markInvoicePaid called with no xero_invoice_id', [
+                'payment_id' => $payment->id,
+            ]);
+
             return false;
         }
 
         $payload = [
-            'Invoice' => ['InvoiceID' => $payment->xero_invoice_id],
-            'Account' => ['Code' => config('services.xero.bank_account_code', '090')],
-            'Date' => now()->format('Y-m-d'),
-            'Amount' => $payment->amount / 100,
-            'Reference' => "Stripe BECS – {$payment->stripe_payment_intent_id}",
+            'Invoice'      => ['InvoiceID' => $payment->xero_invoice_id],
+            'Account'      => ['Code' => config('services.xero.bank_account_code', '090')],
+            'Date'         => now()->format('Y-m-d'),
+            'Amount'       => $payment->amount / 100,
+            'Reference'    => "Stripe BECS – {$payment->stripe_payment_intent_id}",
             'CurrencyRate' => 1.0,
         ];
 
@@ -318,25 +376,27 @@ class XeroService
         if ($response->failed()) {
             $payment->update([
                 'xero_sync_status' => 'failed',
-                'xero_sync_error' => $response->body(),
+                'xero_sync_error'  => $response->body(),
             ]);
-            Log::error('Xero payment sync failed', [
+
+            Log::error('XeroService: payment sync failed', [
                 'payment_id' => $payment->id,
-                'response' => $response->body(),
+                'response'   => $response->body(),
             ]);
+
             return false;
         }
 
         $xeroPayment = $response->json('Payments.0', []);
 
         $payment->update([
-            'xero_payment_id' => $xeroPayment['PaymentID'] ?? null,
+            'xero_payment_id'  => $xeroPayment['PaymentID'] ?? null,
             'xero_sync_status' => 'synced',
-            'xero_synced_at' => now(),
+            'xero_synced_at'   => now(),
         ]);
 
-        Log::info('Xero invoice marked paid', [
-            'payment_id' => $payment->id,
+        Log::info('XeroService: invoice marked paid', [
+            'payment_id'      => $payment->id,
             'xero_invoice_id' => $payment->xero_invoice_id,
             'xero_payment_id' => $xeroPayment['PaymentID'] ?? null,
         ]);
@@ -346,16 +406,12 @@ class XeroService
 
     public function getContacts(XeroConnection $connection, XeroTenant $tenant): array
     {
-
         $connection = $this->refreshToken($connection);
 
         $response = Http::withToken($connection->access_token)
-            ->withHeaders([
-                'Xero-tenant-id' => $tenant->tenant_id,
-            ])
-            ->get(self::BASE_URL . '/Contacts',
-            [
-                'status' => 'ACTIVE',
+            ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
+            ->get(self::BASE_URL . '/Contacts', [
+                'status'     => 'ACTIVE',
                 'isCustomer' => 'true',
             ]);
 
@@ -369,19 +425,17 @@ class XeroService
         $connection = $this->refreshToken($tenant->connection);
 
         $response = Http::withToken($connection->access_token)
-            ->withHeaders([
-                'Xero-tenant-id' => $tenant->tenant_id,
-            ])
+            ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
             ->get(self::BASE_URL . '/Invoices', [
-                'where' => 'Contact.ContactID=Guid("' . $contactId . '")',
+                'where'    => 'Contact.ContactID=Guid("' . $contactId . '")',
                 'Statuses' => 'AUTHORISED',
-                'Type' => 'ACCREC',
+                'Type'     => 'ACCREC',
             ]);
 
         if ($response->failed()) {
-            Log::error('Xero contact invoices failed', [
+            Log::error('XeroService: contact invoices fetch failed', [
                 'contact_id' => $contactId,
-                'body' => $response->body(),
+                'body'       => $response->body(),
             ]);
 
             return [];
@@ -389,34 +443,21 @@ class XeroService
 
         return $response->json('Invoices', []);
     }
-    public function getActiveConnection(Client $client): ?XeroConnection
-    {
-        return XeroConnection::where('user_id', Auth::id())
-            ->whereNotNull('access_token')
-            ->first();
-    }
 
-    /**
-     * Returns all BANK type accounts for the given tenant.
-     * Each item: ['account_id' => uuid, 'name' => string, 'code' => string]
-     */
     public function getBankAccounts(XeroTenant $tenant): array
     {
         $connection = $this->refreshToken($tenant->connection);
 
         $response = Http::withToken($connection->access_token)
-            ->withHeaders([
-                'Xero-tenant-id' => $tenant->tenant_id,
-            ])
-            ->get(self::BASE_URL . '/Accounts', [
-                'where' => 'Type=="BANK"',
-            ]);
+            ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
+            ->get(self::BASE_URL . '/Accounts', ['where' => 'Type=="BANK"']);
 
         if ($response->failed()) {
             Log::error('XeroService: failed to fetch bank accounts', [
                 'tenant_id' => $tenant->tenant_id,
                 'body'      => $response->body(),
             ]);
+
             return [];
         }
 
@@ -430,10 +471,6 @@ class XeroService
             ->all();
     }
 
-    /**
-     * Fetch the authenticated Xero user's profile from the userinfo endpoint.
-     * Use this on token refresh since refresh grants don't return a new id_token.
-     */
     public function getUserInfo(string $accessToken): array
     {
         $response = Http::withToken($accessToken)
@@ -443,9 +480,54 @@ class XeroService
             Log::warning('XeroService: could not fetch userinfo', [
                 'status' => $response->status(),
             ]);
+
             return [];
         }
 
         return $response->json();
+    }
+
+    public function getPayment(XeroTenant $tenant, string $paymentId): array
+    {
+        $connection = $this->refreshToken($tenant->connection);
+
+        $response = Http::withToken($connection->access_token)
+            ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
+            ->get(self::BASE_URL . "/Payments/{$paymentId}");
+
+        if ($response->failed()) {
+            Log::error('XeroService: failed to fetch payment', [
+                'tenant_id'  => $tenant->tenant_id,
+                'payment_id' => $paymentId,
+                'status'     => $response->status(),
+                'body'       => $response->body(),
+            ]);
+
+            throw new \RuntimeException('Xero payment fetch failed: ' . $response->body());
+        }
+
+        return $response->json('Payments.0', []);
+    }
+
+    public function getInvoiceForTenant(XeroTenant $tenant, string $invoiceId): array
+    {
+        $connection = $this->refreshToken($tenant->connection);
+
+        $response = Http::withToken($connection->access_token)
+            ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
+            ->get(self::BASE_URL . "/Invoices/{$invoiceId}");
+
+        if ($response->failed()) {
+            Log::error('XeroService: failed to fetch invoice', [
+                'tenant_id'  => $tenant->tenant_id,
+                'invoice_id' => $invoiceId,
+                'status'     => $response->status(),
+                'body'       => $response->body(),
+            ]);
+
+            throw new \RuntimeException('Xero invoice fetch failed: ' . $response->body());
+        }
+
+        return $response->json('Invoices.0', []);
     }
 }

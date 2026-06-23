@@ -12,17 +12,13 @@ class XeroInvoice extends Model
     use HasFactory;
 
     protected $fillable = [
-        // Xero identifiers
         'xero_tenant_id',
         'xero_invoice_id',        // InvoiceID (UUID from Xero)
         'xero_invoice_number',    // InvoiceNumber e.g. "INV-0001"
         'xero_branding_theme_id', // BrandingThemeID
-
-        // Type & status
         'type',                   // ACCREC (AR invoice) | ACCPAY (AP bill)
         'status',                 // DRAFT | SUBMITTED | AUTHORISED | PAID | VOIDED | DELETED
 
-        // Linked Xero contact
         'xero_contact_id',        // FK to xero_contacts.id (local)
         'xero_contact_xero_id',   // raw ContactID from Xero payload (for joins before contact is synced)
 
@@ -67,6 +63,7 @@ class XeroInvoice extends Model
         // Reconciliation
         'client_id',              // FK to local clients table (if matched)
         'is_reconciled',          // has this invoice been reconciled against a local record?
+        'xero_repeating_invoice_id'
     ];
 
     protected $casts = [

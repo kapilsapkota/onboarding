@@ -5,25 +5,33 @@
         </h2>
     </x-slot>
 
-    <div class="max-w-7xl mx-auto py-8 px-4 space-y-6">
+    <div class="max-w-full mx-auto py-6 px-4 space-y-6">
+        <x-alert></x-alert>
 
-        {{-- Flash messages --}}
-        @if(session('success'))
-            <div class="rounded-md bg-green-50 border border-green-200 p-4 text-green-800 text-sm">
-                {{ session('success') }}
-            </div>
-        @endif
+        <div class="bg-white shadow-sm rounded-lg p-4 mb-4">
+            <div class="flex items-center justify-between">
 
-        @if(session('error') || $fetchError)
-            <div class="rounded-md bg-red-50 border border-red-200 p-4 text-red-800 text-sm">
-                {{ session('error') ?? $fetchError }}
+                <div>
+                    <h3 class="font-semibold text-lg">{{ $tenant->tenant_name }}</h3>
+                    <p class="text-sm text-gray-500">
+                        Payments settled via Stripe BECS will be posted against this account in Xero.
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+                    <a href="{{ route('admin.xero.index') }}"
+                       class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                        Back
+                    </a>
+                </div>
+
             </div>
-        @endif
+        </div>
 
         {{-- Current value --}}
         <div class="bg-white shadow rounded-lg p-6">
             <h3 class="text-base font-medium text-gray-900 mb-1">
-                Direct Debit Bank Account
+                Set Up Clearing Direct Debit Bank Account
             </h3>
             <p class="text-sm text-gray-500 mb-4">
                 Payments settled via Stripe BECS will be posted against this account in Xero.

@@ -5,218 +5,237 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-6">
+        <div class="max-w-full mx-auto sm:px-6 lg:px-8">
+            <x-alert></x-alert>
+            @if(!$connection)
 
-            <div class="mt-6">
+                {{-- EMPTY STATE --}}
+                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-10 text-center">
 
-                @if($connections->isEmpty())
+                    <div
+                        class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
+                        <div
+                            class="flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold text-white bg-sky-500">
+                            X
+                        </div>
+                    </div>
 
-                    {{-- EMPTY STATE --}}
-                    <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-10 text-center">
+                    <h3 class="text-lg font-semibold mb-2">
+                        Connect Xero to get started
+                    </h3>
 
-                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold text-white bg-sky-500">
-                                X
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                        Sync invoices, contacts, payments, and repeating invoices across all organisations.
+                    </p>
+
+                    <a href="{{ route('admin.xero.connect') }}"
+                       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                        Connect to Xero
+                    </a>
+
+                </div>
+
+            @else
+
+                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+
+                    {{-- HEADER --}}
+                    <div class="flex justify-between items-start">
+
+                        <div>
+                            <div class="text-lg font-semibold">
+                                Global Xero Connection
+                            </div>
+
+                            <div class="text-sm text-gray-500 mt-1">
+                                {{ $connection->tenants->where('is_active', true)->count() }} active organisations
+                            </div>
+
+                            <div class="text-xs text-gray-400 mt-1">
+                                Last updated: {{ optional($connection->updated_at)->diffForHumans() }}
                             </div>
                         </div>
 
-                        <h3 class="text-lg font-semibold mb-2">
-                            Connect Xero to get started
-                        </h3>
+                        <div class="flex gap-2">
 
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                            Sync customers, invoices, and payments automatically with Xero.
-                        </p>
+                            @if($connection->is_active)
+                                <form method="POST" action="{{ route('admin.xero.refresh', $connection) }}">
+                                    @csrf
+                                    <button class="px-3 py-1 text-sm border rounded hover:bg-gray-100">
+                                        Refresh
+                                    </button>
+                                </form>
 
-                        <a href="{{ route('admin.xero.connect') }}"
-                           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                            Connect to Xero
-                        </a>
+                                <form method="POST" action="{{ route('admin.xero.disconnect', $connection) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="px-3 py-1 text-sm bg-red-600 text-white rounded">
+                                        Disconnect
+                                    </button>
+                                </form>
+                            @else
+                                <a href="{{ route('admin.xero.connect') }}"
+                                   class="px-3 py-1 text-sm bg-blue-600 text-white rounded">
+                                    Reconnect
+                                </a>
+                            @endif
 
+                        </div>
                     </div>
 
-                @else
+                    {{-- TENANTS --}}
+                    <div class="mt-6 space-y-4">
 
-                    <div class="space-y-4">
+                        @foreach($connection->tenants as $tenant)
 
-                        @foreach($connections as $conn)
+                            <div class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
 
-                            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-5">
+                                {{-- TOP ROW --}}
+                                <div class="flex justify-between items-start">
 
-                                {{-- HEADER --}}
-                                <div class="flex items-start justify-between">
+                                    {{-- LEFT INFO --}}
+                                    <div>
 
-                                    {{-- LEFT --}}
-                                    <div class="flex items-start gap-4">
-
-                                        <div class="h-10 w-10 flex items-center justify-center rounded-xl bg-sky-500 text-white font-bold">
-                                            X
+                                        <div class="font-medium text-gray-800 dark:text-gray-200">
+                                            {{ $tenant->tenant_name }}
                                         </div>
 
-                                        <div>
+                                        <div class="text-xs text-gray-500">
+                                            ID: {{ $tenant->tenant_id }}
+                                        </div>
 
-                                            {{-- CONNECTION NAME --}}
-                                            <div class="font-semibold">
-                                                Connection #{{ $conn->id }}
-                                            </div>
+                                        <div class="mt-1 flex flex-wrap gap-2">
 
-                                            @if($conn->xero_user_name || $conn->xero_user_email)
-                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                                    Connected as
-                                                    <span class="font-medium text-gray-700 dark:text-gray-300">
-                {{ $conn->xero_user_name ?? $conn->xero_user_email }}
-            </span>
-                                                    @if($conn->xero_user_name && $conn->xero_user_email)
-                                                        <span class="text-gray-400">({{ $conn->xero_user_email }})</span>
-                                                    @endif
-                                                </div>
+                                            @if($tenant->is_active)
+                                                <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                                                    Active
+                                                </span>
+                                            @else
+                                                <span class="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded">
+                                                    Inactive
+                                                </span>
+                                             @endif
+
+                                            @if($tenant->tenant_type)
+                                                <span class="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded">
+                                                    {{ $tenant->tenant_type }}
+                                                </span>
                                             @endif
-
-
-                                            {{-- STATUS --}}
-                                            <div class="flex items-center gap-2 mt-1">
-
-                                                @if($conn->is_active)
-                                                    <span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-                                                        Active
-                                                    </span>
-                                                @else
-                                                    <span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-600">
-                                                        Disconnected
-                                                    </span>
-                                                @endif
-
-                                                @if($conn->isTokenExpired())
-                                                    <span class="text-xs text-amber-600 font-medium">
-                                                        Token expired
-                                                    </span>
-                                                @endif
-
-                                            </div>
 
                                         </div>
 
                                     </div>
 
-                                    {{-- RIGHT ACTIONS --}}
-                                    <div class="flex items-center gap-2">
+                                    {{-- RIGHT: SYNC DROPDOWN --}}
+                                    <form method="POST"
+                                          action="{{ route('admin.xero.tenants.sync', $tenant) }}">
+                                        @csrf
 
-                                        @if($conn->is_active)
+                                        <select name="type"
+                                                onchange="this.form.submit()"
+                                                class="text-xs border rounded px-2 py-1">
 
-                                            <form method="POST" action="{{ route('admin.xero.refresh', $conn) }}">
-                                                @csrf
-                                                <button class="px-3 py-1 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                    Refresh
-                                                </button>
-                                            </form>
+                                            <option selected disabled>Sync...</option>
 
-                                            <form method="POST"
-                                                  action="{{ route('admin.xero.disconnect', $conn) }}"
-                                                  onsubmit="return confirm('Disconnect this Xero connection?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
-                                                    Disconnect
-                                                </button>
-                                            </form>
+                                            <option value="contacts">Contacts</option>
+                                            <option value="invoices">Invoices</option>
+                                            <option value="repeating">Repeating Invoices</option>
 
-                                        @else
+                                            <option value="all">Full Sync</option>
+                                            <option value="full">Full Resync</option>
 
-                                            <a href="{{ route('admin.xero.connect') }}"
-                                               class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                Reconnect
-                                            </a>
+                                        </select>
+                                    </form>
 
-                                        @endif
+                                </div>
 
+                                {{-- BANK ACCOUNT + QUICK STATUS --}}
+                                <div class="mt-3 flex flex-wrap gap-2">
+
+                                    @if($tenant->dd_bank_account_id)
+                                        <span
+                                            class="inline-flex items-center text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                                            Direct Debit Account: {{ $tenant->dd_bank_account_name }}
+                                        </span>
+                                    @else
+                                        <span
+                                            class="inline-flex items-center text-xs px-2 py-1 rounded bg-amber-100 text-amber-700">
+                                            No Direct Debit Bank Account
+                                        </span>
+                                    @endif
+
+                                </div>
+
+                                {{-- SYNC STATUS GRID --}}
+                                <div class="mt-3 font-medium text-gray-800 dark:text-gray-200">
+                                    SYNC STATUS :
+                                </div>
+
+                                <div class="mt-1 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                    <div>
+                                        <div class="text-gray-500">Contacts</div>
+                                        <div class="font-medium">
+                                            {{ $tenant->last_contact_synced_at
+                                                ? $tenant->last_contact_synced_at->diffForHumans()
+                                                : 'Never' }}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-gray-500">Invoices</div>
+                                        <div class="font-medium">
+                                            {{ $tenant->last_invoice_synced_at
+                                                ? $tenant->last_invoice_synced_at->diffForHumans()
+                                                : 'Never' }}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-gray-500">Payments</div>
+                                        <div class="font-medium">
+                                            {{ $tenant->last_payment_synced_at
+                                                ? $tenant->last_payment_synced_at->diffForHumans()
+                                                : 'Never' }}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="text-gray-500">Repeating</div>
+                                        <div class="font-medium">
+                                            {{ $tenant->last_repeating_invoice_synced_at
+                                                ? $tenant->last_repeating_invoice_synced_at->diffForHumans()
+                                                : 'Never' }}
+                                        </div>
                                     </div>
 
                                 </div>
 
-                                {{-- TENANTS (SCALABLE BLOCK) --}}
-                                {{-- TENANTS (SCALABLE BLOCK) --}}
-                                @if($conn->relationLoaded('tenants') && $conn->tenants->count())
+                                {{-- ACTION BUTTONS --}}
+                                <div class="mt-4 flex flex-wrap gap-2">
 
-                                    <div class="mt-4 border-t pt-4">
+                                    {{-- VIEW CONTACTS --}}
+                                    <a href="{{ route('admin.xero.contacts', [
+                                                                            'xeroConnection' => $connection,
+                                                                            'tenant' => $tenant,
+                                                                            ]) }}"
+                                       class="px-3 py-2 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                                        Reconcile Contacts
+                                    </a>
+                                    {{-- BANK ACCOUNT SETUP --}}
+                                    @if($tenant->dd_bank_account_id)
+                                        <a href="{{ route('admin.xero.tenants.bank-settings', $tenant) }}"
+                                           class="px-3 py-2 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                                            Update DD Account
+                                        </a>
+                                    @else
+                                        <a href="{{ route('admin.xero.tenants.bank-settings', $tenant) }}"
+                                           class="px-3 py-2 text-xs bg-amber-600 text-white rounded hover:bg-amber-700">
+                                            Setup DD Account
+                                        </a>
+                                    @endif
 
-                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                            Organisations
-                                        </div>
-
-                                        <div class="space-y-2">
-
-                                            @foreach($conn->tenants as $tenant)
-
-                                                <div class="flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2">
-
-                                                    {{-- Tenant name + DD badge --}}
-                                                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                            {{ $tenant->tenant_name }}
-                        </span>
-
-                                                        @if($tenant->dd_bank_account_id)
-                                                            <span class="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900 px-2 py-0.5 text-xs text-green-700 dark:text-green-300">
-                                <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                {{ $tenant->dd_bank_account_name }}
-                            </span>
-                                                        @else
-                                                            <span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
-                                No DD account
-                            </span>
-                                                        @endif
-                                                    </div>
-
-                                                    {{-- Actions --}}
-                                                    <div class="flex items-center gap-2">
-
-                                                        <a href="{{ route('admin.xero.contacts', [
-                                'xeroConnection' => $conn,
-                                'tenant'         => $tenant,
-                            ]) }}"
-                                                           class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                            Contacts
-                                                        </a>
-
-                                                        <a href="{{ route('xero.tenants.edit', $tenant) }}"
-                                                           class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                            Settings
-                                                        </a>
-
-                                                    </div>
-
-                                                </div>
-
-                                            @endforeach
-
-                                        </div>
-
-                                    </div>
-
-                                @endif
-                                {{-- TOKEN BAR --}}
-                                @if($conn->is_active && ! $conn->isTokenExpired())
-
-                                    @php
-                                        $totalSeconds = 1800;
-                                        $remaining = now()->diffInSeconds($conn->token_expires_at, false);
-                                        $pct = max(0, min(100, ($remaining / $totalSeconds) * 100));
-                                    @endphp
-
-                                    <div class="mt-4">
-                                        <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                            <div class="h-full bg-green-500" style="width: {{ $pct }}%"></div>
-                                        </div>
-
-                                        <div class="text-xs text-gray-500 mt-1">
-                                            {{ gmdate('i:s', max(0, $remaining)) }} remaining
-                                        </div>
-                                    </div>
-
-                                @endif
+                                </div>
 
                             </div>
 
@@ -224,9 +243,9 @@
 
                     </div>
 
-                @endif
+                </div>
 
-            </div>
+            @endif
 
         </div>
     </div>

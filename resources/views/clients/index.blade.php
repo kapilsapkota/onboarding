@@ -33,7 +33,7 @@
     @endphp
 
     <div class="py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-10">
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 @foreach([
                     ['label' => 'Total Clients',   'value' => $total,    'color' => 'yellow'],
@@ -54,7 +54,7 @@
 
     {{-- Filters --}}
     <div class="pb-4">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-10">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
                 <form method="GET" action="{{ route('clients.index') }}" id="filter-form">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -142,7 +142,7 @@
 
     {{-- Table --}}
     <div class="pb-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-10">
 
             <div class="mb-3 flex flex-wrap gap-2 items-center justify-between">
                 <p class="text-xs text-gray-600 dark:text-gray-400">

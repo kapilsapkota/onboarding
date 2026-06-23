@@ -7,19 +7,17 @@ use App\Jobs\SyncTenantInvoiceJob;
 use App\Jobs\SyncXeroRepeatingInvoices;
 use App\Models\XeroTenant;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class SyncXeroCommand extends Command
 {
     protected $signature = 'xero:sync
-                            {--tenant=     : Sync a specific tenant by ID or tenant_id UUID (default: all)}
-                            {--invoices    : Sync invoices}
-                            {--contacts    : Sync contacts}
-                            {--repeating   : Sync repeating invoice templates}
-                            {--all         : Sync everything (invoices + contacts + repeating)}
-                            {--full        : Full resync — ignore last_synced_at watermark}
-                            {--now         : Run synchronously instead of dispatching to the queue}';
+        {--tenant= : Sync specific tenant (id or tenant_id)}
+        {--mode=all : contacts|invoices|repeating|all|full}
+        {--now : Run synchronously instead of queue}';
 
-    protected $description = 'Sync invoices, contacts, and/or repeating invoice templates from Xero';
+    protected $description = 'Robust Xero sync system (production safe)';
 
     public function handle(): int
     {
@@ -30,93 +28,177 @@ class SyncXeroCommand extends Command
             return self::FAILURE;
         }
 
-        $syncInvoices  = $this->option('invoices')  || $this->option('all');
-        $syncContacts  = $this->option('contacts')  || $this->option('all');
-        $syncRepeating = $this->option('repeating') || $this->option('all');
+        $mode   = $this->option('mode');
+        $runNow = (bool) $this->option('now');
 
-        if (! $syncInvoices && ! $syncContacts && ! $syncRepeating) {
-            $this->error('Specify at least one of --invoices, --contacts, --repeating, or --all.');
+        if (! in_array($mode, ['contacts','invoices','repeating','all','full'])) {
+            $this->error("Invalid mode: {$mode}");
             return self::FAILURE;
         }
 
-        $fullResync = (bool) $this->option('full');
-        $runNow     = (bool) $this->option('now');
-        $queued     = 0;
+        $this->info("Starting Xero sync in [{$mode}] mode");
 
-        foreach ($tenants as $tenant) {
-            if (! $tenant->connection) {
-                $this->warn("  Skipping tenant [{$tenant->id}] {$tenant->name} — no active connection.");
-                continue;
-            }
+        $totalQueued = 0;
 
-            $this->line("  <fg=cyan>Tenant</> [{$tenant->id}] <fg=white>{$tenant->name}</>");
+        foreach ($tenants as $index => $tenant) {
 
-            if ($syncContacts) {
-                $this->dispatchOrRun(
-                    runNow: $runNow,
-                    job:    new SyncXeroTenantContacts($tenant->connection->id, $tenant->id),
-                    label:  'contacts',
-                );
-                $queued++;
-            }
+            try {
 
-            if ($syncInvoices) {
-                $this->dispatchOrRun(
-                    runNow: $runNow,
-                    job:    new SyncTenantInvoiceJob(
-                        connectionId:  $tenant->connection->id,
-                        tenantId:      $tenant->id,
-                        modifiedAfter: null,
-                        fullResync:    $fullResync,
-                    ),
-                    label:  'invoices',
-                );
-                $queued++;
-            }
+                if (! $tenant->connection) {
+                    $this->warn("Tenant {$tenant->tenant_name} skipped (no connection)");
+                    continue;
+                }
 
-            if ($syncRepeating) {
-                $this->dispatchOrRun(
-                    runNow: $runNow,
-                    job:    new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id),
-                    label:  'repeating invoices',
-                );
-                $queued++;
+                $lockKey = "xero-sync:{$tenant->id}:{$mode}";
+
+                if (Cache::has($lockKey)) {
+                    $this->warn("Skipping {$tenant->tenant_name} (already syncing)");
+                    continue;
+                }
+
+                Cache::put($lockKey, true, now()->addMinutes(5));
+
+                $this->line("▶ Tenant: {$tenant->tenant_name}");
+
+                $delay = $index * 5;
+
+                $count = $this->runMode($tenant, $mode, $runNow, $delay);
+
+                $totalQueued += $count;
+
+                Log::info('Xero sync dispatched', [
+                    'tenant_id' => $tenant->id,
+                    'mode' => $mode,
+                    'jobs' => $count,
+                ]);
+
+            } catch (\Throwable $e) {
+
+                Log::error('Xero sync tenant failed', [
+                    'tenant_id' => $tenant->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $this->error("Tenant {$tenant->tenant_name} failed: {$e->getMessage()}");
+
+            } finally {
+                // unlock early so next run is not blocked forever
+                Cache::forget("xero-sync:{$tenant->id}:{$mode}");
             }
         }
 
-        $verb = $runNow ? 'Ran' : 'Queued';
-        $this->info("{$verb} {$queued} sync job(s) across {$tenants->count()} tenant(s).");
+        $verb = $runNow ? 'Executed' : 'Queued';
+
+        $this->info("{$verb} {$totalQueued} job(s) across {$tenants->count()} tenant(s).");
 
         return self::SUCCESS;
     }
 
-    // -------------------------------------------------------------------------
+    // -------------------------------------------------------------
+
+    private function runMode($tenant, string $mode, bool $runNow, int $delay): int
+    {
+        return match ($mode) {
+
+            'contacts' => $this->dispatchJob(
+                new SyncXeroTenantContacts($tenant->connection->id, $tenant->id),
+                $runNow,
+                'contacts',
+                $delay
+            ),
+
+            'invoices' => $this->dispatchJob(
+                new SyncTenantInvoiceJob(
+                    connectionId: $tenant->connection->id,
+                    tenantId: $tenant->id,
+                    modifiedAfter: $tenant->last_invoice_synced_at,
+                    fullResync: false
+                ),
+                $runNow,
+                'invoices',
+                $delay
+            ),
+
+            'repeating' => $this->dispatchJob(
+                new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id),
+                $runNow,
+                'repeating invoices',
+                $delay
+            ),
+
+            'all' => $this->runAll($tenant, false, $runNow, $delay),
+
+            'full' => $this->runAll($tenant, true, $runNow, $delay),
+
+        };
+    }
+
+    // -------------------------------------------------------------
+
+    private function runAll($tenant, bool $full, bool $runNow, int $delay): int
+    {
+        $count = 0;
+
+        $count += $this->dispatchJob(
+            new SyncXeroTenantContacts($tenant->connection->id, $tenant->id),
+            $runNow,
+            'contacts',
+            $delay
+        );
+
+        $count += $this->dispatchJob(
+            new SyncTenantInvoiceJob(
+                connectionId: $tenant->connection->id,
+                tenantId: $tenant->id,
+                modifiedAfter: $full ? null : $tenant->last_invoice_synced_at,
+                fullResync: $full
+            ),
+            $runNow,
+            'invoices',
+            $delay
+        );
+
+        $count += $this->dispatchJob(
+            new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id),
+            $runNow,
+            'repeating invoices',
+            $delay
+        );
+
+        return $count;
+    }
+
+    // -------------------------------------------------------------
+
+    private function dispatchJob(object $job, bool $runNow, string $label, int $delay = 0): int
+    {
+        if ($runNow) {
+            $this->line(" → Running {$label}...");
+            app()->call([$job, 'handle']);
+            $this->line(" ✓ {$label} done.");
+            return 1;
+        }
+
+        dispatch($job)
+            ->delay(now()->addSeconds($delay));
+
+        $this->line(" → Queued {$label} (delay {$delay}s)");
+
+        return 1;
+    }
+
+    // -------------------------------------------------------------
 
     private function resolveTenants()
     {
         $tenantOption = $this->option('tenant');
 
-        $query = XeroTenant::with('connection')->where('is_active', true);
-
-        if ($tenantOption) {
-            $query->where(function ($q) use ($tenantOption) {
+        return XeroTenant::with('connection')
+            ->where('is_active', true)
+            ->when($tenantOption, function ($q) use ($tenantOption) {
                 $q->where('id', $tenantOption)
                     ->orWhere('tenant_id', $tenantOption);
-            });
-        }
-
-        return $query->get();
-    }
-
-    private function dispatchOrRun(bool $runNow, object $job, string $label): void
-    {
-        if ($runNow) {
-            $this->line("    → Running {$label} synchronously...");
-            app()->call([$job, 'handle']);
-            $this->line("    <fg=green>✓</> {$label} done.");
-        } else {
-            dispatch($job)->onQueue('xero-sync');
-            $this->line("    → Queued {$label}.");
-        }
+            })
+            ->get();
     }
 }

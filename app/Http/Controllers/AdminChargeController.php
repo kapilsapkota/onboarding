@@ -120,8 +120,7 @@ class AdminChargeController extends Controller
             )
         );
 
-        ProcessSingleDirectDebit::dispatch($ddPayment->id)
-            ->onQueue('payments');
+        ProcessSingleDirectDebit::dispatch($ddPayment->id);
 
         return back()->with('success',
             "Direct debit of \${$ddPayment->amount} {$ddPayment->currency_code} initiated for invoice {$invoice->xero_invoice_number}. BECS settles in 1–2 business days."

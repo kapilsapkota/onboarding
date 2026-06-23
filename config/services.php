@@ -70,6 +70,9 @@ return [
         'scopes' => env('XERO_SCOPES'),
         'webhook_secret' => env('XERO_WEBHOOK_SECRET'),
         'stripe_fee_expense_code' => env('XERO_STRIPE_FEE_EXPENSE_CODE', '404'),
+        'default_account_code' => env('XERO_DEFAULT_ACCOUNT_CODE', '200'),
+        'direct_debit_failure_fee' => env('XERO_DIRECT_DEBIT_FAILURE_FEE', 10),
+
     ]
 
 ];

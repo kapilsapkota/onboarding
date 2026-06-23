@@ -52,8 +52,6 @@ class ProcessSingleDirectDebit implements ShouldQueue
                 gatewayPaymentId: $paymentIntentId,
                 batchId:          null,
             );
-
-            // Also reflect on the invoice so the UI shows "processing"
             $ddPayment->invoice->markPaymentInitiated('direct_debit', $paymentIntentId);
 
             Log::info('ProcessSingleDirectDebit: submitted to Stripe', [

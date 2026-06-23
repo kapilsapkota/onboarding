@@ -76,7 +76,7 @@ class ClientController extends Controller
                 ->receivable()
                 ->whereNotIn('status', ['DELETED', 'VOIDED'])
                 ->with([
-                    'latestDirectDebitPayment', // ← fixed: one-per-invoice via hasOne+latestOfMany
+                    'latestDirectDebitPayment',
                     'repeatingInvoice',
                 ])
                 ->orderByDesc('invoice_date')

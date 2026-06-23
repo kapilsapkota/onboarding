@@ -125,12 +125,9 @@ class XeroConnectionController extends Controller
      */
     public function index()
     {
-        $connections = XeroConnection::where('user_id', Auth::id())
-            ->with('tenants')
-            ->orderByDesc('created_at')
-            ->get();
+        $connection = XeroConnection::with(['tenants'])->first();
 
-        return view('admin.xero.index', compact('connections'));
+        return view('admin.xero.index', compact('connection'));
     }
 
     /**
