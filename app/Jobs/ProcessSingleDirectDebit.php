@@ -27,7 +27,7 @@ class ProcessSingleDirectDebit implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public int $tries   = 3;
+    public int $tries   = 1;
     public int $backoff = 300; // 5 min between retries
 
     public function __construct(public int $directDebitPaymentId) {}
@@ -69,6 +69,7 @@ class ProcessSingleDirectDebit implements ShouldQueue
                 'stripe_code' => $e->getStripeCode(),
                 'error'       => $e->getMessage(),
             ]);
+
 
             throw $e;
 

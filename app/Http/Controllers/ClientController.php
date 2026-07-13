@@ -68,6 +68,7 @@ class ClientController extends Controller
         $client->load(['contacts', 'charges', 'xeroContacts']);
 
         $invoices = collect();
+        $xeroContacts = XeroContact::with('tenant')->get();
         $xeroContact = $client->xeroContacts->first();
 
         if ($xeroContact) {
@@ -83,7 +84,7 @@ class ClientController extends Controller
                 ->get();
         }
 
-        return view('clients.show', compact('client', 'invoices'));
+        return view('clients.show', compact('client', 'invoices', 'xeroContacts', 'xeroContact'));
     }
     function xeroDateToCarbon(?string $xeroDate): ?\Carbon\Carbon
     {
@@ -216,5 +217,20 @@ class ClientController extends Controller
         WriteXeroPayment::dispatch($dd->id)->onQueue('payments');
 
         return back()->with('success', "Xero sync queued for invoice {$invoice->xero_invoice_number}.");
+    }
+
+    public function assignXeroContact(Request $request, Client $client)
+    {
+        $request->validate([
+            'xero_contact_id' => ['required', 'string'],
+            'xero_contact_name' => ['nullable', 'string'],
+        ]);
+
+        $client->update([
+            'xero_contact_id'   => $request->xero_contact_id,
+            'xero_contact_name' => $request->xero_contact_name,
+        ]);
+
+        return back()->with('success', 'Xero contact assigned successfully.');
     }
 }

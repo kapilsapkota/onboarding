@@ -1,0 +1,165 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex flex-wrap items-center justify-between gap-4 w-full">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">
+                Quotes
+            </h2>
+
+            <a href="{{ route('admin.quotes.create') }}"
+               class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Quote
+            </a>
+        </div>
+    </x-slot>
+
+    <div class="py-6 max-w-full mx-auto sm:px-6 lg:px-8">
+
+        {{-- Flash message --}}
+        @if(session('success'))
+            <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                {{ session('success') }}
+            </div>
+        @endif
+
+        {{-- Filters --}}
+        <div class="mb-4 flex flex-wrap gap-3 items-center">
+            <form method="GET" class="flex gap-2 flex-1 min-w-0">
+                <input type="text"
+                       name="search"
+                       value="{{ request('search') }}"
+                       placeholder="Search by client, quote #, email…"
+                       class="flex-1 min-w-0 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <input type="hidden" name="status" value="{{ request('status') }}">
+                <button type="submit" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                    Search
+                </button>
+                @if(request('search') || request('status'))
+                    <a href="{{ route('admin.quotes.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Clear</a>
+                @endif
+            </form>
+
+            {{-- Status tabs --}}
+            <div class="flex gap-1 text-sm">
+                @foreach(['' => 'All', 'draft' => 'Draft', 'sent' => 'Sent', 'accepted' => 'Accepted', 'rejected' => 'Rejected'] as $val => $label)
+                    <a href="{{ route('admin.quotes.index', array_merge(request()->except('status', 'page'), $val ? ['status' => $val] : [])) }}"
+                       class="px-3 py-1.5 rounded-md font-medium transition
+                              {{ request('status', '') === $val
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
+                        {{ $label }}
+                        @if($val && isset($statusCounts[$val]))
+                            <span class="ml-1 text-xs opacity-75">({{ $statusCounts[$val] }})</span>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Table --}}
+        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                    <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Quote #</th>
+                    <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Client</th>
+                    <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Items</th>
+                    <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-right">Total (inc. GST)</th>
+                    <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
+                    <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                @forelse($quotes as $quote)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                        <td class="px-4 py-3 font-mono font-medium text-blue-600 dark:text-blue-400">
+                            <a href="{{ route('admin.quotes.show', $quote) }}" class="hover:underline">
+                                {{ $quote->quote_number }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ $quote->client_name }}</div>
+                            @if($quote->email)
+                                <div class="text-xs text-gray-400">{{ $quote->email }}</div>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
+                            {{ $quote->items_count }} item{{ $quote->items_count !== 1 ? 's' : '' }}
+                        </td>
+                        <td class="px-4 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">
+                            ${{ number_format($quote->total, 2) }}
+                        </td>
+                        <td class="px-4 py-3">
+                            @php $badge = $quote->status_badge; @endphp
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $badge['class'] }}">
+                                    {{ $badge['label'] }}
+                                </span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
+                            {{ $quote->created_at->format('d M Y') }}
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2 justify-end">
+                                <a href="{{ route('admin.quotes.show', $quote) }}"
+                                   class="text-gray-400 hover:text-blue-500 transition" title="View">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                </a>
+                                <a href="{{ route('admin.quotes.edit', $quote) }}"
+                                   class="text-gray-400 hover:text-yellow-500 transition" title="Edit">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </a>
+                                <form method="POST" action="{{ route('admin.quotes.duplicate', $quote) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-gray-400 hover:text-green-500 transition" title="Duplicate">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('admin.quotes.destroy', $quote) }}" class="inline"
+                                      onsubmit="return confirm('Delete quote {{ $quote->quote_number }}?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-gray-400 hover:text-red-500 transition" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="px-4 py-12 text-center text-gray-400 dark:text-gray-500">
+                            <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            No quotes found.
+                            <a href="{{ route('admin.quotes.create') }}" class="text-blue-500 hover:underline">Create your first quote</a>.
+                        </td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+
+            @if($quotes->hasPages())
+                <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                    {{ $quotes->links() }}
+                </div>
+            @endif
+        </div>
+
+    </div>
+</x-app-layout>

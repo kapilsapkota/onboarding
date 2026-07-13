@@ -53,6 +53,16 @@
                   action="{{ route('admin.directDebitPayment.index') }}"
                   class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
 
+                {{-- SEARCH --}}
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
+                    <input type="text"
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Invoice, ref, client…"
+                           class="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400">
+                </div>
+
                 {{-- STATUS --}}
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
@@ -105,16 +115,6 @@
                     <input type="date"
                            name="date_to"
                            value="{{ request('date_to') }}"
-                           class="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400">
-                </div>
-
-                {{-- SEARCH --}}
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
-                    <input type="text"
-                           name="search"
-                           value="{{ request('search') }}"
-                           placeholder="Invoice, ref, client…"
                            class="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400">
                 </div>
 

@@ -56,6 +56,18 @@
             {{ __('Direct Debit Payments') }}
         </x-responsive-nav-link>
 
+        <x-responsive-nav-link :href="route('admin.payouts.index')" :active="request()->is('admin/payouts*')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
+            {{ __('Stripe Payouts') }}
+        </x-responsive-nav-link>
+
+        <x-responsive-nav-link :href="route('admin.products.index')" :active="request()->is('admin/products*')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
+            {{ __('Products') }}
+        </x-responsive-nav-link>
+
+        <x-responsive-nav-link :href="route('admin.quotes.index')" :active="request()->is('admin/quotes*')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
+            {{ __('Quote') }}
+        </x-responsive-nav-link>
+
     </nav>
 
     <!-- Bottom User Settings Configuration Dropdown Panel Layout -->

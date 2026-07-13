@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\DirectDebitPaymentController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\StripePayoutController;
 use App\Http\Controllers\Admin\XeroConnectionController;
 use App\Http\Controllers\Admin\XeroContactController;
 use App\Http\Controllers\Admin\XeroInvoiceController;
@@ -10,6 +12,7 @@ use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,9 +28,7 @@ Route::post('/onboarding/direct-debit', [OnboardingController::class, 'directDeb
 Route::post('/onboarding/setup-intent', [OnboardingController::class, 'createSetupIntent'])
     ->name('onboarding.setup-intent');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', \App\Http\Controllers\DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
 
 Route::middleware('auth')->group(function () {
@@ -50,6 +51,9 @@ Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function (
     Route::put('/clients/{client}', [ClientController::class, 'update'])->name('update');
     Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->name('destroy');
     Route::patch('/clients/{client}/status', [ClientController::class, 'updateStatus'])->name('status');
+    Route::post('/clients/{client}/assign-xero-contact',
+        [ClientController::class, 'assignXeroContact']
+    )->name('assign-xero-contact');
 
     Route::post('/admin/clients/{client}/charge', [AdminChargeController::class, 'charge'])->name('charge');
     Route::post('/clients/{client}/charge-invoice', [AdminChargeController::class, 'chargeInvoice'])
@@ -79,6 +83,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
             ->name('contacts.clear-match');
         Route::post('/contacts/auto-match', [XeroContactController::class, 'autoMatch'])
             ->name('contacts.auto-match');
+        Route::get('/contacts/search', [XeroContactController::class, 'search'])
+            ->name('contacts.search');
 
         Route::post('/sync-invoices', [XeroInvoiceController::class, 'sync'])->name('sync-invoices');
         Route::post('/tenant/{tenant}/sync', [XeroSyncController::class, 'sync'])->name('tenants.sync');
@@ -92,6 +98,24 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('directDebitPayment/{directDebitPayment}/cancel',       [DirectDebitPaymentController::class, 'cancel'])->name('directDebitPayment.cancel');
     Route::post('directDebitPayment/{directDebitPayment}/retry',        [DirectDebitPaymentController::class, 'retry'])->name('directDebitPayment.retry');
     Route::post('directDebitPayment/{directDebitPayment}/post-to-xero', [DirectDebitPaymentController::class, 'postToXero'])->name('directDebitPayment.post-to-xero');
+
+    Route::prefix('payouts')->name('payouts.')->group(function () {
+        Route::get('/', [StripePayoutController::class, 'index'])
+            ->name('index');
+
+        Route::get('{payout}', [StripePayoutController::class, 'show'])
+            ->name('show');
+    });
+
+    Route::resource('quotes', QuoteController::class);
+    Route::get('quotes/{quote}/pdf',         [QuoteController::class, 'pdf'])         ->name('quotes.pdf');
+    Route::post('quotes/{quote}/send',      [QuoteController::class, 'send'])         ->name('quotes.send');
+    Route::patch('quotes/{quote}/status',   [QuoteController::class, 'updateStatus']) ->name('quotes.status');
+    Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])    ->name('quotes.duplicate');
+    Route::get('quotes/{quote}/sign', [QuoteController::class, 'showSignForm'])->name('quotes.sign');
+    Route::post('quotes/{quote}/save-signature', [QuoteController::class, 'saveSignature'])->name('quotes.save-signature');
+
+    Route::resource('products', ProductController::class);
 });
 
 Route::prefix('settings/xero/tenants/{tenant}')

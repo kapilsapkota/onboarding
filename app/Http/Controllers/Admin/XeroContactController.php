@@ -168,4 +168,37 @@ class XeroContactController extends Controller
         ]);
     }
 
+    /**
+     * Search Xero contacts (AJAX for dropdown)
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('q');
+
+        if (!$query) {
+            return response()->json([]);
+        }
+
+        $contacts = XeroContact::query()
+            ->where('name', 'like', "%{$query}%")
+            ->where('email', 'like', "%{$query}%")
+            ->orWhere('xero_contact_id', 'like', "%{$query}%")
+            ->limit(10)
+            ->get()
+            ->map(function ($contact) use ($request) {
+                $client = Client::find($request->input('client_id'));
+
+                return [
+                    'id' => $contact->id,
+                    'name' => $contact->name,
+                    'email' => $contact->email,
+                    'phone' => $contact->phone,
+                    'company' => $contact->tenant?->tenant_name ?? 'Unknown',
+                    'xero_contact_id' => $contact->xero_contact_id,
+                    'already_linked' => $client && $client->xeroContacts()->where('xero_contact_id', $contact->xero_contact_id)->exists(),
+                ];
+            });
+
+        return response()->json($contacts);
+    }
 }

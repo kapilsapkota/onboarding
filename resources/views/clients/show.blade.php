@@ -19,6 +19,8 @@
     <script src="https://cdn.datatables.net/buttons/2.2.0/js/buttons.html5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.2.0/js/buttons.print.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.2.0/js/buttons.flash.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.default.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
     <style>
         /* Reduce the size of the DataTable buttons */
         .dataTables_wrapper .dt-buttons {
@@ -35,6 +37,18 @@
         /* Optional: Style buttons with a more compact appearance */
         .dt-button:focus, .dt-button:hover {
             box-shadow: none; /* Remove hover focus effect */
+        }
+        #xero_results::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #xero_results::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 6px;
+        }
+
+        #xero_results::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
     @section('title', $client->company_name ?? 'Client Profile')
@@ -433,127 +447,85 @@
                         </div>
                     </div>
 
+                    <div class="border rounded-lg p-3
+    {{ $client->stripe_customer_id ? 'bg-green-50 border-green-200' : 'bg-gray-50' }}">
+                        <div class="text-sm font-semibold">Stripe</div>
+
+                        <div class="text-xs text-gray-500">
+                            {{ $client->stripe_customer_id ? 'Connected' : 'Not connected' }}
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                            <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                Active Xero Connection
+                            </h3>
+                            <div class="text-xs text-gray-500">
+                                {{ $client->xeroContacts->count() }} linked contact(s)
+                            </div>
+                        </div>
+
+                        <div class="p-5">
+
+                            @if($client->relationLoaded('xeroContacts') && $client->xeroContacts->isNotEmpty())
+
+                                <div class="space-y-2 mb-4">
+                                    @forelse($client->xeroContacts as $contact)
+                                        <div class="flex justify-between items-center border rounded-lg p-2">
+                                            <div>
+                                                <div class="font-medium">
+                                                    {{ $contact?->tenant?->tenant_name ?? '' }}
+                                                </div>
+                                                <div class="font-medium">
+                                                    {{ $contact->name }}
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $contact->xero_contact_id }}
+                                                </div>
+                                            </div>
+
+                                            <form method="POST"
+                                                {{--                                                  action="{{ route('clients.xero-contacts.destroy', [$client, $contact]) }}"--}}
+                                            >
+                                                @csrf
+                                                @method('DELETE')
+
+                                                <button class="text-red-600 text-sm">
+                                                    Remove
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @empty
+                                        <p class="text-sm text-gray-500">
+                                            No Xero contacts linked.
+                                        </p>
+                                    @endforelse
+                                </div>
+
+                            @endif
+
+                            <div class="relative">
+                                <input id="xero_search"
+                                       type="text"
+                                       class="w-full border rounded-lg px-3 py-2"
+                                       placeholder="Search Xero contacts...">
+
+                                <input type="hidden" name="xero_contact_id" id="xero_contact_id">
+
+                                <div id="xero_results"
+                                     class="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg
+            max-h-50 overflow-y-auto hidden scroll-smooth">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
                 </div>
 
 
             </div>
-
-            {{-- ── Charges / Billing ── --}}
-{{--            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">--}}
-{{--                <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-700">--}}
-{{--                    <div>--}}
-{{--                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Charges</h3>--}}
-{{--                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">BECS Direct Debit — AUD</p>--}}
-{{--                    </div>--}}
-
-{{--                    --}}{{-- Charge form --}}
-{{--                    <form action="{{ route('clients.charge', $client) }}" method="POST"--}}
-{{--                          class="flex flex-wrap items-end gap-2">--}}
-{{--                        @csrf--}}
-{{--                        <div>--}}
-{{--                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Amount (AUD)</label>--}}
-{{--                            <div class="relative">--}}
-{{--                                <span class="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400">$</span>--}}
-{{--                                <input type="number" name="amount" min="1" step="0.01" placeholder="0.00"--}}
-{{--                                       class="pl-7 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg--}}
-{{--                                  focus:outline-none focus:ring-2 focus:ring-yellow-400--}}
-{{--                                  dark:bg-gray-700 dark:text-gray-200 w-32"--}}
-{{--                                       required>--}}
-{{--                            </div>--}}
-{{--                        </div>--}}
-{{--                        <div>--}}
-{{--                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>--}}
-{{--                            <input type="text" name="description" placeholder="e.g. Invoice #42 — May retainer"--}}
-{{--                                   class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg--}}
-{{--                              focus:outline-none focus:ring-2 focus:ring-yellow-400--}}
-{{--                              dark:bg-gray-700 dark:text-gray-200 w-64"--}}
-{{--                                   maxlength="255" required>--}}
-{{--                        </div>--}}
-{{--                        <button type="submit"--}}
-{{--                                onclick="return confirm('Charge this client? This action will initiate a BECS direct debit.')"--}}
-{{--                                class="px-4 py-2 text-xs font-semibold text-white rounded-lg transition"--}}
-{{--                                style="background:#C9A84C">--}}
-{{--                            Charge Client--}}
-{{--                        </button>--}}
-{{--                    </form>--}}
-{{--                </div>--}}
-
-{{--                --}}{{-- Transactions table --}}
-{{--                @if($client->charges->isEmpty())--}}
-{{--                    <div class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">--}}
-{{--                        No charges recorded yet.--}}
-{{--                    </div>--}}
-{{--                @else--}}
-{{--                    <div class="overflow-x-auto">--}}
-{{--                        <table id="chargesTable" class="display table-auto w-full text-sm text-gray-800 dark:text-gray-200">--}}
-{{--                            <thead>--}}
-{{--                            <tr class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">--}}
-{{--                                <th class="px-5 py-3 text-left font-medium">Date</th>--}}
-{{--                                <th class="px-5 py-3 text-left font-medium">PaymentIntent ID</th>--}}
-{{--                                <th class="px-5 py-3 text-left font-medium">Description</th>--}}
-{{--                                <th class="px-5 py-3 text-right font-medium">Amount</th>--}}
-{{--                                <th class="px-5 py-3 text-left font-medium">Status</th>--}}
-{{--                            </tr>--}}
-{{--                            </thead>--}}
-{{--                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">--}}
-{{--                            @foreach($client->charges as $charge)--}}
-{{--                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">--}}
-{{--                                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">--}}
-{{--                                        {{ $charge->created_at->format('d M Y, g:ia') }}--}}
-{{--                                    </td>--}}
-{{--                                    <td class="px-5 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">--}}
-{{--                                <span class="flex items-center gap-1.5">--}}
-{{--                                    {{ $charge->payment_intent_id }}--}}
-{{--                                    <button onclick="copyText('{{ $charge->payment_intent_id }}', this)"--}}
-{{--                                            class="text-gray-300 hover:text-yellow-500 transition" title="Copy">--}}
-{{--                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
-{{--                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"--}}
-{{--                                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>--}}
-{{--                                        </svg>--}}
-{{--                                    </button>--}}
-{{--                                </span>--}}
-{{--                                    </td>--}}
-{{--                                    <td class="px-5 py-3 text-gray-700 dark:text-gray-300">--}}
-{{--                                        {{ $charge->description }}--}}
-{{--                                    </td>--}}
-{{--                                    <td class="px-5 py-3 text-right font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap">--}}
-{{--                                        ${{ $charge->amount_in_dollars }} AUD--}}
-{{--                                    </td>--}}
-{{--                                    <td class="px-5 py-3">--}}
-{{--                                        @php--}}
-{{--                                            $statusStyles = [--}}
-{{--                                                'succeeded'              => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',--}}
-{{--                                                'processing'             => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',--}}
-{{--                                                'requires_payment_method'=> 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',--}}
-{{--                                                'requires_action'        => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500',--}}
-{{--                                                'canceled'               => 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',--}}
-{{--                                            ];--}}
-{{--                                            $style = $statusStyles[$charge->status] ?? 'bg-gray-100 text-gray-500';--}}
-{{--                                        @endphp--}}
-{{--                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $style }}">--}}
-{{--                                    {{ ucfirst(str_replace('_', ' ', $charge->status)) }}--}}
-{{--                                </span>--}}
-{{--                                    </td>--}}
-{{--                                </tr>--}}
-{{--                            @endforeach--}}
-{{--                            </tbody>--}}
-{{--                        </table>--}}
-{{--                    </div>--}}
-
-{{--                    <script>--}}
-{{--                        $(document).ready(function () {--}}
-{{--                            $('#chargesTable').DataTable({--}}
-{{--                                responsive: true,--}}
-{{--                                pageLength: 10,--}}
-{{--                                order: [[0, 'desc']],--}}
-{{--                                lengthChange: false,--}}
-{{--                                dom: 'Bfrtip',--}}
-{{--                                buttons: ['copy', 'csv', 'excel']--}}
-{{--                            });--}}
-{{--                        });--}}
-{{--                    </script>--}}
-{{--                @endif--}}
-{{--            </div>--}}
 
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden mt-6">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -798,6 +770,120 @@
                 alert('Failed to copy!');
             });
         }
+    </script>
+    <script>
+        const input = document.getElementById('xero_search');
+        const resultsBox = document.getElementById('xero_results');
+        const hidden = document.getElementById('xero_contact_id');
+
+        let debounceTimer = null;
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+
+            const query = this.value;
+
+            if (query.length < 2) {
+                resultsBox.classList.add('hidden');
+                resultsBox.innerHTML = '';
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`{{ route('admin.xero.contacts.search', ['client_id' => $client->id]) }}&q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        resultsBox.innerHTML = '';
+
+                        if (!data.length) {
+                            resultsBox.innerHTML = `
+                        <div class="p-2 text-sm text-gray-500">
+                            No contacts found
+                        </div>`;
+                        } else {
+                            data.forEach(contact => {
+                                const div = document.createElement('div');
+                                div.className = "p-2 hover:bg-gray-100 cursor-pointer";
+
+                                div.innerHTML = `
+    <div class="border rounded-lg p-3 space-y-2 bg-white shadow-sm">
+
+        <div class="flex justify-between items-start">
+            <div>
+                <div class="font-semibold text-gray-900">
+                    ${contact.name}
+                </div>
+                <div class="text-xs text-gray-500">
+                    Xero ID: ${contact.xero_contact_id}
+                </div>
+            </div>
+
+            <span class="text-xs px-2 py-1 rounded
+                ${contact.already_linked ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">
+                ${contact.already_linked ? 'Linked' : 'Not linked'}
+            </span>
+        </div>
+
+        <div class="text-sm text-gray-600 space-y-1">
+            ${contact.email ? `<div>📧 ${contact.email}</div>` : ''}
+            ${contact.phone ? `<div>📞 ${contact.phone}</div>` : ''}
+            ${contact.company ? `<div>🏢 ${contact.company}</div>` : ''}
+        </div>
+
+        <div class="flex gap-2 pt-2">
+            ${
+                                    contact.already_linked
+                                        ? `
+                    <button data-action="detach"
+                        class="text-red-600 text-sm border px-2 py-1 rounded hover:bg-red-50">
+                        Detach
+                    </button>
+                `
+                                        : `
+                    <button data-action="attach"
+                        class="text-blue-600 text-sm border px-2 py-1 rounded hover:bg-blue-50">
+                        Attach
+                    </button>
+                `
+                                }`;
+
+                                div.querySelectorAll('button').forEach(btn => {
+                                    btn.addEventListener('click', (e) => {
+                                        e.stopPropagation();
+
+                                        const action = btn.dataset.action;
+
+                                        if (action === 'attach') {
+                                            attachContact(contact.id);
+                                        }
+
+                                        if (action === 'detach') {
+                                            detachContact(contact.id);
+                                        }
+
+                                        if (action === 'select') {
+                                            input.value = contact.name;
+                                            hidden.value = contact.id;
+                                            resultsBox.classList.add('hidden');
+                                        }
+                                    });
+                                });
+
+                                resultsBox.appendChild(div);
+                            });
+                        }
+
+                        resultsBox.classList.remove('hidden');
+                    });
+            }, 300);
+        });
+
+        // hide dropdown on outside click
+        document.addEventListener('click', function (e) {
+            if (!input.contains(e.target) && !resultsBox.contains(e.target)) {
+                resultsBox.classList.add('hidden');
+            }
+        });
     </script>
 
 </x-app-layout>

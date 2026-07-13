@@ -8,11 +8,11 @@
     <meta name="author" content="">
     <link rel="icon" href="{{ asset('images/aiit.webp') }}">
 
-    <title>{{ config('app.name', 'AIIT') }}</title>
+    <title>{{ config('app.name', 'Onboarding AIIT') }}</title>
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://bunny.net">
-    <link href="https://bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+{{--    <link rel="preconnect" href="https://bunny.net">--}}
+{{--    <link href="https://bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />--}}
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -29,7 +29,7 @@
 <div class="flex flex-col min-h-screen md:pl-64">
 
     <!-- Unified App Top Bar Header Layout -->
-    <header class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm sticky top-0 z-30 w-full">
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm sticky top-0 z-30 w-full print:hidden">
         <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <div class="flex items-center gap-4 w-full">
 
@@ -45,7 +45,7 @@
 
                 <!-- Render Header Title Text cleanly when defined -->
                 @isset($header)
-                    <div class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                    <div class="w-full">
                         {{ $header }}
                     </div>
                 @endisset
