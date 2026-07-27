@@ -308,10 +308,17 @@
                         </div>
 
                         <div class="relative min-h-[500px] md:min-h-full print:min-h-0">
-                            <img src="{{ asset('images/default.png') }}"
-                                 alt="{{ $item->product_name }}"
-                                 class="absolute inset-0 w-full h-full object-cover"
-                                 onerror="this.style.display='none'">
+                            @if($item->product->image_url)
+                                <img src="{{ asset('storage/'.$item->product->image_url) }}"
+                                     alt="{{ $item->product_name }}"
+                                     class="absolute inset-0 w-full h-full object-cover"
+                                     onerror="this.style.display='none'">
+                            @else
+                                <img src="{{ asset('images/default.png') }}"
+                                     alt="{{ $item->product_name }}"
+                                     class="absolute inset-0 w-full h-full object-cover"
+                                     onerror="this.style.display='none'">
+                            @endif
                         </div>
                     </div>
                 </section>

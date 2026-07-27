@@ -44,7 +44,7 @@ return [
         ['name' => 'Partner Five', 'logo' => 'images/partners/partner-five.png'],
         ['name' => 'Partner Six', 'logo' => 'images/partners/partner-six.png'],
     ],
-    'default_item_image' => 'images/default.png',
+    'default_item_image' => 'images/default.webp',
 
     /*
     |--------------------------------------------------------------------------
@@ -302,10 +302,6 @@ Such invalid, illegal or unenforceable provision shall be replaced by a mutually
             'placeholder' => 'Cloud Solutions',
         ],
         [
-            'image' => 'images/media/image59.jpg',
-            'placeholder' => 'Hosting Solutions',
-        ],
-        [
             'image' => 'images/media/image55.jpg',
             'placeholder' => 'Hosting Solutions',
         ],
@@ -350,4 +346,5 @@ Such invalid, illegal or unenforceable provision shall be replaced by a mutually
             'placeholder' => 'Technology Partners',
         ],
     ],
+    'gst_rate' => 0.10
 ];

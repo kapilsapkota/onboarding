@@ -64,7 +64,6 @@ class OnboardingController extends Controller
             'logo_path'      => $data['logo_path']      ?? null,
             'contacts_file_path' => $staffFilePath,
             'pasted_employees'   => $data['pasted_employees'] ?? null,
-
             'notes'          => $data['notes']          ?? null,
             'services'          => $data['services']          ?? null,
             'service_providers'          => isset($serviceProviders) ? json_encode($serviceProviders)   : null,

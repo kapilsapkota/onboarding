@@ -90,7 +90,7 @@ class Quote extends Model
     public function recalculateTotals(): void
     {
         $subtotal = $this->items()->sum('unit_price');
-        $gst      = round($subtotal * 0.10, 2);
+        $gst      = round($subtotal * config('quote.gst_rate',0.10), 2);
 
         $this->withoutEvents(function () use ($subtotal, $gst) {
             $this->update([

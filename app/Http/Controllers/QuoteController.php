@@ -8,6 +8,7 @@ use App\Models\QuoteItem;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -89,7 +90,7 @@ class QuoteController extends Controller
             $logoPath = $request->file('logo')->store('quote-logos', 'public');
         }
 
-        DB::transaction(function () use ($validated, $itemsPayload, $logoPath) {
+        DB::transaction(function () use ($request,$validated, $itemsPayload, $logoPath) {
             $quote = Quote::create([
                 'client_name'           => $validated['client_name'],
                 'contact_name'          => $validated['contact_name'] ?? null,
@@ -108,6 +109,7 @@ class QuoteController extends Controller
 
                 $quote->items()->create([
                     'product_id'        => $item['product_id'] ?? null,
+                    'quantity'       => $item['quantity'] ?? 1,   // ← include this
                     'category_name'     => $item['category_name'] ?? '',
                     'product_name'      => $item['product_name'] ?? '',
                     'scope_of_works'    => $item['scope_of_works'] ?? null,
@@ -121,14 +123,7 @@ class QuoteController extends Controller
                 ]);
             }
 
-            // Totals auto-calculated via model boot after items are saved
             $quote->recalculateTotals();
-
-            if ($validated->hasFile('logo')) {
-                $path = $validated->file('logo')->store('quote-logos', 'public');
-
-                $quote->logo_path = $path;
-            }
 
             // Store quote number for redirect
             session(['last_created_quote' => $quote->id]);
@@ -146,7 +141,7 @@ class QuoteController extends Controller
 
     public function show(Quote $quote): View
     {
-        $quote->load('items');
+        $quote->load('items.product:id,name,image_url');
 
         return view('admin.quotes.show', compact('quote'));
     }
@@ -217,6 +212,7 @@ class QuoteController extends Controller
             foreach ($itemsPayload as $index => $item) {
                 $quote->items()->create([
                     'product_id'        => $item['product_id'] ?? null,
+                    'quantity'       => $item['quantity'] ?? 1,   // ← include this
                     'category_name'     => $item['category_name'] ?? '',
                     'product_name'      => $item['product_name'] ?? '',
                     'scope_of_works'    => $item['scope_of_works'] ?? null,
@@ -308,35 +304,37 @@ class QuoteController extends Controller
         return redirect()->route('admin.quotes.edit', $newQuote)
             ->with('success', 'Quote duplicated — review and save changes.');
     }
+
     public function pdf(Request $request, Quote $quote)
     {
         ini_set('memory_limit', '512M');
         set_time_limit(120);
 
-        // A4 landscape at 96 dpi = 1122 × 794 px
-        // Full-bleed images are CROPPED to this exact ratio so they
-        // fill the page without stretching or letterboxing.
         $pageW = 1122;
         $pageH = 794;
 
-        // Half-page product image (right column = 50% width)
         $halfW = 561;
 
-        // ── Pre-process every image in PHP so DOMPDF gets
-        //    pixel-perfect bitmaps and never touches the filesystem ──
 
-        $coverSrc = self::cropToBase64(
-            public_path('images/img.png'), $pageW, $pageH
-        );
+        $coverSrc = self::cachedBase64('images/img.png', $pageW, $pageH);
 
-        // default.png is shared across ALL item pages — encode once
-        $defaultSrc = self::cropToBase64(
-            public_path('images/default.png'), $halfW, $pageH
-        );
+        $defaultSrc = self::cachedBase64('images/default.png', $halfW, $pageH);
 
-        $closingSrc = self::cropToBase64(
-            public_path('images/media/image67.jpg'), $pageW, $pageH
-        );
+        $closingSrc = self::cachedBase64('images/media/image67.jpg', $pageW, $pageH);
+
+        $partnersSrc = self::cachedBase64('images/partners_.png', $pageW, $pageH);
+
+        $configImages = collect(config('quote.images') ?? [])
+            ->map(fn ($img) => [
+                'placeholder' => $img['placeholder'],
+                'src' => self::cachedBase64(
+                    $img['image'],
+                    $pageW,
+                    $pageH
+                ),
+            ])
+            ->filter(fn ($img) => $img['src'] !== null)
+            ->values();
 
         $clientLogoSrc = null;
         if ($quote->logo_url) {
@@ -344,31 +342,33 @@ class QuoteController extends Controller
                 public_path('storage/' . $quote->logo_url), 360, 200, false  // fit, don't crop
             );
         }
-
-        // Config images — crop every one to full-page ratio
-        $configImages = collect(config('quote.images') ?? [])
-            ->filter(fn($img) => file_exists(public_path($img['image'])))
-            ->map(fn($img) => [
-                'placeholder' => $img['placeholder'],
-                'src'         => self::cropToBase64(public_path($img['image']), $pageW, $pageH),
-            ])
-            ->filter(fn($img) => $img['src'] !== null)
-            ->values();
-
-        // Partner logos — fit inside cell, no crop
-        $partners = \App\Models\Company::all()->map(function ($partner) {
-            $path = public_path('images/' . $partner['logo']);
-            return [
-                'name' => $partner['name'],
-                'src'  => file_exists($path)
-                    ? self::cropToBase64($path, 280, 100, false)
-                    : null,
-            ];
+        $quote->load('items.product:id,name,image_url,description');
+        $items = $quote->items->each(function ($item) use ($halfW, $pageH) {
+            $item->product_image_src = $item->product?->image_url
+                ? self::cachedBase64(
+                    'storage/' . $item->product->image_url,
+                    $halfW,
+                    $pageH
+                )
+                : null;
         });
 
+        // Partner logos — fit inside cell, no crop
+//        $partners = \App\Models\Company::all()->map(function ($partner) {
+//            $path = public_path('images/' . $partner['logo']);
+//            return [
+//                'name' => $partner['name'],
+//                'src'  => file_exists($path)
+//                    ? self::cropToBase64($path, 280, 100, false)
+//                    : null,
+//            ];
+//        });
+
         $data = [
-            'quote'              => $quote->load('items'),
-            'partners'           => $partners,
+            'quote'              => $quote,
+            'items'              => $items,
+//            'partners'           => $partners,
+            'partnersSrc'        => $partnersSrc,
             'configImages'       => $configImages,
             'coverSrc'           => $coverSrc,
             'defaultSrc'         => $defaultSrc,
@@ -382,12 +382,27 @@ class QuoteController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotes.pdf', $data)
             ->setPaper('a4', 'landscape')
-            ->setOption('isRemoteEnabled', false)
+            ->setOption('isRemoteEnabled', true)
             ->setOption('isFontSubsettingEnabled', true)
             ->setOption('defaultMediaType', 'print')
             ->setOption('dpi', 96);
 
-        return $pdf->stream($quote->quote_number . '.pdf');
+        return $pdf->stream($quote->quote_number . '.pdf',['Attachment' => false]);
+    }
+
+    private static function cachedBase64(string $path, int $width, int $height): ?string
+    {
+        $fullPath = public_path($path);
+
+        if (!file_exists($fullPath)) {
+            return null;
+        }
+
+        $key = 'quote_image:' . md5($fullPath . $width . $height . filemtime($fullPath));
+
+        return Cache::rememberForever($key, function () use ($fullPath, $width, $height) {
+            return self::cropToBase64($fullPath, $width, $height);
+        });
     }
 
     /**
@@ -508,29 +523,48 @@ class QuoteController extends Controller
 
 //    public function pdf(Request $request, Quote $quote)
 //    {
+//        // 1. Extend limits explicitly. Renders occur via Chrome,
+//        // but the PHP thread still waits for the browser binary to finish.
+//        ini_set('memory_limit', '256M');
+//        set_time_limit(120);
+//
 //        $data = [
-//            'quote' => $quote->load('items'),
-//            'partners' => \App\Models\Company::all(),
-//            'stageColumns' => collect(config('quote.stage_columns')),
-//            'stageAccents' => ['#fbbf24', '#f97316', '#c2410c'],
+//            'quote'              => $quote->load('items'),
+//            'partners'           => \App\Models\Company::all(),
+//            'stageColumns'       => collect(config('quote.stage_columns')),
+//            'stageAccents'       => ['#fbbf24', '#f97316', '#c2410c'],
 //            'termsAndConditions' => $quote->terms_and_conditions ?: config('quote.default_terms'),
 //        ];
 //
+//        // 2. Render the raw Blade HTML string
 //        $html = view('admin.quotes.pdf', $data)->render();
 //
-//        $fileName = 'quote-'.$quote->id.'.pdf';
-//        $path = storage_path('app/'.$fileName);
+//        $fileName = 'quote-' . $quote->id . '.pdf';
 //
+//        // Use Laravel's standard temporary storage disk location
+//        $path = storage_path('app/private/' . $fileName);
+//
+//        // Ensure the directory exists before saving
+//        if (!file_exists(dirname($path))) {
+//            mkdir(dirname($path), 0755, true);
+//        }
+//
+//        // 3. Execute Browsershot Pipeline
 //        Browsershot::html($html)
 //            ->format('A4')
 //            ->landscape()
 //            ->showBackground()
+//            // CRITICAL: Tells Chrome to ignore untrusted local SSL certs on XAMPP
+//            ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors'])
+//            // For heavy 34-page documents, give Chromium up to 90 seconds to render
+//            ->timeout(90)
+//            // Ensures heavy images are fully decoded and rendered in the DOM
 //            ->waitUntilNetworkIdle()
 //            ->save($path);
 //
+//        // 4. Safely return the stream and purge the file from disk afterward
 //        return response()->download($path, $fileName)->deleteFileAfterSend(true);
 //    }
-
     public function showSignForm(Quote $quote)
     {
         return view('admin.quotes.sign-form', compact('quote'));

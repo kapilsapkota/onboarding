@@ -216,6 +216,7 @@
             padding: 0;
             vertical-align: top;
             overflow: hidden;
+            background: white;
         }
 
         .item-image-cell img {
@@ -459,45 +460,53 @@
     </div>
 </div>
 
-<div class="quote-page">
-    <div style="padding: 30px 40px 40px 40px;">
-        <div class="section-title">Our Partner Network</div>
-
-        @php
-            $chunks = $partners->chunk(3);
-            $sizeMap = [0=>'60px',1=>'72px',2=>'56px',3=>'96px',4=>'80px',
-                        5=>'40px',6=>'64px',7=>'40px',8=>'40px',9=>'80px'];
-        @endphp
-
-        <table class="partners-grid">
-            @forelse($chunks as $chunkIndex => $row)
-                <tr>
-                    @foreach($row as $i => $partner)
-                        @php $h = $sizeMap[$partners->search($partner)] ?? '50px'; @endphp
-                        <td class="partner-cell">
-                            @if($partner['src'])
-                                <img src="{{ $partner['src'] }}"
-                                     alt="{{ $partner['name'] }}"
-                                     style="max-height:{{ $h }};">
-                            @else
-                                <span style="font-size:11px;color:#6b7280;">{{ $partner['name'] }}</span>
-                            @endif
-                        </td>
-                    @endforeach
-                    @for($pad = $row->count(); $pad < 3; $pad++)
-                        <td class="partner-cell"></td>
-                    @endfor
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="3" style="text-align:center;color:#9ca3af;font-size:12px;">
-                        No partner logos configured.
-                    </td>
-                </tr>
-            @endforelse
-        </table>
+@if($partnersSrc)
+    <div class="quote-page">
+        <div class="bleed-wrap">
+            <img src="{{ $partnersSrc }}" alt="Partners" class="bleed-img">
+        </div>
     </div>
-</div>
+@endif
+
+{{--<div class="quote-page">--}}
+{{--    <div style="padding: 30px 40px 40px 40px;">--}}
+{{--        <div class="section-title">Our Partner Network</div>--}}
+
+{{--        @php--}}
+{{--            $chunks = $partners->chunk(3);--}}
+{{--            $sizeMap = [0=>'60px',1=>'72px',2=>'56px',3=>'96px',4=>'80px',--}}
+{{--                        5=>'40px',6=>'64px',7=>'40px',8=>'40px',9=>'80px'];--}}
+{{--        @endphp--}}
+
+{{--        <table class="partners-grid">--}}
+{{--            @forelse($chunks as $chunkIndex => $row)--}}
+{{--                <tr>--}}
+{{--                    @foreach($row as $i => $partner)--}}
+{{--                        @php $h = $sizeMap[$partners->search($partner)] ?? '50px'; @endphp--}}
+{{--                        <td class="partner-cell">--}}
+{{--                            @if($partner['src'])--}}
+{{--                                <img src="{{ $partner['src'] }}"--}}
+{{--                                     alt="{{ $partner['name'] }}"--}}
+{{--                                     style="max-height:{{ $h }};">--}}
+{{--                            @else--}}
+{{--                                <span style="font-size:11px;color:#6b7280;">{{ $partner['name'] }}</span>--}}
+{{--                            @endif--}}
+{{--                        </td>--}}
+{{--                    @endforeach--}}
+{{--                    @for($pad = $row->count(); $pad < 3; $pad++)--}}
+{{--                        <td class="partner-cell"></td>--}}
+{{--                    @endfor--}}
+{{--                </tr>--}}
+{{--            @empty--}}
+{{--                <tr>--}}
+{{--                    <td colspan="3" style="text-align:center;color:#9ca3af;font-size:12px;">--}}
+{{--                        No partner logos configured.--}}
+{{--                    </td>--}}
+{{--                </tr>--}}
+{{--            @endforelse--}}
+{{--        </table>--}}
+{{--    </div>--}}
+{{--</div>--}}
 
 <div class="quote-page">
     <div class="page-pad">
@@ -529,7 +538,7 @@
     </div>
 </div>
 
-@foreach($quote->items as $item)
+@foreach($items as $item)
     <div class="quote-page">
         <table class="item-table">
             <tr>
@@ -537,12 +546,10 @@
                     <div class="item-title">{{ $item->product_name }}</div>
                     <div class="item-scope-label">General Scope of Works</div>
 
-                    @if($item->scope_list)
-                        <ul class="item-scope-list">
-                            @foreach($item->scope_list as $scope)
-                                <li>- {{ $scope }}</li>
-                            @endforeach
-                        </ul>
+                    @if($item->scope_of_works)
+                        <div class="item-description">
+                            {!! $item->scope_of_works !!}
+                        </div>
                     @endif
 
                     <div class="item-price">
@@ -556,7 +563,9 @@
                 </td>
 
                 <td class="item-image-cell">
-                    @if($defaultSrc)
+                    @if($item->product_image_src)
+                        <img src="{{ $item->product_image_src }}" alt="{{ $item->product_name }}">
+                    @else
                         <img src="{{ $defaultSrc }}" alt="{{ $item->product_name }}">
                     @endif
                 </td>

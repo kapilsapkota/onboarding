@@ -13,6 +13,7 @@ class QuoteItem extends Model
     protected $fillable = [
         'quote_id',
         'product_id',
+        'quantity',
         'category_name',
         'product_name',
         'scope_of_works',
@@ -29,6 +30,7 @@ class QuoteItem extends Model
     ];
 
     protected $casts = [
+        'quantity'     => 'integer',   // ← add this
         'unit_price'   => 'decimal:2',
         'gst_amount'   => 'decimal:2',
         'total_price'  => 'decimal:2',
@@ -58,11 +60,14 @@ class QuoteItem extends Model
     protected static function booted(): void
     {
         static::saving(function (QuoteItem $item) {
-            $item->gst_amount  = round((float) $item->unit_price * 0.10, 2);
-            $item->total_price = round((float) $item->unit_price + $item->gst_amount, 2);
+            $qty = max(1, (int) ($item->quantity ?? 1));
+            $lineTotal = round((float) $item->unit_price * $qty, 2);
+
+            $item->gst_amount  = round($lineTotal * 0.10, 2);
+            $item->total_price = round($lineTotal + $item->gst_amount, 2);
 
             if ($item->hourly_rate && $item->hourly_rate > 0) {
-                $item->hours = round((float) $item->unit_price / (float) $item->hourly_rate, 1);
+                $item->hours = round($lineTotal / (float) $item->hourly_rate, 1);
             }
         });
     }

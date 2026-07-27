@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DirectDebitPaymentController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\StripePayoutController;
@@ -112,9 +113,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('quotes/{quote}/send',      [QuoteController::class, 'send'])         ->name('quotes.send');
     Route::patch('quotes/{quote}/status',   [QuoteController::class, 'updateStatus']) ->name('quotes.status');
     Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])    ->name('quotes.duplicate');
-    Route::get('quotes/{quote}/sign', [QuoteController::class, 'showSignForm'])->name('quotes.sign');
-    Route::post('quotes/{quote}/save-signature', [QuoteController::class, 'saveSignature'])->name('quotes.save-signature');
 
+    Route::resource('categories', CategoryController::class);
     Route::resource('products', ProductController::class);
 });
 
@@ -129,3 +129,6 @@ Route::post('/webhooks/stripe', StripeWebhookController::class)
     ->name('webhooks.stripe');
 Route::post('/webhooks/xero', \App\Http\Controllers\Admin\XeroWebhookController::class)
     ->name('webhooks.xero');
+
+Route::get('admin/quotes/{quote}/sign', [QuoteController::class, 'showSignForm'])->name('admin.quotes.sign');
+Route::post('admin/quotes/{quote}/save-signature', [QuoteController::class, 'saveSignature'])->name('admin.quotes.save-signature');

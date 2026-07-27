@@ -60,6 +60,10 @@
             {{ __('Stripe Payouts') }}
         </x-responsive-nav-link>
 
+        <x-responsive-nav-link :href="route('admin.categories.index')" :active="request()->is('admin/categories*')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
+            {{ __('Categories') }}
+        </x-responsive-nav-link>
+
         <x-responsive-nav-link :href="route('admin.products.index')" :active="request()->is('admin/products*')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
             {{ __('Products') }}
         </x-responsive-nav-link>
@@ -71,7 +75,8 @@
     </nav>
 
     <!-- Bottom User Settings Configuration Dropdown Panel Layout -->
-    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 shrink-0">
+    @auth
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 shrink-0">
         <div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
             <button @click="open = !open" class="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-600 rounded-md dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150">
                 <div class="flex-1 text-left truncate">
@@ -109,4 +114,5 @@
             </div>
         </div>
     </div>
+    @endauth
 </aside>
