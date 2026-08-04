@@ -35,44 +35,60 @@
                        value="{{ request('search') }}"
                        placeholder="Search by name, category…"
                        class="flex-1 min-w-0 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <input type="hidden" name="category" value="{{ request('category') }}">
+                <input type="hidden" name="status"    value="{{ request('status') }}">
+                <input type="hidden" name="frequency" value="{{ request('frequency') }}">
                 <input type="hidden" name="price_type" value="{{ request('price_type') }}">
-                @if(request()->hasAny(['search', 'category', 'price_type', 'status']))
+                @if(request()->hasAny(['search', 'category', 'price_type', 'status', 'frequency']))
                     <a href="{{ route('admin.products.index') }}"
                        class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Clear</a>
                 @endif
             </form>
+
+            {{-- Category dropdown --}}
+            <select onchange="window.location = this.value"
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200
+                   text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                <option value="{{ route('admin.products.index', array_merge(request()->except('category', 'page'))) }}">
+                    All Categories
+                </option>
+                @foreach($categories as $category)
+                    <option value="{{ route('admin.products.index', array_merge(request()->except('category', 'page'), ['category' => $category->slug])) }}"
+                        {{ request('category') === $category->slug ? 'selected' : '' }}>
+                        {{ $category->name }}
+                    </option>
+                @endforeach
+            </select>
 
             {{-- Status tabs --}}
             <div class="flex gap-1 text-sm">
                 @foreach(['' => 'All', '1' => 'Active', '0' => 'Inactive'] as $val => $label)
                     <a href="{{ route('admin.products.index', array_merge(request()->except('status', 'page'), $val !== '' ? ['status' => $val] : [])) }}"
                        class="px-3 py-1.5 rounded-md font-medium transition
-                              {{ request('status', '') === $val
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
+                      {{ request('status', '') === $val
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
                         {{ $label }}
                     </a>
                 @endforeach
             </div>
 
+            {{-- Frequency tabs --}}
             <div class="flex gap-1 text-sm">
                 @foreach([
                     '' => 'All Frequencies',
                     'once_off' => 'Once Off',
-                    'monthly' => 'Monthly',
-                    'yearly' => 'Yearly'
+                    'monthly'  => 'Monthly',
+                    'yearly'   => 'Yearly',
                 ] as $val => $label)
                     <a href="{{ route('admin.products.index', array_merge(request()->except('frequency', 'page'), $val !== '' ? ['frequency' => $val] : [])) }}"
                        class="px-3 py-1.5 rounded-md font-medium transition
-                  {{ request('frequency', '') === $val
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
+                      {{ request('frequency', '') === $val
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
                         {{ $label }}
                     </a>
                 @endforeach
             </div>
-
         </div>
 
         {{-- Table --}}

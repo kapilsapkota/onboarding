@@ -101,7 +101,7 @@ class Product extends Model
         return match ($this->frequency) {
             'monthly'     => 'Monthly',
             'quarterly'   => 'Quarterly',
-            'yearly'      => 'Yearly',
+            'annually'    => 'Annually',
             default       => 'Once Off',
         };
     }

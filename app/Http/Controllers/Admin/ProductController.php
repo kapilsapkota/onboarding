@@ -16,6 +16,8 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
+        $categories = \App\Models\Category::active()->orderBy('name')->get();
+
         $query = Product::with('category')->orderBy('sort_order')->orderBy('name');
 
         if ($search = $request->get('search')) {
@@ -26,13 +28,25 @@ class ProductController extends Controller
             });
         }
 
+        $query->when($request->get('category'), fn ($q, $slug) =>
+        $q->whereHas('category', fn ($q) => $q->where('slug', $slug))
+        );
+
+        $query->when($request->get('frequency'), function ($q, $frequency) {
+            if ($frequency === 'once_off') {
+                $q->whereNull('frequency')->orWhereNotIn('frequency', ['monthly', 'quarterly', 'annually']);
+            } else {
+                $q->where('frequency', $frequency);
+            }
+        });
+
         if ($request->filled('status')) {
             $query->where('is_active', (bool) $request->get('status'));
         }
 
         $products = $query->paginate(20)->withQueryString();
 
-        return view('admin.products.index', compact('products'));
+        return view('admin.products.index', compact('products', 'categories'));
     }
 
     public function create(): View

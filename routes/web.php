@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\XeroSyncController;
 use App\Http\Controllers\Admin\XeroTenantSettingsController;
 use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
@@ -38,7 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 Route::redirect('/onboarding', '/');
 Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -96,8 +97,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
             ->name('tenants.bank-settings-update');
     });
     Route::resource('directDebitPayment', DirectDebitPaymentController::class)->only(['index', 'show']);
-    Route::post('directDebitPayment/{directDebitPayment}/cancel',       [DirectDebitPaymentController::class, 'cancel'])->name('directDebitPayment.cancel');
-    Route::post('directDebitPayment/{directDebitPayment}/retry',        [DirectDebitPaymentController::class, 'retry'])->name('directDebitPayment.retry');
+    Route::post('directDebitPayment/{directDebitPayment}/cancel', [DirectDebitPaymentController::class, 'cancel'])->name('directDebitPayment.cancel');
+    Route::post('directDebitPayment/{directDebitPayment}/retry', [DirectDebitPaymentController::class, 'retry'])->name('directDebitPayment.retry');
     Route::post('directDebitPayment/{directDebitPayment}/post-to-xero', [DirectDebitPaymentController::class, 'postToXero'])->name('directDebitPayment.post-to-xero');
 
     Route::prefix('payouts')->name('payouts.')->group(function () {
@@ -109,25 +110,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
 
     Route::resource('quotes', QuoteController::class);
-    Route::get('quotes/{quote}/pdf',         [QuoteController::class, 'pdf'])         ->name('quotes.pdf');
-    Route::post('quotes/{quote}/send',      [QuoteController::class, 'send'])         ->name('quotes.send');
-    Route::patch('quotes/{quote}/status',   [QuoteController::class, 'updateStatus']) ->name('quotes.status');
-    Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])    ->name('quotes.duplicate');
+    Route::get('quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
+    Route::post('quotes/{quote}/send', [QuoteController::class, 'send'])->name('quotes.send');
+    Route::patch('quotes/{quote}/status', [QuoteController::class, 'updateStatus'])->name('quotes.status');
+    Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])->name('quotes.duplicate');
 
     Route::resource('categories', CategoryController::class);
     Route::post('/categories/{category}/duplicate',
-        [CategoryController::class,'duplicate']
+        [CategoryController::class, 'duplicate']
     )->name('categories.duplicate');
     Route::resource('products', ProductController::class);
+    Route::resource('companies', CompanyController::class);
 });
 
 Route::prefix('settings/xero/tenants/{tenant}')
     ->name('xero.tenants.')
     ->group(function () {
-        Route::get('/',        [XeroTenantSettingsController::class, 'edit'])   ->name('edit');
-        Route::put('/',        [XeroTenantSettingsController::class, 'update']) ->name('update');
+        Route::get('/', [XeroTenantSettingsController::class, 'edit'])->name('edit');
+        Route::put('/', [XeroTenantSettingsController::class, 'update'])->name('update');
     });
-Route::get('/xero/auth/callback',   [XeroConnectionController::class, 'callback'])->name('xero.auth.callback');
+Route::get('/xero/auth/callback', [XeroConnectionController::class, 'callback'])->name('xero.auth.callback');
 Route::post('/webhooks/stripe', StripeWebhookController::class)
     ->name('webhooks.stripe');
 Route::post('/webhooks/xero', \App\Http\Controllers\Admin\XeroWebhookController::class)

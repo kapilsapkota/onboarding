@@ -538,41 +538,104 @@
     </div>
 </div>
 
-@foreach($items as $item)
-    <div class="quote-page">
-        <table class="item-table">
-            <tr>
-                <td class="item-content-cell">
-                    <div class="item-title">{{ $item->product_name }}</div>
-                    <div class="item-scope-label">General Scope of Works</div>
+@php
+    $grouped = $items->groupBy(fn($item) => $item->product->category->name ?? $item->category_name);
+@endphp
 
-                    @if($item->scope_of_works)
-                        <div class="item-description">
-                            {!! $item->scope_of_works !!}
-                        </div>
-                    @endif
+@foreach($grouped as $categoryName => $categoryItems)
 
-                    <div class="item-price">
-                        Total Price ${{ number_format($item->unit_price, 0) }} + GST
-                    </div>
-                    @if($item->notes)
-                        <div class="item-note">
-                            <strong>Note:</strong> {{ $item->notes }}
-                        </div>
-                    @endif
-                </td>
+    {{-- CATEGORY DIVIDER PAGE --}}
+    <div class="quote-page category-divider-page">
+        @php $category = $categoryItems->first()->product->category ?? null; @endphp
 
-                <td class="item-image-cell">
-                    @if($item->product_image_src)
-                        <img src="{{ $item->product_image_src }}" alt="{{ $item->product_name }}">
-                    @else
-                        <img src="{{ $defaultSrc }}" alt="{{ $item->product_name }}">
-                    @endif
-                </td>
-            </tr>
-        </table>
+        <div class="category-divider-content">
+            <div class="category-divider-name">{{ $categoryName }}</div>
+
+            @if($category?->icon)
+                <img
+                    src="{{ Str::startsWith($category->icon,'http') ? $category->icon : Storage::url($category->icon) }}"
+                    alt="{{ $categoryName }}"
+                    class="category-divider-image"
+                >
+            @endif
+        </div>
     </div>
+
+    {{-- ITEMS IN THIS CATEGORY --}}
+    @foreach($categoryItems as $item)
+        <div class="quote-page">
+            <table class="item-table">
+                <tr>
+                    <td class="item-content-cell">
+                        <div class="item-title">{{ $item->product_name }}</div>
+                        <div class="item-scope-label">General Scope of Works</div>
+
+                        @if($item->scope_of_works)
+                            <div class="item-description">
+                                {!! nl2br(e(trim($item->scope_of_works))) !!}
+                            </div>
+                        @endif
+
+                        <div class="item-price">
+                            Total Price ${{ number_format($item->unit_price, 0) }} + GST {{ ucfirst($item->frequency) }}
+                        </div>
+
+                        @if($item->notes)
+                            <div class="item-note">
+                                <strong>Note:</strong> {{ $item->notes }}
+                            </div>
+                        @endif
+                    </td>
+
+                    <td class="item-image-cell">
+                        @if($item->product_image_src)
+                            <img src="{{ $item->product_image_src }}" alt="{{ $item->product_name }}">
+                        @else
+                            <img src="{{ $defaultSrc }}" alt="{{ $item->product_name }}">
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endforeach
+
 @endforeach
+
+{{--@foreach($items as $item)--}}
+{{--    <div class="quote-page">--}}
+{{--        <table class="item-table">--}}
+{{--            <tr>--}}
+{{--                <td class="item-content-cell">--}}
+{{--                    <div class="item-title">{{ $item->product_name }}</div>--}}
+{{--                    <div class="item-scope-label">General Scope of Works</div>--}}
+
+{{--                    @if($item->scope_of_works)--}}
+{{--                        <div class="item-description">--}}
+{{--                            {!! nl2br(e(trim($item->scope_of_works))) !!}--}}
+{{--                        </div>--}}
+{{--                    @endif--}}
+
+{{--                    <div class="item-price">--}}
+{{--                        Total Price ${{ number_format($item->unit_price, 0) }} + GST {{ ucfirst($item->frequency) }}--}}
+{{--                    </div>--}}
+{{--                    @if($item->notes)--}}
+{{--                        <div class="item-note">--}}
+{{--                            <strong>Note:</strong> {{ $item->notes }}--}}
+{{--                        </div>--}}
+{{--                    @endif--}}
+{{--                </td>--}}
+
+{{--                <td class="item-image-cell">--}}
+{{--                    @if($item->product_image_src)--}}
+{{--                        <img src="{{ $item->product_image_src }}" alt="{{ $item->product_name }}">--}}
+{{--                    @else--}}
+{{--                        <img src="{{ $defaultSrc }}" alt="{{ $item->product_name }}">--}}
+{{--                    @endif--}}
+{{--                </td>--}}
+{{--            </tr>--}}
+{{--        </table>--}}
+{{--    </div>--}}
+{{--@endforeach--}}
 
 {{-- Config / gallery full-bleed pages --}}
 @foreach($configImages as $image)

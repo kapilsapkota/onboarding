@@ -42,6 +42,10 @@
             {{ __('Dashboard') }}
         </x-responsive-nav-link>
 
+        <x-responsive-nav-link :href="route('admin.companies.index')" :active="request()->routeIs('admin.companies*')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
+            {{ __('Companies') }}
+        </x-responsive-nav-link>
+
         {{-- @role('super-admin') --}}
         <x-responsive-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.index')" class="flex items-center px-3 py-2 text-sm font-medium rounded-md">
             {{ __('Clients') }}

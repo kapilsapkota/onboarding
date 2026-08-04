@@ -449,6 +449,31 @@
                                 scope_of_works:    item.scope_of_works || '',
                             });
                         });
+                    } else {
+                        // *** NEW: pre-load every product as a default row ***
+                        this.products.forEach(product => {
+                            this.items.push({
+                                product_id:       product.id,
+                                product_name:     product.name,
+                                category_name:    product.category_name,
+                                search:           product.name,
+                                filteredProducts: [],
+                                showResults:      false,
+                                quantity:         1,
+                                price_type:       product.price_type      || 'fixed',
+                                price_min:        Number(product.price_min       ?? 0),
+                                price_max:        Number(product.price_max       ?? 0),
+                                price_increment:  Number(product.price_increment ?? 500),
+                                unit_price:       product.price_type === 'fixed'
+                                    ? Number(product.fixed_price ?? 0)
+                                    : Number(product.price_min  ?? 0),
+                                hourly_rate:      product.hourly_rate ? Number(product.hourly_rate) : null,
+                                frequency:        product.frequency || 'once_off',
+                                scope_of_works:   (product.scope_items || [])
+                                    .map(s => s.replace(/^[-•]\s*/, ''))
+                                    .join("\n"),
+                            });
+                        });
                     }
                 },
 
@@ -528,7 +553,9 @@
                         : Number(product.price_min);
                     item.hourly_rate     = product.hourly_rate ? Number(product.hourly_rate) : null;
                     item.frequency       = product.frequency || 'once_off';
-                    item.scope_of_works  = (product.scope_items || []).join("\n");
+                    item.scope_of_works = (product.scope_items || [])
+                        .map(item => item.replace(/^[-•]\s*/, ''))
+                        .join("\n");
                 },
 
                 // ---------------------------------------------------------------

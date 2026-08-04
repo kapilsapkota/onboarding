@@ -16,10 +16,6 @@ use Spatie\Browsershot\Browsershot;
 
 class QuoteController extends Controller
 {
-    // -----------------------------------------------------------------------
-    // Index
-    // -----------------------------------------------------------------------
-
     public function index(Request $request): View
     {
         $query = Quote::withCount('items')
