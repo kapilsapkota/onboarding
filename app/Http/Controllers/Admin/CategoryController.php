@@ -7,11 +7,15 @@ use App\Models\Category;
 use App\Services\ImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class CategoryController extends Controller
 {
-    public function __construct(protected ImageService $imageService) {}
+    public function __construct(protected ImageService $imageService)
+    {
+    }
 
     public function index(Request $request): View
     {
@@ -24,7 +28,7 @@ class CategoryController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', (bool) $request->get('status'));
+            $query->where('is_active', (bool)$request->get('status'));
         }
 
         $categories = $query->paginate(20)->withQueryString();
@@ -44,7 +48,7 @@ class CategoryController extends Controller
 
         if ($request->hasFile('upload_icon')) {
             try {
-                $validated['icon'] = $this->imageService->store($request->file('upload_icon'),'categories/icon');
+                $validated['icon'] = $this->imageService->store($request->file('upload_icon'), 'categories/icon');
             } catch (\RuntimeException $e) {
                 return back()->withInput()->withErrors(['upload_icon' => $e->getMessage()]);
             }
@@ -75,10 +79,10 @@ class CategoryController extends Controller
             $validated['icon'] = null;
         }
 
-        if ($request->hasFile('upload_icon')) {
+        if ($request->hasFile('icon-input')) {
             try {
                 $oldPath = $category->icon;
-                $validated['icon'] = $this->imageService->store($request->file('upload_icon'),'categories/icon');
+                $validated['icon'] = $this->imageService->store($request->file('icon-input'), 'categories/icon');
                 if ($oldPath) {
                     $this->imageService->delete($oldPath);
                 }
@@ -110,11 +114,11 @@ class CategoryController extends Controller
     private function validateCategory(Request $request, ?Category $category = null): array
     {
         $data = $request->validate([
-            'name'              => ['required', 'string', 'max:255'],
-            'is_active'         => ['nullable', 'boolean'],
-            'sort_order'        => ['nullable', 'integer', 'min:0'],
-            'upload_icon'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif,svg', 'max:5120'],
-            'remove_icon'       => ['nullable', 'boolean'],
+            'name' => ['required', 'string', 'max:255'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'upload_icon' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif,svg', 'max:5120'],
+            'remove_icon' => ['nullable', 'boolean'],
         ]);
 
         if (isset($data['scope_items'])) {
@@ -122,10 +126,55 @@ class CategoryController extends Controller
         }
         $data['slug'] = str($data['name'])->slug();
         $data['parent_id'] = $request->filled('parent_id') ? $request->input('parent_id') : null;
-        $data['is_active'] = (bool) ($data['is_active'] ?? false);
+        $data['is_active'] = (bool)($data['is_active'] ?? false);
 
         unset($data['upload_icon'], $data['remove_icon']);
 
         return $data;
+    }
+
+    public function duplicate(Category $category): RedirectResponse
+    {
+        $newCategory = $category->replicate();
+
+        $newCategory->name = $category->name . ' Copy';
+
+        $slug = str($newCategory->name)->slug();
+
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (Category::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter++;
+        }
+
+        $newCategory->slug = $slug;
+
+
+        if ($category->icon) {
+            try {
+
+                $newCategory->icon = $this->imageService->copy(
+                    $category->icon,
+                    'categories/icon'
+                );
+
+            } catch (\RuntimeException $e) {
+
+                return back()
+                    ->withErrors([
+                        'icon' => $e->getMessage()
+                    ]);
+
+            }
+        }
+
+
+        $newCategory->save();
+
+
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('success','Category duplicated successfully.');
     }
 }

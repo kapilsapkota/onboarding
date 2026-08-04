@@ -102,31 +102,15 @@
                         </div>
 
                         {{-- Icon --}}
+
                         <div class="md:col-span-2">
 
-                            <label class="block text-sm font-medium mb-2">
-                                Icon
-                            </label>
-
-                            @if(!empty($category?->icon))
-                                <div class="mb-4 flex items-center gap-3">
-                                    <img src="{{ Storage::url($category->icon) }}"
-                                         class="w-14 h-14 rounded object-contain border p-1">
-
-                                    <label class="text-red-500 text-sm">
-                                        <input type="checkbox"
-                                               name="remove_icon"
-                                               value="1">
-                                        Remove
-                                    </label>
-                                </div>
-                            @endif
-
-                            <input
-                                type="file"
-                                name="upload_icon"
-                                accept="image/*"
-                                class="block w-full rounded-lg border border-dashed p-5">
+                            <x-image-upload
+                                name="icon"
+                                remove-name="remove_icon"
+                                label="Category Icon"
+                                :current="$category->icon ?? null"
+                            />
                         </div>
 
                         {{-- Sort --}}

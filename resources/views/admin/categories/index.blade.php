@@ -77,9 +77,16 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
                                 @if($category->icon)
-                                    <img src="{{ asset('storage/'.$category->icon) }}"
-                                         alt="{{ $category->name }}"
-                                         class="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100">
+                                    <x-image-preview
+                                        src="{{ asset('storage/'.$category->icon) }}"
+                                        alt="{{ $category->name }}"
+                                        thumbClass="w-14 h-14"
+                                        thumbImageClass="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100"
+                                        previewClass="w-[36rem] h-[36rem]"
+                                    />
+{{--                                    <img src="{{ asset('storage/'.$category->icon) }}"--}}
+{{--                                         alt="{{ $category->name }}"--}}
+{{--                                         class="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100">--}}
                                 @else
                                     <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,16 +142,39 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </a>
-                                <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" class="inline"
-                                      onsubmit="return confirm('Delete \'{{ $category->name }}\'? This cannot be undone.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-gray-400 hover:text-red-500 transition" title="Delete">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
-                                </form>
+
+                                {{-- Duplicate --}}
+                                <button type="button"
+                                        onclick="openDuplicateModal('{{ $category->id }}','{{ addslashes($category->name) }}')"
+                                        class="text-gray-400 hover:text-green-500 transition"
+                                        title="Duplicate">
+
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                </button>
+
+                                <button type="button"
+                                        onclick="openDeleteSimpleModal(
+            '{{ route('admin.categories.destroy',$category) }}',
+            '{{ $category->name }}'
+        )"
+                                        class="text-gray-400 hover:text-red-500 transition"
+                                        title="Delete">
+
+                                    <svg class="w-4 h-4"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         viewBox="0 0 24 24">
+
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+
+                                    </svg>
+
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -167,6 +197,9 @@
                     {{ $categories->links() }}
                 </div>
             @endif
+
+            <x-modals.duplicate/>
+            <x-modals.delete />
         </div>
 
     </div>

@@ -115,6 +115,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])    ->name('quotes.duplicate');
 
     Route::resource('categories', CategoryController::class);
+    Route::post('/categories/{category}/duplicate',
+        [CategoryController::class,'duplicate']
+    )->name('categories.duplicate');
     Route::resource('products', ProductController::class);
 });
 

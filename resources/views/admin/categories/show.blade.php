@@ -152,23 +152,73 @@
                     <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
                         Appearance
                     </h3>
+
                     <div class="flex items-center gap-3 mb-4">
-                        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-3xl"
-                             style="background-color: {{ $category->color ?? '#e5e7eb' }}">
+
+                        <div x-data="{show:false}"
+                             class="relative">
+
+                            <div class="w-14 h-14 rounded-xl flex items-center justify-center text-3xl cursor-zoom-in overflow-hidden"
+                                 style="background-color: {{ $category->color ?? '#e5e7eb' }}"
+                                 @mouseenter="show=true"
+                                 @mouseleave="show=false">
+
+                                @if($category->icon)
+
+                                    <img src="{{ asset('storage/'.$category->icon) }}"
+                                         alt="{{ $category->name }}"
+                                         class="w-full h-full object-contain">
+
+                                @endif
+
+                            </div>
+
+
+                            {{-- Large Preview --}}
                             @if($category->icon)
-                                <img src="{{ asset('storage/'.$category->icon) }}"
-                                     alt="{{ $category->name }}"
-                                     class="w-full h-full object-cover">
+
+                                <div x-show="show"
+                                     x-transition
+                                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
+
+                                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-3">
+
+                                        <div class="w-[28rem] h-[28rem] rounded-xl flex items-center justify-center overflow-hidden"
+                                             style="background-color: {{ $category->color ?? '#e5e7eb' }}">
+
+                                            <img src="{{ asset('storage/'.$category->icon) }}"
+                                                 alt="{{ $category->name }}"
+                                                 class="w-full h-full object-contain">
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
                             @endif
+
                         </div>
+
+
                         <div>
-                            <div class="text-xs text-gray-400 mb-0.5">Colour</div>
+                            <div class="text-xs text-gray-400 mb-0.5">
+                                Colour
+                            </div>
+
                             <div class="flex items-center gap-1.5">
+
                                 <div class="w-4 h-4 rounded border border-gray-200 dark:border-gray-600"
-                                     style="background-color: {{ $category->color ?? '#e5e7eb' }}"></div>
-                                <code class="text-xs text-gray-600 dark:text-gray-300">{{ $category->color ?? '—' }}</code>
+                                     style="background-color: {{ $category->color ?? '#e5e7eb' }}">
+                                </div>
+
+                                <code class="text-xs text-gray-600 dark:text-gray-300">
+                                    {{ $category->color ?? '—' }}
+                                </code>
+
                             </div>
                         </div>
+
                     </div>
                 </div>
 

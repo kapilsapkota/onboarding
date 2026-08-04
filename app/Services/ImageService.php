@@ -45,6 +45,28 @@ class ImageService
         return $this->storeRaster($file, $directory);
     }
 
+    public function copy(string $path, string $directory): ?string
+    {
+        $disk = Storage::disk(self::DISK);
+
+        if (!$disk->exists($path)) {
+            return null;
+        }
+
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        $filename = Str::uuid() . '.' . $extension;
+
+        $newPath = trim($directory, '/') . '/' . $filename;
+
+        $disk->copy(
+            $path,
+            $newPath
+        );
+
+        return $newPath;
+    }
+
     /**
      * Delete a previously stored logo by its storage path.
      */
