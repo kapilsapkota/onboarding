@@ -69,7 +69,7 @@ class OnboardingController extends Controller
             'service_providers'          => isset($serviceProviders) ? json_encode($serviceProviders)   : null,
             'status'         => 'active',
             'mandate_status'      => 'pending',
-            'stripe_payment_method_id' => $data['stripe_payment_method_id'],
+            'stripe_payment_method_id' => $data['stripe_payment_method_id'] ?? null,
         ]);
 
         if (!empty($data['contacts'])) {

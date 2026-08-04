@@ -56,16 +56,16 @@ return new class extends Migration
                 ->nullOnDelete();
         });
 
-        Schema::table('xero_invoices', function (Blueprint $table) {
-            $table->unsignedBigInteger('xero_repeating_invoice_id')
-                ->nullable()
-                ->index()
-                ->after('xero_branding_theme_id');
-
-            $table->foreign('xero_repeating_invoice_id')
-                ->references('id')->on('xero_repeating_invoices')
-                ->nullOnDelete();
-        });
+//        Schema::table('xero_invoices', function (Blueprint $table) {
+//            $table->unsignedBigInteger('xero_repeating_invoice_id')
+//                ->nullable()
+//                ->index()
+//                ->after('xero_branding_theme_id');
+//
+//            $table->foreign('xero_repeating_invoice_id')
+//                ->references('id')->on('xero_repeating_invoices')
+//                ->nullOnDelete();
+//        });
     }
 
     public function down(): void
