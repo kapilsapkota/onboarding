@@ -203,6 +203,7 @@
             width: 100%;
             height: 210mm;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .item-content-cell {
@@ -213,16 +214,21 @@
 
         .item-image-cell {
             width: 50%;
+            height: 210mm;
             padding: 0;
             vertical-align: top;
-            overflow: hidden;
             background: white;
+
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
         }
 
         .item-image-cell img {
             width: 100%;
             height: 210mm;
             display: block;
+            object-fit: cover;
         }
 
         .item-title {
@@ -429,6 +435,34 @@
             color: #f97316;
             line-height: 1.7;
         }
+        .category-divider-page {
+            position: relative;
+            width: 100%;
+            height: 100vh; /* full page height */
+            overflow: hidden;
+            page-break-after: always;
+        }
+
+        .category-divider-image {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* fills page without distortion */
+        }
+
+        .category-divider-name {
+            position: absolute;
+            left: 0;
+            bottom: 80px; /* adjust vertical position */
+            background: #f97316; /* orange banner */
+            color: #fff;
+            padding: 20px 45px;
+            font-size: 42px;
+            font-weight: 600;
+            font-family: Arial, sans-serif;
+            z-index: 2;
+        }
     </style>
     <title>{{ $quote->quote_number }}</title>
 </head>
@@ -464,6 +498,14 @@
     <div class="quote-page">
         <div class="bleed-wrap">
             <img src="{{ $partnersSrc }}" alt="Partners" class="bleed-img">
+        </div>
+    </div>
+@endif
+
+@if($threeStepRollOutSrc)
+    <div class="quote-page">
+        <div class="bleed-wrap">
+            <img src="{{ $threeStepRollOutSrc }}" alt="Three Step" class="bleed-img">
         </div>
     </div>
 @endif
@@ -508,97 +550,88 @@
 {{--    </div>--}}
 {{--</div>--}}
 
-<div class="quote-page">
-    <div class="page-pad">
-        <div class="section-title">
-            {{ $quote->overview_title ?? 'Our 3-Step Rollout Plan' }}
-        </div>
+{{--<div class="quote-page">--}}
+{{--    <div class="page-pad">--}}
+{{--        <div class="section-title">--}}
+{{--            {{ $quote->overview_title ?? 'Our 3-Step Rollout Plan' }}--}}
+{{--        </div>--}}
 
-        <div class="stage-wrap">
-            <table class="stage-table">
-                <tr>
-                    @foreach($stageColumns as $i => $column)
-                        <td class="stage-col">
-                            <div class="stage-pill" style="background:{{ $stageAccents[$i % 3] }};">
-                                {{ $column['title'] }}
-                            </div>
-                            <ul class="stage-list">
-                                @foreach($column['items'] as $name)
-                                    <li>
-                                        <span class="stage-check">&#10003;</span>
-                                        {{ $name }}
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </td>
-                    @endforeach
-                </tr>
-            </table>
-        </div>
-    </div>
-</div>
+{{--        <div class="stage-wrap">--}}
+{{--            <table class="stage-table">--}}
+{{--                <tr>--}}
+{{--                    @foreach($stageColumns as $i => $column)--}}
+{{--                        <td class="stage-col">--}}
+{{--                            <div class="stage-pill" style="background:{{ $stageAccents[$i % 3] }};">--}}
+{{--                                {{ $column['title'] }}--}}
+{{--                            </div>--}}
+{{--                            <ul class="stage-list">--}}
+{{--                                @foreach($column['items'] as $name)--}}
+{{--                                    <li>--}}
+{{--                                        <span class="stage-check">&#10003;</span>--}}
+{{--                                        {{ $name }}--}}
+{{--                                    </li>--}}
+{{--                                @endforeach--}}
+{{--                            </ul>--}}
+{{--                        </td>--}}
+{{--                    @endforeach--}}
+{{--                </tr>--}}
+{{--            </table>--}}
+{{--        </div>--}}
+{{--    </div>--}}
+{{--</div>--}}
 
-@php
-    $grouped = $items->groupBy(fn($item) => $item->product->category->name ?? $item->category_name);
-@endphp
-
-@foreach($grouped as $categoryName => $categoryItems)
+@foreach($groupedItems as $key => $category)
 
     {{-- CATEGORY DIVIDER PAGE --}}
-    <div class="quote-page category-divider-page">
-        @php $category = $categoryItems->first()->product->category ?? null; @endphp
+    @if($category && isset($category['image']))
+        <div class="quote-page category-divider-page">
+            <img
+                src="{{ $category['image'] }}"
+                alt="{{ $category['name'] ?? '' }}"
+                class="category-divider-image"
+            >
 
-        <div class="category-divider-content">
-            <div class="category-divider-name">{{ $categoryName }}</div>
-
-            @if($category?->icon)
-                <img
-                    src="{{ Str::startsWith($category->icon,'http') ? $category->icon : Storage::url($category->icon) }}"
-                    alt="{{ $categoryName }}"
-                    class="category-divider-image"
-                >
-            @endif
+            <div class="category-divider-name">
+                {{ $category['name'] ?? '' }}
+            </div>
         </div>
-    </div>
+    @endif
 
     {{-- ITEMS IN THIS CATEGORY --}}
-    @foreach($categoryItems as $item)
-        <div class="quote-page">
-            <table class="item-table">
-                <tr>
-                    <td class="item-content-cell">
-                        <div class="item-title">{{ $item->product_name }}</div>
-                        <div class="item-scope-label">General Scope of Works</div>
+    @if($category && isset($category['items']))
+        @foreach($category['items'] as $item)
+            <div class="quote-page">
+                <table class="item-table">
+                    <tr>
+                        <td class="item-content-cell">
+                            <div class="item-title">{{ $item->product_name }}</div>
+                            <div class="item-scope-label">General Scope of Works</div>
 
-                        @if($item->scope_of_works)
-                            <div class="item-description">
-                                {!! nl2br(e(trim($item->scope_of_works))) !!}
+                            @if($item->scope_of_works)
+                                <div class="item-description">
+                                    {!! nl2br(e(trim($item->scope_of_works))) !!}
+                                </div>
+                            @endif
+
+                            <div class="item-price">
+                                Total Price ${{ number_format($item->unit_price, 0) }} + GST {{ ucfirst($item->frequency) }}
                             </div>
-                        @endif
 
-                        <div class="item-price">
-                            Total Price ${{ number_format($item->unit_price, 0) }} + GST {{ ucfirst($item->frequency) }}
-                        </div>
+                            @if($item->notes)
+                                <div class="item-note">
+                                    <strong>Note:</strong> {{ $item->notes }}
+                                </div>
+                            @endif
+                        </td>
 
-                        @if($item->notes)
-                            <div class="item-note">
-                                <strong>Note:</strong> {{ $item->notes }}
-                            </div>
-                        @endif
-                    </td>
-
-                    <td class="item-image-cell">
-                        @if($item->product_image_src)
-                            <img src="{{ $item->product_image_src }}" alt="{{ $item->product_name }}">
-                        @else
-                            <img src="{{ $defaultSrc }}" alt="{{ $item->product_name }}">
-                        @endif
-                    </td>
-                </tr>
-            </table>
-        </div>
-    @endforeach
-
+                        <td class="item-image-cell"
+                            style="background-image: url('{{ $item->product_image_src ?? $defaultSrc }}');">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        @endforeach
+    @endif
 @endforeach
 
 {{--@foreach($items as $item)--}}

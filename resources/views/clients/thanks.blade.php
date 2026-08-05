@@ -38,12 +38,25 @@
         You're all set.
     </h1>
 
-    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
         Your profile has been received. We'll reach out if we need anything else to complete your file — otherwise, we've got everything we need to get started.
     </p>
 
-    <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
-        <p class="text-xs text-gray-400 dark:text-gray-500">You can safely close this window.</p>
+    <div class="border-t border-gray-100 dark:border-gray-700 space-y-4">
+
+        <a
+           href="/"
+            type="button"
+            class="inline-flex items-center px-5 py-2.5 rounded-lg font-medium text-white transition hover:opacity-90"
+            style="background: var(--wld-gold);"
+        >
+            ← Go Back
+        </a>
+
+        <p class="text-xs text-gray-400 dark:text-gray-500">
+            You can safely close this window.
+        </p>
+
     </div>
 
 </div>

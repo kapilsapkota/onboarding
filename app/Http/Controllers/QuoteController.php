@@ -137,9 +137,57 @@ class QuoteController extends Controller
 
     public function show(Quote $quote): View
     {
-        $quote->load('items.product:id,name,image_url');
+        $quote->load('items.product.category');
+        $defaultSrc = asset('images/default.png');
+        $coverSrc    = asset('images/img.png');
+        $closingSrc  = asset('images/media/image67.jpg');
+        $partnersSrc = asset('images/partners_.png');
+        $threeStepRollOutSrc = asset('images/threestep.jpeg');
+        $items = $quote->items->map(function ($item) use ($defaultSrc) {
 
-        return view('admin.quotes.show', compact('quote'));
+            if (
+                $item->product &&
+                $item->product->image_url &&
+                file_exists(public_path('storage/' . $item->product->image_url))
+            ) {
+                $item->product_image_src = asset(
+                    'storage/' . $item->product->image_url
+                );
+            } else {
+                $item->product_image_src = $defaultSrc;
+            }
+
+            return $item;
+        });
+
+        $groupedItems = $items
+            ->groupBy(function ($item) {
+                return $item->product?->category?->name
+                    ?? $item->category_name
+                    ?? '';
+            })
+            ->map(function ($categoryItems, $categoryName) {
+
+                $category = $categoryItems->first()?->product?->category;
+
+                return [
+                    'name' => $categoryName,
+
+                    'image' => $category?->icon
+                        ? asset('storage/' . $category->icon)
+                        : null,
+
+                    'items' => $categoryItems,
+                ];
+            })
+            ->values();
+
+        return view('admin.quotes.show', compact(
+            'quote',
+            'items',
+            'groupedItems',
+            'defaultSrc',
+            'coverSrc','closingSrc','partnersSrc','threeStepRollOutSrc'));
     }
 
     // -----------------------------------------------------------------------
@@ -149,6 +197,7 @@ class QuoteController extends Controller
     public function edit(Quote $quote): View
     {
         $quote->load('items.product');
+
 
         $categories = Category::active()
             ->with(['activeProducts'])
@@ -301,89 +350,207 @@ class QuoteController extends Controller
             ->with('success', 'Quote duplicated — review and save changes.');
     }
 
+//    public function pdf(Request $request, Quote $quote)
+//    {
+//        ini_set('memory_limit', '512M');
+//        set_time_limit(120);
+//
+//        $pageW = 1122;
+//        $pageH = 794;
+//
+//        $halfW = 561;
+//
+//
+//        $coverSrc = self::cachedBase64('images/img.png', $pageW, $pageH);
+//
+//        $defaultSrc = self::cachedBase64('images/default.png', $halfW, $pageH);
+//
+//        $closingSrc = self::cachedBase64('images/media/image67.jpg', $pageW, $pageH);
+//
+//        $partnersSrc = self::cachedBase64('images/partners_.png', $pageW, $pageH);
+//
+//        $configImages = collect(config('quote.images') ?? [])
+//            ->map(fn ($img) => [
+//                'placeholder' => $img['placeholder'],
+//                'src' => self::cachedBase64(
+//                    $img['image'],
+//                    $pageW,
+//                    $pageH
+//                ),
+//            ])
+//            ->filter(fn ($img) => $img['src'] !== null)
+//            ->values();
+//
+//        $clientLogoSrc = null;
+//        if ($quote->logo_url) {
+//            $clientLogoSrc = self::cropToBase64(
+//                public_path('storage/' . $quote->logo_url), 360, 200, false  // fit, don't crop
+//            );
+//        }
+//        $quote->load('items.product:id,name,image_url,description');
+//        $items = $quote->items->each(function ($item) use ($halfW, $pageH) {
+//            $item->product_image_src = $item->product?->image_url
+//                ? self::cachedBase64(
+//                    'storage/' . $item->product->image_url,
+//                    $halfW,
+//                    $pageH
+//                )
+//                : null;
+//        });
+//
+//        // Partner logos — fit inside cell, no crop
+////        $partners = \App\Models\Company::all()->map(function ($partner) {
+////            $path = public_path('images/' . $partner['logo']);
+////            return [
+////                'name' => $partner['name'],
+////                'src'  => file_exists($path)
+////                    ? self::cropToBase64($path, 280, 100, false)
+////                    : null,
+////            ];
+////        });
+//
+//        $data = [
+//            'quote'              => $quote,
+//            'items'              => $items,
+////            'partners'           => $partners,
+//            'partnersSrc'        => $partnersSrc,
+//            'configImages'       => $configImages,
+//            'coverSrc'           => $coverSrc,
+//            'defaultSrc'         => $defaultSrc,
+//            'closingSrc'         => $closingSrc,
+//            'clientLogoSrc'      => $clientLogoSrc,
+//            'stageColumns'       => collect(config('quote.stage_columns')),
+//            'stageAccents'       => ['#fbbf24', '#f97316', '#c2410c'],
+//            'termsAndConditions' => $quote->terms_and_conditions
+//                ?: config('quote.default_terms'),
+//        ];
+//
+//        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotes.pdf', $data)
+//            ->setPaper('a4', 'landscape')
+//            ->setOption('isRemoteEnabled', true)
+//            ->setOption('isFontSubsettingEnabled', true)
+//            ->setOption('defaultMediaType', 'print')
+//            ->setOption('dpi', 96);
+//
+//        return $pdf->stream($quote->quote_number . '.pdf',['Attachment' => false]);
+//    }
+
+
     public function pdf(Request $request, Quote $quote)
     {
-        ini_set('memory_limit', '512M');
-        set_time_limit(120);
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
 
-        $pageW = 1122;
-        $pageH = 794;
+        $quote->load([
+            'items.product.category'
+        ]);
 
-        $halfW = 561;
+        // Static images
+        $coverSrc    = public_path('images/img.png');
+        $defaultSrc  = public_path('images/default.png');
+        $closingSrc  = public_path('images/media/image67.jpg');
+        $partnersSrc = public_path('images/partners_.png');
+        $threeStepRollOutSrc = public_path('images/threestep.jpeg');
 
-
-        $coverSrc = self::cachedBase64('images/img.png', $pageW, $pageH);
-
-        $defaultSrc = self::cachedBase64('images/default.png', $halfW, $pageH);
-
-        $closingSrc = self::cachedBase64('images/media/image67.jpg', $pageW, $pageH);
-
-        $partnersSrc = self::cachedBase64('images/partners_.png', $pageW, $pageH);
-
-        $configImages = collect(config('quote.images') ?? [])
-            ->map(fn ($img) => [
-                'placeholder' => $img['placeholder'],
-                'src' => self::cachedBase64(
-                    $img['image'],
-                    $pageW,
-                    $pageH
-                ),
-            ])
-            ->filter(fn ($img) => $img['src'] !== null)
+        // Gallery pages
+        $configImages = collect(config('quote.images', []))
+            ->map(function ($img) {
+                return [
+                    'placeholder' => $img['placeholder'],
+                    'src' => public_path($img['image']),
+                ];
+            })
+            ->filter(fn ($img) => file_exists($img['src']))
             ->values();
 
+        // Client logo
         $clientLogoSrc = null;
-        if ($quote->logo_url) {
-            $clientLogoSrc = self::cropToBase64(
-                public_path('storage/' . $quote->logo_url), 360, 200, false  // fit, don't crop
-            );
+
+        if (
+            $quote->logo_url &&
+            file_exists(public_path('storage/' . $quote->logo_url))
+        ) {
+            $clientLogoSrc = public_path('storage/' . $quote->logo_url);
         }
-        $quote->load('items.product:id,name,image_url,description');
-        $items = $quote->items->each(function ($item) use ($halfW, $pageH) {
-            $item->product_image_src = $item->product?->image_url
-                ? self::cachedBase64(
-                    'storage/' . $item->product->image_url,
-                    $halfW,
-                    $pageH
-                )
-                : null;
+
+        // Product images
+        $items = $quote->items->map(function ($item) use ($defaultSrc) {
+
+            if (
+                $item->product &&
+                $item->product->image_url &&
+                file_exists(public_path('storage/' . $item->product->image_url))
+            ) {
+                $item->product_image_src = public_path(
+                    'storage/' . $item->product->image_url
+                );
+            } else {
+                $item->product_image_src = $defaultSrc;
+            }
+
+            return $item;
         });
 
-        // Partner logos — fit inside cell, no crop
-//        $partners = \App\Models\Company::all()->map(function ($partner) {
-//            $path = public_path('images/' . $partner['logo']);
-//            return [
-//                'name' => $partner['name'],
-//                'src'  => file_exists($path)
-//                    ? self::cropToBase64($path, 280, 100, false)
-//                    : null,
-//            ];
-//        });
+        $groupedItems = $items
+            ->groupBy(function ($item) {
+                return $item->product?->category?->name
+                    ?? $item->category_name
+                    ?? '';
+            })
+            ->map(function ($categoryItems, $categoryName) {
+
+                $category = $categoryItems->first()?->product?->category;
+
+                return [
+                    'name' => $categoryName,
+
+                    'image' => $category?->icon
+                        ? public_path('storage/' . $category->icon)
+                        : null,
+
+                    'items' => $categoryItems,
+                ];
+            })
+            ->values();
 
         $data = [
-            'quote'              => $quote,
-            'items'              => $items,
-//            'partners'           => $partners,
-            'partnersSrc'        => $partnersSrc,
-            'configImages'       => $configImages,
-            'coverSrc'           => $coverSrc,
-            'defaultSrc'         => $defaultSrc,
-            'closingSrc'         => $closingSrc,
-            'clientLogoSrc'      => $clientLogoSrc,
-            'stageColumns'       => collect(config('quote.stage_columns')),
-            'stageAccents'       => ['#fbbf24', '#f97316', '#c2410c'],
-            'termsAndConditions' => $quote->terms_and_conditions
-                ?: config('quote.default_terms'),
-        ];
+            'quote' => $quote,
+            'items' => $items,
+            'groupedItems' => $groupedItems,
+            'coverSrc' => $coverSrc,
+            'defaultSrc' => $defaultSrc,
+            'closingSrc' => $closingSrc,
+            'partnersSrc' => $partnersSrc,
+            'threeStepRollOutSrc' => $threeStepRollOutSrc,
+            'clientLogoSrc' => $clientLogoSrc,
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotes.pdf', $data)
+            'configImages' => $configImages,
+
+            'stageColumns' => collect(config('quote.stage_columns')),
+            'stageAccents' => [
+                '#fbbf24',
+                '#f97316',
+                '#c2410c',
+            ],
+
+            'termsAndConditions' =>
+                $quote->terms_and_conditions
+                    ?: config('quote.default_terms'),
+        ];
+        $pdf = Pdf::loadView('admin.quotes.pdf', $data)
             ->setPaper('a4', 'landscape')
             ->setOption('isRemoteEnabled', true)
-            ->setOption('isFontSubsettingEnabled', true)
+            ->setOption('isFontSubsettingEnabled', false)
             ->setOption('defaultMediaType', 'print')
-            ->setOption('dpi', 96);
+            ->setOption('dpi', 96)
+            ->setWarnings(false);
 
-        return $pdf->stream($quote->quote_number . '.pdf',['Attachment' => false]);
+        return $pdf->stream(
+            "{$quote->id}.pdf",
+            [
+                'Attachment' => false,
+            ]
+        );
     }
 
     private static function cachedBase64(string $path, int $width, int $height): ?string

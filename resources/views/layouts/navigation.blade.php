@@ -12,7 +12,7 @@
 
 <!-- Left Hand Sidebar Block Architecture Container -->
 <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-       class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 transform transition-transform duration-200 ease-in-out md:translate-x-0 h-screen"
+       class="print:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 transform transition-transform duration-200 ease-in-out md:translate-x-0 h-screen"
        x-cloak>
 
     <!-- Branding Header Panel Container -->
