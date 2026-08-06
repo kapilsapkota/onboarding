@@ -89,7 +89,7 @@ class Quote extends Model
 
     public function recalculateTotals(): void
     {
-        $subtotal = $this->items()->sum('unit_price');
+        $subtotal = $this->items()->sum('unit_price') + $this->items()->sum('setup_fee');
         $gst      = round($subtotal * config('quote.gst_rate',0.10), 2);
 
         $this->withoutEvents(function () use ($subtotal, $gst) {
@@ -119,6 +119,10 @@ class Quote extends Model
     public function scopeStatus($query, string $status)
     {
         return $query->where('status', $status);
+    }
+    public function signatures() : HasMany
+    {
+        return $this->hasMany(QuoteSignature::class);
     }
 
 }

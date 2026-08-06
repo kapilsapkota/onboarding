@@ -78,7 +78,7 @@
                     '' => 'All Frequencies',
                     'once_off' => 'Once Off',
                     'monthly'  => 'Monthly',
-                    'yearly'   => 'Yearly',
+                    'annually'   => 'Annually',
                 ] as $val => $label)
                     <a href="{{ route('admin.products.index', array_merge(request()->except('frequency', 'page'), $val !== '' ? ['frequency' => $val] : [])) }}"
                        class="px-3 py-1.5 rounded-md font-medium transition
@@ -111,9 +111,13 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
                                 @if($product->image_url)
-                                    <img src="{{ asset('storage/'.$product->image_url) }}"
-                                         alt="{{ $product->name }}"
-                                         class="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100">
+                                    <x-image-preview
+                                        src="{{ asset('storage/'.$product->image_url) }}"
+                                        alt="{{ $product->name }}"
+                                        thumbClass="w-16 h-16"
+                                        thumbImageClass="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100"
+                                        previewClass="w-[36rem] h-[36rem]"
+                                    />
                                 @else
                                     <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -19,6 +19,7 @@ class Product extends Model
         'key_scope_keyword',
         'price_type',
         'fixed_price',
+        'setup_fee',
         'price_min',
         'price_max',
         'price_increment',
@@ -28,11 +29,13 @@ class Product extends Model
         'notes',
         'is_active',
         'sort_order',
+        'quote_default'
     ];
 
     protected $casts = [
         'scope_items'     => 'array',
         'fixed_price'     => 'decimal:2',
+        'setup_fee'       => 'decimal:2',
         'price_min'       => 'decimal:2',
         'price_max'       => 'decimal:2',
         'price_increment' => 'decimal:2',

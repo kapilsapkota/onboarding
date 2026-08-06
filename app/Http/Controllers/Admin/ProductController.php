@@ -20,7 +20,7 @@ class ProductController extends Controller
 
         $query = Product::with('category')->orderBy('sort_order')->orderBy('name');
 
-        if ($search = $request->get('search')) {
+        if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('short_name', 'like', "%{$search}%")
@@ -28,11 +28,11 @@ class ProductController extends Controller
             });
         }
 
-        $query->when($request->get('category'), fn ($q, $slug) =>
+        $query->when($request->input('category'), fn ($q, $slug) =>
         $q->whereHas('category', fn ($q) => $q->where('slug', $slug))
         );
 
-        $query->when($request->get('frequency'), function ($q, $frequency) {
+        $query->when($request->input('frequency'), function ($q, $frequency) {
             if ($frequency === 'once_off') {
                 $q->whereNull('frequency')->orWhereNotIn('frequency', ['monthly', 'quarterly', 'annually']);
             } else {
@@ -129,7 +129,7 @@ class ProductController extends Controller
     private function validateProduct(Request $request, ?Product $product = null): array
     {
         $data = $request->validate([
-            'category_id'       => ['nullable', 'exists:categories,id'],
+            'category_id'       => ['required', 'exists:categories,id'],
             'name'              => ['required', 'string', 'max:255'],
             'short_name'        => ['nullable', 'string', 'max:100'],
             'description'       => ['nullable', 'string'],
@@ -142,6 +142,7 @@ class ProductController extends Controller
             'price_max'         => ['nullable', 'numeric', 'min:0', 'gte:price_min'],
             'price_increment'   => ['nullable', 'numeric', 'min:0.01'],
             'hourly_rate'       => ['nullable', 'numeric', 'min:0'],
+            'setup_fee'         => ['nullable', 'numeric', 'min:0'],
             'frequency'         => ['nullable', 'in:once_off,monthly,quarterly,yearly'],
             'notes'             => ['nullable', 'string'],
             'is_active'         => ['nullable', 'boolean'],

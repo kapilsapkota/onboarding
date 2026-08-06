@@ -76,13 +76,13 @@ class QuoteItem extends Model
     // Accessors
     // -----------------------------------------------------------------------
 
-    public function getFrequencyLabelAttribute(): string
+    public function getFrequencyLabelAttribute()
     {
         return match ($this->frequency) {
             'monthly'   => 'Monthly',
             'quarterly' => 'Quarterly',
-            'yearly'    => 'Yearly',
-            default     => 'Once Off',
+            'annually'    => 'Annually',
+            default     => null,
         };
     }
 

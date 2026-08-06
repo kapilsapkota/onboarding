@@ -36,7 +36,9 @@
 
                     <img src="{{ $src }}"
                          alt="{{ $alt }}"
-                         class="{{ $previewImageClass }}">
+                         class="{{ $previewImageClass }}"
+                         loading="lazy"
+                    >
 
                 </div>
 

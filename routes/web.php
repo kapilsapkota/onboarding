@@ -135,5 +135,5 @@ Route::post('/webhooks/stripe', StripeWebhookController::class)
 Route::post('/webhooks/xero', \App\Http\Controllers\Admin\XeroWebhookController::class)
     ->name('webhooks.xero');
 
-Route::get('admin/quotes/{quote}/sign', [QuoteController::class, 'showSignForm'])->name('admin.quotes.sign');
-Route::post('admin/quotes/{quote}/save-signature', [QuoteController::class, 'saveSignature'])->name('admin.quotes.save-signature');
+Route::get('quotes/{quote}/sign', [QuoteController::class, 'showSignForm'])->name('quotes.sign');
+Route::post('quotes/{quote}/save-signature', [QuoteController::class, 'saveSignature'])->name('quotes.save-signature');

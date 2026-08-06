@@ -18,7 +18,7 @@
         }
 
         body {
-            font-family: DejaVu Sans, Arial, sans-serif;
+            font-family:  Arial, sans-serif;
             color: #1f2937;
             margin: 0;
             padding: 0;
@@ -239,25 +239,18 @@
         }
 
         .item-scope-label {
-            font-size: 12px;
-            font-weight: 700;
+            font-weight: bolder;
             color: #374151;
             margin-bottom: 10px;
         }
 
-        .item-scope-list {
-            list-style: none;
-            padding: 0; margin: 0 0 24px 0;
-            font-size: 12px;
-            color: #374151;
-        }
 
         .item-scope-list li { margin-bottom: 6px; }
 
         .item-price {
-            font-size: 14px;
-            font-weight: bold;
+            font-weight: bolder;
             color: #111827;
+            margin-top: 10px;
         }
 
         .item-note {
@@ -614,7 +607,7 @@
                             @endif
 
                             <div class="item-price">
-                                Total Price ${{ number_format($item->unit_price, 0) }} + GST {{ ucfirst($item->frequency) }}
+                                Total Price ${{ number_format($item->unit_price, 0) }} + GST @if($item->frequency_label) {{ $item->frequency_label }}@endif
                             </div>
 
                             @if($item->notes)

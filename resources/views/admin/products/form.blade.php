@@ -310,6 +310,7 @@ SEO setup"
                             </div>
                         </div>
 
+                        {{-- Setup Fee --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
                             <select name="frequency"
@@ -322,6 +323,24 @@ SEO setup"
                                 @endforeach
                             </select>
                         </div>
+
+                        <div id="field-setup-fee" class="sm:col-span-1">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Setup Fee ($)
+                                </label>
+
+                                <input
+                                    type="number"
+                                    name="setup_fee"
+                                    step="0.01"
+                                    min="0"
+                                    value="{{ old('setup_fee', $product->setup_fee ?? '') }}"
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="0.00">
+                            </div>
+                        </div>
+
 
                     </div>
                 </div>

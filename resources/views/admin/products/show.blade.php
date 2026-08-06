@@ -67,8 +67,16 @@
                 <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6">
                     <div class="flex items-start gap-4">
                         @if($product->image_url)
-                            <img src="{{ asset('storage/'.$product->image_url) }}" alt="{{ $product->name }}"
-                                 class="w-16 h-16 rounded-xl object-cover flex-shrink-0 bg-gray-100">
+                            <x-image-preview
+                                src="{{ asset('storage/'.$product->image_url) }}"
+                                alt="{{ $product->name }}"
+                                thumbClass="w-16 h-16"
+                                thumbImageClass="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100"
+                                previewClass="w-[36rem] h-[36rem]"
+                            />
+{{--                            <img src="{{ asset('storage/'.$product->image_url) }}"--}}
+{{--                                 alt="{{ $product->name }}"--}}
+{{--                                 class="w-16 h-16 object-cover">--}}
                         @else
                             <div class="w-16 h-16 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                                 <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,7 +98,9 @@
                     </div>
 
                     @if($product->description)
-                        <p class="mt-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{{ $product->description }}</p>
+                        <p class="mt-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                            {!! $product->description !!}
+                        </p>
                     @endif
                 </div>
 
@@ -209,6 +219,11 @@
                         <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
                             <dt class="text-sm text-gray-500 dark:text-gray-400">Frequency</dt>
                             <dd class="text-sm text-gray-700 dark:text-gray-300">{{ $product->frequency_label }}</dd>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <dt class="text-sm text-gray-500 dark:text-gray-400">Setup Fee</dt>
+                            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ $product->setup_fee }}</dd>
                         </div>
                     </dl>
                 </div>

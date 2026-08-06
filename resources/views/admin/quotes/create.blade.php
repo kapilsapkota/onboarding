@@ -3,7 +3,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">
-                {{ isset($quote) ? 'Edit Quote — '.$quote->quote_number : 'New Quote' }}
+                {{ isset($quote) ? 'Edit Quote - '.$quote->quote_number : 'New Quote' }}
             </h2>
 
             <a href="{{ route('admin.quotes.index') }}"
@@ -12,16 +12,6 @@
             </a>
         </div>
     </x-slot>
-
-    {{--
-        FIX 1: Removed x-init="init()" — Alpine v3 calls init() automatically
-                when it exists on the x-data object. Having both caused every
-                existing item to be pushed into the array twice.
-
-        FIX 2: Added <input type="hidden" x-ref="itemsField" name="items"> inside
-                the form. submitForm() writes JSON to this.$refs.itemsField but
-                the element was never declared, so items were never submitted.
-    --}}
 
     <div
         class="py-6 max-w-7xl mx-auto sm:px-6 lg:px-8"
@@ -123,21 +113,27 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-1">Logo</label>
+                        <label for="expires_at" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Expires At
+                        </label>
+
                         <input
-                            type="file"
-                            name="logo"
-                            accept="image/*"
+                            id="expires_at"
+                            name="expires_at"
+                            type="date"
+                            value="{{ old('expires_at', isset($quote) ? optional($quote->expires_at)->toDateString() : '') }}"
                             class="w-full rounded-lg border-gray-300"
                         >
-                        @if(!empty($quote->logo_path))
-                            <img
-                                src="{{ Storage::url($quote->logo_path) }}"
-                                class="mt-2 h-16 rounded"
-                            >
-                        @endif
                     </div>
+                </div>
 
+                <div class="p-6 grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-5">
+                    <x-image-upload
+                        name="logo"
+                        remove-name="remove_logo"
+                        label="Client Logo"
+                        :current="$quote->logo_url ?? null"
+                    />
                 </div>
 
             </div>
@@ -168,6 +164,7 @@
                             <th class="px-4 py-3 text-left w-96">Product</th>
                             <th class="px-4 py-3 text-center w-24">Qty</th>
                             <th class="px-4 py-3 text-left w-44">Unit Price</th>
+                            <th class="px-4 py-3 text-left w-44">Setup Fee</th>
                             <th class="px-4 py-3 text-center w-24">Hours</th>
                             <th class="px-4 py-3 text-center w-32">Frequency</th>
                             <th class="px-4 py-3 text-right w-36">Total</th>
@@ -283,6 +280,17 @@
                                         </select>
                                     </template>
 
+                                </td>
+
+                                {{-- SETUP FEE --}}
+                                <td class="p-4">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        x-model.number="item.setup_fee"
+                                        class="w-36 rounded-lg border-gray-300 text-right"
+                                    >
                                 </td>
 
                                 {{-- HOURS --}}
@@ -446,6 +454,7 @@
                                 unit_price:        Number(item.unit_price  ?? 0),
                                 hourly_rate:       item.hourly_rate ? Number(item.hourly_rate) : null,
                                 frequency:         item.frequency  || product?.frequency || 'once_off',
+                                setup_fee:    Number(item.setup_fee ?? 0),
                                 scope_of_works:    item.scope_of_works || '',
                             });
                         });
@@ -469,6 +478,7 @@
                                     : Number(product.price_min  ?? 0),
                                 hourly_rate:      product.hourly_rate ? Number(product.hourly_rate) : null,
                                 frequency:        product.frequency || 'once_off',
+                                setup_fee:    Number(product.setup_fee ?? 0),
                                 scope_of_works:   (product.scope_items || [])
                                     .map(s => s.replace(/^[-•]\s*/, ''))
                                     .join("\n"),
@@ -498,6 +508,7 @@
                         unit_price:       0,
                         hourly_rate:      null,
                         frequency:        'once_off',
+                        setup_fee:        0,
                         scope_of_works:   '',
                     });
                 },
@@ -553,6 +564,7 @@
                         : Number(product.price_min);
                     item.hourly_rate     = product.hourly_rate ? Number(product.hourly_rate) : null;
                     item.frequency       = product.frequency || 'once_off';
+                    item.setup_fee      = Number(product.setup_fee ?? 0);
                     item.scope_of_works = (product.scope_items || [])
                         .map(item => item.replace(/^[-•]\s*/, ''))
                         .join("\n");
@@ -589,7 +601,8 @@
 
                 lineTotal(item)
                 {
-                    return Number(item.quantity || 0) * Number(item.unit_price || 0);
+                    return Number(item.quantity || 0) * Number(item.unit_price || 0)
+                        + Number(item.setup_fee || 0);
                 },
 
                 calculateHours(item)
@@ -644,6 +657,7 @@
                             unit_price:     item.unit_price,
                             hourly_rate:    item.hourly_rate,
                             frequency:      item.frequency,
+                            setup_fee:      item.setup_fee,
                             scope_of_works: item.scope_of_works,
                         }))
                     );

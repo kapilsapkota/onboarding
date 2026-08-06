@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Spatie\Browsershot\Browsershot;
@@ -65,14 +66,16 @@ class QuoteController extends Controller
         $validated = $request->validate([
             'client_name'           => 'required|string|max:255',
             'contact_name'          => 'nullable|string|max:255',
-            'email'                 => 'nullable|email|max:255',
-            'mobile'                => 'nullable|string|max:30',
+            'email'                 => 'required|email|max:255',
+            'mobile' => 'required|string|digits:10|starts_with:04,05',
+
             'website'               => 'nullable|string|max:255',
             'logo'                  => 'nullable|image|max:2048',
             'sharepoint_file_url'   => 'nullable|string|max:500',
             'sharepoint_source_url' => 'nullable|string|max:500',
             'notes'                 => 'nullable|string',
             'items'                 => 'required|string',
+            'expires_at'            => 'nullable|date|after:+1 week',
         ]);
 
         $itemsPayload = json_decode($validated['items'], true);
@@ -82,8 +85,8 @@ class QuoteController extends Controller
         }
         $logoPath = null;
 
-        if ($request->hasFile('logo')) {
-            $logoPath = $request->file('logo')->store('quote-logos', 'public');
+        if ($request->hasFile('logo-input')) {
+            $logoPath = $request->file('logo-input')->store('quote-logos', 'public');
         }
 
         DB::transaction(function () use ($request,$validated, $itemsPayload, $logoPath) {
@@ -98,10 +101,12 @@ class QuoteController extends Controller
                 'sharepoint_source_url' => $validated['sharepoint_source_url'] ?? null,
                 'notes'                 => $validated['notes'] ?? null,
                 'status'                => 'draft',
+                'expires_at'            => $validated['expires_at'] ?? null,
             ]);
 
             foreach ($itemsPayload as $index => $item) {
                 $unitPrice = (float) ($item['unit_price'] ?? 0);
+                $setupFee = (float) ($item['setup_fee'] ?? 0);
 
                 $quote->items()->create([
                     'product_id'        => $item['product_id'] ?? null,
@@ -111,6 +116,7 @@ class QuoteController extends Controller
                     'scope_of_works'    => $item['scope_of_works'] ?? null,
                     'key_scope_keyword' => $item['key_scope_keyword'] ?? null,
                     'unit_price'        => $unitPrice,
+                    'setup_fee'        => $setupFee,
                     'hourly_rate'       => $item['hourly_rate'] ?? null,
                     'frequency'         => $item['frequency'] ?? 'once_off',
                     'image_url'         => $item['image_url'] ?? null,
@@ -137,7 +143,7 @@ class QuoteController extends Controller
 
     public function show(Quote $quote): View
     {
-        $quote->load('items.product.category');
+        $quote->load('items.product.category')->withCount('items');
         $defaultSrc = asset('images/default.png');
         $coverSrc    = asset('images/img.png');
         $closingSrc  = asset('images/media/image67.jpg');
@@ -224,14 +230,15 @@ class QuoteController extends Controller
             'sharepoint_source_url' => 'nullable|string|max:500',
             'notes'                 => 'nullable|string',
             'items'                 => 'required|string',
+            'expires_at'            => 'nullable|date|after:+1 week',
         ]);
 
         $itemsPayload = json_decode($validated['items'], true);
 
         $logoPath = null;
 
-        if ($request->hasFile('logo')) {
-            $logoPath = $request->file('logo')->store('quote-logos', 'public');
+        if ($request->hasFile('logo-input')) {
+            $logoPath = $request->file('logo-input')->store('quote-logos', 'public');
         }
 
         if (! is_array($itemsPayload) || empty($itemsPayload)) {
@@ -245,10 +252,11 @@ class QuoteController extends Controller
                 'email'                 => $validated['email'] ?? null,
                 'mobile'                => $validated['mobile'] ?? null,
                 'website'               => $validated['website'] ?? null,
-                'logo_url'              => $logoPath ?? null,
+                'logo_url'              => $logoPath ?? $quote->logo_url,
                 'sharepoint_file_url'   => $validated['sharepoint_file_url'] ?? null,
                 'sharepoint_source_url' => $validated['sharepoint_source_url'] ?? null,
                 'notes'                 => $validated['notes'] ?? null,
+                'expires_at'            => $validated['expires_at'] ?? null,
             ]);
 
             // Replace all items
@@ -294,18 +302,36 @@ class QuoteController extends Controller
     // Send Quote (mark as sent + trigger email/SMS)
     // -----------------------------------------------------------------------
 
-    public function send(Quote $quote): RedirectResponse
+    public function send(Request $request, Quote $quote)
     {
-        // TODO: dispatch SendQuoteEmail / SendQuoteSms jobs here
-        $quote->markAsSent();
+        $request->validate([
+            'send_via' => 'required|in:email,sms,both',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+            'subject' => 'nullable|string',
+            'message' => 'nullable|string',
+        ]);
 
-        return redirect()->route('admin.quotes.show', $quote)
-            ->with('success', "Quote {$quote->quote_number} marked as sent.");
+        if (in_array($request->send_via, ['email', 'both'])) {
+
+            // Generate PDF
+
+            // Mail::to($request->email)->send(...)
+        }
+
+        if (in_array($request->send_via, ['sms', 'both'])) {
+
+            // Twilio / MessageBird / Vonage
+
+        }
+
+        $quote->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        return back()->with('success', 'Quote sent successfully.');
     }
-
-    // -----------------------------------------------------------------------
-    // Update Status
-    // -----------------------------------------------------------------------
 
     public function updateStatus(Request $request, Quote $quote): RedirectResponse
     {
@@ -326,10 +352,6 @@ class QuoteController extends Controller
 
         return back()->with('success', 'Status updated.');
     }
-
-    // -----------------------------------------------------------------------
-    // Duplicate
-    // -----------------------------------------------------------------------
 
     public function duplicate(Quote $quote): RedirectResponse
     {
@@ -452,7 +474,6 @@ class QuoteController extends Controller
         $partnersSrc = public_path('images/partners_.png');
         $threeStepRollOutSrc = public_path('images/threestep.jpeg');
 
-        // Gallery pages
         $configImages = collect(config('quote.images', []))
             ->map(function ($img) {
                 return [
@@ -523,9 +544,7 @@ class QuoteController extends Controller
             'partnersSrc' => $partnersSrc,
             'threeStepRollOutSrc' => $threeStepRollOutSrc,
             'clientLogoSrc' => $clientLogoSrc,
-
             'configImages' => $configImages,
-
             'stageColumns' => collect(config('quote.stage_columns')),
             'stageAccents' => [
                 '#fbbf24',
@@ -546,7 +565,7 @@ class QuoteController extends Controller
             ->setWarnings(false);
 
         return $pdf->stream(
-            "{$quote->id}.pdf",
+            "{$quote->quote_number}.pdf",
             [
                 'Attachment' => false,
             ]
@@ -728,30 +747,88 @@ class QuoteController extends Controller
 //        // 4. Safely return the stream and purge the file from disk afterward
 //        return response()->download($path, $fileName)->deleteFileAfterSend(true);
 //    }
-    public function showSignForm(Quote $quote)
+
+    public function showSignForm(Request $request, Quote $quote)
     {
+        // 1. Check if the URL has been tampered with or has expired
+        if (! $request->hasValidSignature()) {
+            return view('admin.quotes.message', [
+                'title' => 'Link Expired',
+                'message' => 'This secure link is invalid or has expired. Please request a new link from our team.'
+            ]);
+        }
+
+        // 2. Check if the quote has ALREADY been signed (Optional but highly recommended)
+        // Assuming your Quote model has a 'signatures' relationship or an 'accepted_at' column
+        if ($quote->signatures()->exists()) {
+            return view('admin.quotes.message', [
+                'title' => 'Already Signed',
+                'message' => 'This quote has already been signed and accepted.'
+            ]);
+        }
+
+        // 3. Check business-logic expiry (e.g., if the quote itself has a valid_until date in the DB)
+        if ($quote->expires_at && $quote->expires_at->isPast()) {
+            return view('admin.quotes.message', [
+                'title' => 'Quote Expired',
+                'message' => 'This quote expired on ' . $quote->expires_at->format('d/m/Y') . '. Please contact us for an updated quote.'
+            ]);
+        }
+
+        // If all security checks pass, show the form
         return view('admin.quotes.sign-form', compact('quote'));
     }
     /**
-     * 3. Process form submission data, update record, and export final PDF.
+     * Process form submission data, save signature file, and store metadata.
      */
     public function saveSignature(Request $request, Quote $quote)
     {
-        // Validate payload data attributes securely
+        // 1. Validate the incoming request
         $request->validate([
-            'client_name'    => 'required|string|max:255',
-            'signature_data' => 'required|string', // Validates raw Base64 data string payload
+            'company_name'      => 'nullable|string|max:255',
+            'authorised_person' => 'required|string|max:255',
+            'position'          => 'nullable|string|max:255',
+            'signature_data'    => 'required|string', // Base64 string
         ]);
 
-        // Persist confirmation parameters tracking validation state variables
-        $quote->update([
-            'client_name'      => $request->client_name,
-            'signature_base64' => $request->signature_data,
-            'signed_at'        => now(),
+        // 2. Process and save the Base64 image to a folder
+        $base64Image = $request->signature_data;
+
+        // Strip out the "data:image/png;base64," part
+        @list($type, $fileData) = explode(';', $base64Image);
+        @list(, $fileData)      = explode(',', $fileData);
+
+        // Decode the image
+        $decodedImage = base64_decode($fileData);
+
+        // Create a unique filename
+        $fileName = 'quote_' . $quote->id . '_sign_' . Str::random(10) . '.png';
+        $filePath = 'signatures/' . $fileName;
+
+        // Save to the 'local' disk (storage/app/signatures) to keep it private,
+        // or 'public' (storage/app/public/signatures) if you prefer.
+        Storage::disk('local')->put($filePath, $decodedImage);
+
+        // 3. Save the signature record with metadata to the new table
+        $quote->signatures()->create([
+            'company_name'      => $request->company_name,
+            'authorised_person' => $request->authorised_person,
+            'position'          => $request->position,
+            'signature_path'    => $filePath,
+            'ip_address'        => $request->ip(),
+            'user_agent'        => $request->userAgent(),
+            'signed_at'         => now(),
         ]);
 
-        $pdf = Pdf::loadView('admin.quotes.pdf', compact('quote'));
+        // Optional: Mark the quote itself as accepted/signed
+        if (is_null($quote->accepted_at)) {
+            $quote->update(['accepted_at' => now()]);
+        }
 
-        return $pdf->download("signed-quote-{$quote->id}.pdf");
+        // 4. Return JSON response for the AJAX fetch request
+        return response()->json([
+            'success' => true,
+            'message' => 'Signature captured and saved successfully.'
+        ]);
     }
 }

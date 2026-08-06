@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-signature-layout>
     <!-- TOP ACTION HEADER BAR -->
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-4 w-full">
@@ -24,135 +24,369 @@
 
     <!-- CONTAINER INTEGRATION WORKSPACE -->
     <div class="py-6 max-w-full mx-auto sm:px-6 lg:px-8 space-y-6">
+        <!-- 1. FULL PAGE VIEWPORT PDF STREAM FRAME WITH LOADER -->
+        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 h-[60vh] min-h-[450px] relative"
+             x-data="{ isLoading: true }">
 
-        <!-- 1. FULL PAGE VIEWPORT PDF STREAM FRAME -->
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 h-[60vh] min-h-[450px]">
-            <!-- Points securely to your backend route parameters -->
-            <iframe src="{{ route('admin.quotes.pdf', $quote->id) }}" class="w-full h-full block" frameborder="0"></iframe>
+            <!-- Loading Spinner Overlay -->
+            <div x-show="isLoading"
+                 class="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xs z-10 flex flex-col items-center justify-center gap-3 transition-opacity duration-300">
+                <svg class="animate-spin w-8 h-8 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-xs font-semibold text-gray-600 dark:text-gray-300 tracking-wider uppercase">Loading Proposal Document...</span>
+            </div>
+
+            <!-- Iframe with @load event handler to dismiss the spinner -->
+            <iframe src="{{ route('admin.quotes.pdf', $quote->id) }}"
+                    class="w-full h-full block"
+                    frameborder="0"
+                    loading="lazy"
+                    @load="isLoading = false"></iframe>
         </div>
 
-        <!-- 2. FORM INTERACTIVES AT THE BOTTOM PANEL -->
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <!-- BOTTOM STICKY / PANEL ACTION BAR -->
+        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 border border-gray-200 dark:border-gray-700"
+             x-data="{ showSignatureModal: false }">
+
             @if($quote->status === 'accepted')
-                <!-- FIXED ACCEPTEED STATUS FRAME -->
-                <div class="text-center py-6">
-                    <div class="w-12 h-12 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                        </svg>
+                <div class="text-center py-4">
+                    <div class="w-10 h-10 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Document Successfully Executed</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">This agreement was verified and signed off by <strong>{{ $quote->client_name }}</strong> on {{ $quote->signed_at ? $quote->signed_at->format('d M Y') : now()->format('d M Y') }}.</p>
+                    <h3 class="text-md font-bold text-gray-900 dark:text-gray-100">Document Successfully Executed</h3>
+                    <p class="text-xs text-gray-500 mt-1">Signed by <strong>{{ $quote->client_name }}</strong> on {{ $quote->signed_at?->format('d M Y') ?? now()->format('d M Y') }}.</p>
                 </div>
             @elseif($quote->status === 'rejected')
-                <!-- FIXED REJECTED STATUS FRAME -->
-                <div class="text-center py-6">
-                    <div class="w-12 h-12 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Proposal Terminated</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">This quote parameter matrix file transfer is closed as rejected.</p>
+                <div class="text-center py-4">
+                    <h3 class="text-md font-bold text-gray-900 dark:text-gray-100">Proposal Terminated</h3>
                 </div>
             @else
-                <!-- ACTIVE INTERACTIVE WORKFLOW SECTIONS -->
-                <form action="{{ route('admin.quotes.save-signature', $quote->id) }}" method="POST" id="signatureForm" class="space-y-6">
-                    @csrf
+                <!-- TRIGGER STATE -->
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Ready to proceed?</h3>
+                        <p class="text-xs text-gray-500">Review the document above and click sign when you are ready to authorize.</p>
+                    </div>
+                    <button @click="showSignatureModal = true"
+                            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md cursor-pointer transition">
+                        Adopt & Sign Contract
+                    </button>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <!-- MODAL OVERLAY WRAPPER -->
+                <div x-show="showSignatureModal"
+                     style="display: none;"
+                     class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+                     x-transition.opacity>
 
-                        <!-- LEFT CELL: Signee details inputs -->
-                        <div class="space-y-4">
+                    <!-- MODAL CARD CONTAINER -->
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6"
+                         @click.outside="showSignatureModal = false"
+                         x-data="modalSignaturePad()"
+                         x-init="initPad()">
+
+                        <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-4">
+                            <h3 class="font-bold text-gray-900 dark:text-gray-100 text-base">
+                                Execute Proposal Agreement
+                            </h3>
+
+                            <button type="button"
+                                    @click="showSignatureModal = false"
+                                    class="text-gray-400 hover:text-gray-600">
+                                ✕
+                            </button>
+                        </div>
+
+
+                        <form action="{{ route('admin.quotes.save-signature', $quote->id) }}"
+                              method="POST"
+                              id="modalSignatureForm"
+                              @submit.prevent="submitForm"
+                              class="space-y-4">
+
+                            @csrf
+
                             <div>
-                                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-1">Acceptance Authorization</h3>
-                                <p class="text-xs text-gray-400 dark:text-gray-500">Provide credentials to authenticate the underlying model rows.</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Signee Full Name</label>
+                                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Signee Full Name
+                                </label>
+
                                 <input type="text"
                                        name="client_name"
                                        required
                                        placeholder="John Doe"
-                                       class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition shadow-xs">
+                                       class="w-full px-4 py-2.5 border rounded-xl bg-white dark:bg-gray-700 text-sm">
                             </div>
-                        </div>
 
-                        <!-- RIGHT CELL: Vector Drawing Board Layout Context -->
-                        <div class="space-y-2">
-                            <div class="flex justify-between items-center">
-                                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Digital Signature Pad</label>
-                                <button type="button" id="clearButton" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Clear Canvas</button>
+
+                            <div class="space-y-2">
+
+                                <div class="flex justify-between items-center">
+
+                                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                        Draw Your Signature
+                                    </label>
+
+                                    <button type="button"
+                                            @click="clearPad"
+                                            class="text-xs font-bold text-blue-600">
+                                        Clear Canvas
+                                    </button>
+
+                                </div>
+
+
+                                <div class="border rounded-xl bg-gray-50 dark:bg-gray-900 overflow-hidden h-40">
+
+                                    <canvas
+                                        x-ref="modalCanvas"
+                                        class="touch-none block cursor-crosshair bg-white dark:bg-gray-900">
+                                    </canvas>
+
+                                </div>
+
                             </div>
-                            <div class="border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-900 overflow-hidden relative shadow-inner">
-                                <canvas id="signaturePad" class="w-full h-36 touch-none block cursor-crosshair bg-white dark:bg-gray-900"></canvas>
+
+
+                            <template x-if="errorMessage">
+
+                                <p class="text-xs text-red-600"
+                                   x-text="errorMessage">
+                                </p>
+
+                            </template>
+
+
+                            <input type="hidden"
+                                   name="signature_data"
+                                   x-model="signatureDataValue">
+
+
+                            <div class="pt-4 border-t flex justify-end gap-3">
+
+                                <button type="button"
+                                        @click="showSignatureModal=false"
+                                        class="px-4 py-2.5 bg-gray-100 rounded-xl">
+                                    Cancel
+                                </button>
+
+
+                                <button type="submit"
+                                        :disabled="isSubmitting"
+                                        class="px-5 py-2.5 bg-blue-600 text-white rounded-xl">
+
+                    <span x-show="isSubmitting">
+                        Submitting...
+                    </span>
+
+                                    <span x-show="!isSubmitting">
+                        Submit & Finalize
+                    </span>
+
+                                </button>
+
                             </div>
-                        </div>
+
+                        </form>
 
                     </div>
 
-                    <!-- Extraction transmission bridge -->
-                    <input type="hidden" name="signature_data" id="signatureData">
+                </div>
 
-                    <!-- Trigger buttons block layout elements -->
-                    <div class="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
-                        <button type="submit" class="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md cursor-pointer transition transform active:scale-98">
-                            Authorize & Execute Signed Proposal
-                        </button>
-                    </div>
-                </form>
+
+                <script src="https://cdn.jsdelivr.net/npm/signature_pad@3.0.0-beta.3/dist/signature_pad.umd.min.js"></script>
+
+                <script>
+                    function modalSignaturePad() {
+                        return {
+                            signaturePad: null,
+                            signatureDataValue: '',
+                            errorMessage: '',
+                            isSubmitting: false,
+
+                            initPad() {
+                                // Watch the inherited state directly
+                                this.$watch('showSignatureModal', (value) => {
+                                    if (value) {
+                                        // Wait for modal transition to finish
+                                        this.$nextTick(() => {
+                                            setTimeout(() => {
+                                                this.setupCanvas();
+                                            }, 200);
+                                        });
+                                    }
+                                });
+                            },
+
+                            setupCanvas() {
+                                const canvas = this.$refs.modalCanvas;
+                                if (!canvas) return;
+
+                                const container = canvas.parentElement;
+                                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+                                // Explicitly set backing store dimensions
+                                canvas.width = container.clientWidth * ratio;
+                                canvas.height = container.clientHeight * ratio;
+
+                                // Explicitly set CSS rendering dimensions to prevent zero-width bugs
+                                canvas.style.width = container.clientWidth + "px";
+                                canvas.style.height = container.clientHeight + "px";
+
+                                const ctx = canvas.getContext("2d");
+                                ctx.scale(ratio, ratio);
+
+                                if (!this.signaturePad) {
+                                    this.signaturePad = new SignaturePad(canvas, {
+                                        minWidth: 1.2,
+                                        maxWidth: 3.5,
+                                        penColor: document.documentElement.classList.contains('dark')
+                                            ? 'rgb(243,244,246)'
+                                            : 'rgb(17,24,39)',
+                                        backgroundColor: 'rgba(255,255,255,0)'
+                                    });
+                                }
+
+                                this.signaturePad.clear();
+                            },
+
+                            clearPad() {
+                                if (this.signaturePad) {
+                                    this.signaturePad.clear();
+                                }
+                                this.signatureDataValue = '';
+                                this.errorMessage = '';
+                            },
+
+                            async submitForm() {
+                                if (!this.signaturePad || this.signaturePad.isEmpty()) {
+                                    this.errorMessage = "Please provide your digital signature before continuing.";
+                                    return;
+                                }
+
+                                this.errorMessage = '';
+                                this.signatureDataValue = this.signaturePad.toDataURL('image/png');
+                                this.isSubmitting = true;
+
+                                const formElement = document.getElementById('modalSignatureForm');
+                                const formData = new FormData(formElement);
+
+                                formData.append('signature_data', this.signatureDataValue);
+
+                                try {
+                                    const response = await fetch(formElement.action, {
+                                        method: formElement.method || 'POST',
+                                        body: formData,
+                                        headers: {
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                            'Accept': 'application/json'
+                                        }
+                                    });
+
+                                    // Check if response is ok (status in the range 200-299)
+                                    if (response.ok) {
+                                        this.isSubmitting = false;
+
+                                        // Optional: Clear the pad for the next time it opens
+                                        this.clearPad();
+
+                                        // Close the modal using your Alpine state variable
+                                        this.showSignatureModal = false;
+                                    } else {
+                                        // Parse backend error message if available
+                                        const result = await response.json();
+                                        this.isSubmitting = false;
+                                        this.errorMessage = result.message || "Submission failed. Please try again.";
+                                    }
+                                } catch (error) {
+                                    this.isSubmitting = false;
+                                    this.errorMessage = "A network error occurred. Please check your connection.";
+                                    console.error("Form submission error:", error);
+                                }
+                            }
+                        }
+                    }
+                </script>
+{{--                <script>--}}
+{{--                    function modalSignaturePad() {--}}
+{{--                        return {--}}
+{{--                            signaturePad: null,--}}
+{{--                            signatureDataValue: '',--}}
+{{--                            errorMessage: '',--}}
+{{--                            isSubmitting: false,--}}
+
+{{--                            initPad() {--}}
+{{--                                // Corrected: Watch the inherited state directly--}}
+{{--                                this.$watch('showSignatureModal', (value) => {--}}
+{{--                                    if (value) {--}}
+{{--                                        // Wait for modal transition to finish--}}
+{{--                                        this.$nextTick(() => {--}}
+{{--                                            setTimeout(() => {--}}
+{{--                                                this.setupCanvas();--}}
+{{--                                            }, 200);--}}
+{{--                                        });--}}
+{{--                                    }--}}
+{{--                                });--}}
+{{--                            },--}}
+
+{{--                            setupCanvas() {--}}
+{{--                                const canvas = this.$refs.modalCanvas;--}}
+{{--                                if (!canvas) return;--}}
+
+{{--                                const container = canvas.parentElement;--}}
+{{--                                const ratio = Math.max(window.devicePixelRatio || 1, 1);--}}
+
+{{--                                // Explicitly set backing store dimensions--}}
+{{--                                canvas.width = container.clientWidth * ratio;--}}
+{{--                                canvas.height = container.clientHeight * ratio;--}}
+
+{{--                                // Explicitly set CSS rendering dimensions to prevent zero-width bugs--}}
+{{--                                canvas.style.width = container.clientWidth + "px";--}}
+{{--                                canvas.style.height = container.clientHeight + "px";--}}
+
+{{--                                const ctx = canvas.getContext("2d");--}}
+{{--                                ctx.scale(ratio, ratio);--}}
+
+{{--                                if (!this.signaturePad) {--}}
+{{--                                    this.signaturePad = new SignaturePad(canvas, {--}}
+{{--                                        minWidth: 1.2,--}}
+{{--                                        maxWidth: 3.5,--}}
+{{--                                        penColor: document.documentElement.classList.contains('dark')--}}
+{{--                                            ? 'rgb(243,244,246)'--}}
+{{--                                            : 'rgb(17,24,39)',--}}
+{{--                                        backgroundColor: 'rgba(255,255,255,0)'--}}
+{{--                                    });--}}
+{{--                                }--}}
+
+{{--                                this.signaturePad.clear();--}}
+{{--                            },--}}
+
+{{--                            clearPad() {--}}
+{{--                                if (this.signaturePad) {--}}
+{{--                                    this.signaturePad.clear();--}}
+{{--                                }--}}
+{{--                                this.signatureDataValue = '';--}}
+{{--                                this.errorMessage = '';--}}
+{{--                            },--}}
+
+{{--                            submitForm() {--}}
+{{--                                if (!this.signaturePad || this.signaturePad.isEmpty()) {--}}
+{{--                                    this.errorMessage = "Please provide your digital signature before continuing.";--}}
+{{--                                    return;--}}
+{{--                                }--}}
+
+{{--                                this.errorMessage = '';--}}
+{{--                                this.signatureDataValue = this.signaturePad.toDataURL('image/png');--}}
+{{--                                this.isSubmitting = true;--}}
+
+{{--                                document.getElementById('modalSignatureForm').submit();--}}
+{{--                            }--}}
+{{--                        }--}}
+{{--                    }--}}
+{{--                </script>--}}
             @endif
         </div>
-
     </div>
-
-    <!-- CODE SCRIPT BLOCK LOGIC -->
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@3.0.0-beta.3/dist/signature_pad.umd.min.js"></script>
-    <script>
-        window.addEventListener("load", function () {
-            const canvas = document.getElementById('signaturePad');
-            if (canvas) {
-                const form = document.getElementById('signatureForm');
-                const signatureDataInput = document.getElementById('signatureData');
-                const clearButton = document.getElementById('clearButton');
-
-                // Detect dark mode setting configuration to adjust tracking pen style colors dynamically
-                const isDarkMode = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
-                const penColor = isDarkMode ? 'rgb(243, 244, 246)' : 'rgb(17, 24, 39)';
-
-                const signaturePad = new SignaturePad(canvas, {
-                    minWidth: 1.2,
-                    maxWidth: 3.5,
-                    penColor: penColor,
-                    backgroundColor: 'rgba(255, 255, 255, 0)'
-                });
-
-                function resizeCanvas() {
-                    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                    const currentData = signaturePad.toData();
-
-                    canvas.width = canvas.offsetWidth * ratio;
-                    canvas.height = canvas.offsetHeight * ratio;
-                    canvas.getContext("2d").scale(ratio, ratio);
-
-                    signaturePad.clear();
-                    signaturePad.fromData(currentData);
-                }
-
-                window.addEventListener("resize", resizeCanvas);
-                resizeCanvas();
-
-                clearButton.addEventListener('click', () => signaturePad.clear());
-
-                form.addEventListener('submit', (e) => {
-                    if (signaturePad.isEmpty()) {
-                        e.preventDefault();
-                        alert("Verification Error: Please sign your credentials on the signature card box layout before finishing processing workflows.");
-                        return;
-                    }
-                    signatureDataInput.value = signaturePad.toDataURL('image/png');
-                });
-            }
-        });
-    </script>
-</x-app-layout>
+</x-signature-layout>
