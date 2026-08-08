@@ -12,12 +12,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->decimal('setup_fee', 10,2)->after('hourly_rate')->nullable();
-            $table->boolean('quote_default')->default(false);
+            if(!Schema::hasColumn('products', 'setup_fee')) {
+                $table->decimal('setup_fee', 10, 2)->after('hourly_rate')->nullable();
+            }
+            if(!Schema::hasColumn('products', 'quote_default')) {
+                $table->boolean('quote_default')->default(false);
+            }
+
         });
 
         Schema::table('quote_items', function (Blueprint $table) {
-            $table->decimal('setup_fee', 10,2)->after('unit_price')->nullable();
+            if(!Schema::hasColumn('quote_items', 'setup_fee')){
+                $table->decimal('setup_fee', 10,2)->after('unit_price')->nullable();
+            }
+            if(!Schema::hasColumn('quote_items', 'deleted_at')){
+                $table->softDeletes();
+            }
         });
     }
 
@@ -32,7 +42,8 @@ return new class extends Migration
         });
 
         Schema::table('quote_items', function (Blueprint $table) {
-            $table->decimal('setup_fee', 10,2)->after('unit_price')->nullable();
+            $table->dropColumn('setup_fee');
+            $table->dropSoftDeletes();
         });
     }
 };

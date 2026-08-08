@@ -19,6 +19,7 @@ class QuoteItem extends Model
         'scope_of_works',
         'key_scope_keyword',
         'unit_price',
+        'setup_fee',
         'gst_amount',
         'total_price',
         'hours',
@@ -31,6 +32,7 @@ class QuoteItem extends Model
 
     protected $casts = [
         'quantity'     => 'integer',   // ← add this
+        'setup_fee'   => 'decimal:2',
         'unit_price'   => 'decimal:2',
         'gst_amount'   => 'decimal:2',
         'total_price'  => 'decimal:2',

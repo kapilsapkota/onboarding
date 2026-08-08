@@ -16,39 +16,67 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
-        $categories = \App\Models\Category::active()->orderBy('name')->get();
+        $request->validate([
+            'category' => ['nullable', 'string', 'exists:categories,slug'],
+            'frequency' => ['nullable', 'in:once_off,monthly,quarterly,annually'],
+            'status' => ['nullable', 'boolean'],
+            'quote_default' => ['nullable', 'boolean'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+        $categories = \App\Models\Category::active()
+            ->orderBy('name')
+            ->get();
 
-        $query = Product::with('category')->orderBy('sort_order')->orderBy('name');
+        $query = Product::with('category')
+            ->orderBy('sort_order')
+            ->orderBy('name');
 
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+        $query->when($request->filled('search'), function ($q) use ($request) {
+            $search = $request->input('search');
+
+            $q->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
                     ->orWhere('short_name', 'like', "%{$search}%")
-                    ->orWhereHas('category', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                        $categoryQuery->where('name', 'like', "%{$search}%");
+                    });
             });
-        }
+        });
 
-        $query->when($request->input('category'), fn ($q, $slug) =>
-        $q->whereHas('category', fn ($q) => $q->where('slug', $slug))
-        );
+        $query->when($request->filled('category'), function ($q) use ($request) {
+            $q->whereHas('category', function ($categoryQuery) use ($request) {
+                $categoryQuery->where('slug', $request->input('category'));
+            });
+        });
 
-        $query->when($request->input('frequency'), function ($q, $frequency) {
+        $query->when($request->filled('frequency'), function ($q) use ($request) {
+            $frequency = $request->input('frequency');
+
             if ($frequency === 'once_off') {
-                $q->whereNull('frequency')->orWhereNotIn('frequency', ['monthly', 'quarterly', 'annually']);
+                $q->where(function ($query) {
+                    $query->whereNull('frequency')
+                        ->orWhereNotIn('frequency', [
+                            'monthly',
+                            'quarterly',
+                            'annually',
+                        ]);
+                });
             } else {
                 $q->where('frequency', $frequency);
             }
         });
 
-        if ($request->filled('status')) {
-            $query->where('is_active', (bool) $request->get('status'));
-        }
+        $query->when($request->filled('status'), function ($q) use ($request) {
+            $q->where('is_active', $request->boolean('status'));
+        });
+        $query->when($request->filled('quote_default'), function ($q) use ($request) {
+            $q->where('quote_default', $request->boolean('quote_default'));
+        });
 
         $products = $query->paginate(20)->withQueryString();
 
         return view('admin.products.index', compact('products', 'categories'));
     }
-
     public function create(): View
     {
         $categories = Category::orderBy('name')->get();
@@ -146,6 +174,7 @@ class ProductController extends Controller
             'frequency'         => ['nullable', 'in:once_off,monthly,quarterly,yearly'],
             'notes'             => ['nullable', 'string'],
             'is_active'         => ['nullable', 'boolean'],
+            'quote_default'         => ['nullable', 'boolean'],
             'sort_order'        => ['nullable', 'integer', 'min:0'],
             // Accept raw uploads up to 5 MB — service compresses to ≤50 KB
             'logo'              => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif,svg', 'max:5120'],

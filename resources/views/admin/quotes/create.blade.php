@@ -349,6 +349,19 @@
                         </tr>
 
                         </tbody>
+                        <tfoot>
+                        <tr>
+                            <td colspan="8" class="p-4 border-t">
+                                <button
+                                    type="button"
+                                    @click="addBlankRow()"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-lg"
+                                >
+                                    + Add Product
+                                </button>
+                            </td>
+                        </tr>
+                        </tfoot>
 
                     </table>
 
@@ -460,7 +473,9 @@
                         });
                     } else {
                         // *** NEW: pre-load every product as a default row ***
-                        this.products.forEach(product => {
+                        this.products
+                            .filter(product => Number(product.quote_default) === 1)
+                            .forEach(product => {
                             this.items.push({
                                 product_id:       product.id,
                                 product_name:     product.name,

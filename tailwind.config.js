@@ -8,7 +8,11 @@ export default {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
     ],
-
+    safelist: [
+        'w-64', 'w-16',
+        'lg:ml-64', 'lg:ml-16',
+        '-translate-x-full', 'translate-x-0', 'lg:translate-x-0',
+    ],
     theme: {
         extend: {
             fontFamily: {

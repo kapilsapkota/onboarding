@@ -28,6 +28,7 @@ class Product extends Model
         'image_url',
         'notes',
         'is_active',
+        'quote_default',
         'sort_order',
         'quote_default'
     ];
@@ -41,6 +42,7 @@ class Product extends Model
         'price_increment' => 'decimal:2',
         'hourly_rate'     => 'decimal:2',
         'is_active'       => 'boolean',
+        'quote_default'       => 'boolean',
         'sort_order'      => 'integer',
     ];
 

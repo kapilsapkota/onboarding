@@ -25,7 +25,8 @@
     <!-- CONTAINER INTEGRATION WORKSPACE -->
     <div class="py-6 max-w-full mx-auto sm:px-6 lg:px-8 space-y-6">
         <!-- 1. FULL PAGE VIEWPORT PDF STREAM FRAME WITH LOADER -->
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 h-[60vh] min-h-[450px] relative"
+        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border
+         border-gray-200 dark:border-gray-700 h-[60vh] min-h-[450px] relative"
              x-data="{ isLoading: true }">
 
             <!-- Loading Spinner Overlay -->

@@ -60,35 +60,74 @@
             </select>
 
             {{-- Status tabs --}}
-            <div class="flex gap-1 text-sm">
-                @foreach(['' => 'All', '1' => 'Active', '0' => 'Inactive'] as $val => $label)
-                    <a href="{{ route('admin.products.index', array_merge(request()->except('status', 'page'), $val !== '' ? ['status' => $val] : [])) }}"
-                       class="px-3 py-1.5 rounded-md font-medium transition
-                      {{ request('status', '') === $val
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
-                        {{ $label }}
-                    </a>
-                @endforeach
-            </div>
+            <select onchange="window.location = this.value"
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200
+               text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+
+                <option value="{{ route('admin.products.index', request()->except(['status', 'page'])) }}"
+                    {{ request('status', '') === '' ? 'selected' : '' }}>
+                    All Statuses
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['status', 'page']), ['status' => 1])) }}"
+                    {{ request('status') === '1' ? 'selected' : '' }}>
+                    Active
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['status', 'page']), ['status' => 0])) }}"
+                    {{ request('status') === '0' ? 'selected' : '' }}>
+                    Inactive
+                </option>
+
+            </select>
+
+            <select onchange="window.location = this.value"
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200
+               text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+
+                <option value="{{ route('admin.products.index', request()->except(['quote_default', 'page'])) }}"
+                    {{ request('quote_default', '') === '' ? 'selected' : '' }}>
+                    Quote Default
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['quote_default', 'page']), ['quote_default' => 1])) }}"
+                    {{ request('quote_default') === '1' ? 'selected' : '' }}>
+                    Is Default
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['quote_default', 'page']), ['quote_default' => 0])) }}"
+                    {{ request('quote_default') === '0' ? 'selected' : '' }}>
+                    Not Shown
+                </option>
+
+            </select>
 
             {{-- Frequency tabs --}}
-            <div class="flex gap-1 text-sm">
-                @foreach([
-                    '' => 'All Frequencies',
-                    'once_off' => 'Once Off',
-                    'monthly'  => 'Monthly',
-                    'annually'   => 'Annually',
-                ] as $val => $label)
-                    <a href="{{ route('admin.products.index', array_merge(request()->except('frequency', 'page'), $val !== '' ? ['frequency' => $val] : [])) }}"
-                       class="px-3 py-1.5 rounded-md font-medium transition
-                      {{ request('frequency', '') === $val
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600' }}">
-                        {{ $label }}
-                    </a>
-                @endforeach
-            </div>
+            <select onchange="window.location = this.value"
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200
+               text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+
+                <option value="{{ route('admin.products.index', request()->except(['frequency', 'page'])) }}"
+                    {{ request('frequency', '') === '' ? 'selected' : '' }}>
+                    All Frequencies
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['frequency', 'page']), ['frequency' => 'once_off'])) }}"
+                    {{ request('frequency') === 'once_off' ? 'selected' : '' }}>
+                    Once Off
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['frequency', 'page']), ['frequency' => 'monthly'])) }}"
+                    {{ request('frequency') === 'monthly' ? 'selected' : '' }}>
+                    Monthly
+                </option>
+
+                <option value="{{ route('admin.products.index', array_merge(request()->except(['frequency', 'page']), ['frequency' => 'annually'])) }}"
+                    {{ request('frequency') === 'annually' ? 'selected' : '' }}>
+                    Annually
+                </option>
+
+            </select>
         </div>
 
         {{-- Table --}}

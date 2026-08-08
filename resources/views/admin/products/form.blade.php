@@ -33,7 +33,9 @@
               enctype="multipart/form-data"
               action="{{ isset($product) ? route('admin.products.update', $product) : route('admin.products.store') }}">
             @csrf
-            @if(isset($product)) @method('PUT') @endif
+            @if(isset($product))
+                @method('PUT')
+            @endif
 
             <div class="space-y-6">
 
@@ -58,7 +60,8 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Short Name
                             </label>
-                            <input type="text" name="short_name" value="{{ old('short_name', $product->short_name ?? '') }}"
+                            <input type="text" name="short_name"
+                                   value="{{ old('short_name', $product->short_name ?? '') }}"
                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="e.g. Web Design">
                             <p class="mt-1 text-xs text-gray-400">Used in compact views and quote line items.</p>
@@ -86,7 +89,8 @@
                             </label>
 
                             <!-- The interactive editor container -->
-                            <div class="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm">
+                            <div
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm">
                                 <div class="quill-editor min-h-[120px] dark:text-gray-200">
                                     {!! old('description', $product->description ?? '') !!}
                                 </div>
@@ -116,16 +120,21 @@
 
                             {{-- Current logo preview --}}
                             @if($currentLogo)
-                                <div id="current-logo" class="mb-3 flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                                    <img src="{{ Str::startsWith($currentLogo, 'http') ? $currentLogo : Storage::url($currentLogo) }}"
-                                         alt="Current Image"
-                                         class="h-12 w-12 object-contain rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 p-1">
+                                <div id="current-logo"
+                                     class="mb-3 flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                                    <img
+                                        src="{{ Str::startsWith($currentLogo, 'http') ? $currentLogo : Storage::url($currentLogo) }}"
+                                        alt="Current Image"
+                                        class="h-12 w-12 object-contain rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 p-1">
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">Current logo</p>
+                                        <p class="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">Current
+                                            logo</p>
                                         <p class="text-xs text-gray-400">Upload a new file to replace it</p>
                                     </div>
-                                    <label class="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 cursor-pointer">
-                                        <input type="checkbox" name="remove_logo" value="1" class="rounded text-red-500">
+                                    <label
+                                        class="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 cursor-pointer">
+                                        <input type="checkbox" name="remove_logo" value="1"
+                                               class="rounded text-red-500">
                                         Remove
                                     </label>
                                 </div>
@@ -141,17 +150,23 @@
                                      class="hidden h-16 w-16 object-contain rounded bg-white border border-gray-200 dark:border-gray-700 p-1 mx-auto">
 
                                 <div id="logo-placeholder">
-                                    <svg class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-1 group-hover:text-blue-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    <svg
+                                        class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-1 group-hover:text-blue-400 transition"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                                        <span class="text-blue-600 dark:text-blue-400 font-medium">Click to upload</span>
+                                        <span
+                                            class="text-blue-600 dark:text-blue-400 font-medium">Click to upload</span>
                                         or drag &amp; drop
                                     </p>
-                                    <p class="text-xs text-gray-400 mt-0.5">PNG, JPG, WebP, SVG, GIF · up to 5 MB · auto-compressed to ≤50 KB</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">PNG, JPG, WebP, SVG, GIF · up to 5 MB ·
+                                        auto-compressed to ≤50 KB</p>
                                 </div>
 
-                                <p id="logo-filename" class="hidden text-sm text-gray-600 dark:text-gray-300 font-medium"></p>
+                                <p id="logo-filename"
+                                   class="hidden text-sm text-gray-600 dark:text-gray-300 font-medium"></p>
 
                                 <input type="file" id="logo-input" name="logo"
                                        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
@@ -163,7 +178,8 @@
                             @enderror
 
                             <p class="mt-1.5 text-xs text-gray-400">
-                                Large images are automatically resized and compressed server-side. The stored images will always be ≤ 50 KB for use in PDF generation.
+                                Large images are automatically resized and compressed server-side. The stored images
+                                will always be ≤ 50 KB for use in PDF generation.
                             </p>
                         </div>
 
@@ -171,46 +187,46 @@
                 </div>
 
                 {{-- Scope Items --}}
-{{--                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6">--}}
-{{--                    <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">--}}
-{{--                        Scope Items--}}
-{{--                    </h3>--}}
-{{--                    <div id="scope-items" class="space-y-2">--}}
-{{--                        @php $scopeItems = old('scope_items', $product->scope_items ?? []); @endphp--}}
-{{--                        @forelse($scopeItems as $item)--}}
-{{--                            <div class="flex gap-2 scope-item">--}}
-{{--                                <input type="text" name="scope_items[]" value="{{ $item }}"--}}
-{{--                                       class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"--}}
-{{--                                       placeholder="e.g. Up to 5 pages">--}}
-{{--                                <button type="button" onclick="this.closest('.scope-item').remove()"--}}
-{{--                                        class="p-2 text-gray-400 hover:text-red-500 transition">--}}
-{{--                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
-{{--                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>--}}
-{{--                                    </svg>--}}
-{{--                                </button>--}}
-{{--                            </div>--}}
-{{--                        @empty--}}
-{{--                            <div class="flex gap-2 scope-item">--}}
-{{--                                <input type="text" name="scope_items[]"--}}
-{{--                                       class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"--}}
-{{--                                       placeholder="e.g. Up to 5 pages">--}}
-{{--                                <button type="button" onclick="this.closest('.scope-item').remove()"--}}
-{{--                                        class="p-2 text-gray-400 hover:text-red-500 transition">--}}
-{{--                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
-{{--                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>--}}
-{{--                                    </svg>--}}
-{{--                                </button>--}}
-{{--                            </div>--}}
-{{--                        @endforelse--}}
-{{--                    </div>--}}
-{{--                    <button type="button" id="add-scope-item"--}}
-{{--                            class="mt-3 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 transition font-medium">--}}
-{{--                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
-{{--                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>--}}
-{{--                        </svg>--}}
-{{--                        Add item--}}
-{{--                    </button>--}}
-{{--                </div>--}}
+                {{--                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6">--}}
+                {{--                    <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">--}}
+                {{--                        Scope Items--}}
+                {{--                    </h3>--}}
+                {{--                    <div id="scope-items" class="space-y-2">--}}
+                {{--                        @php $scopeItems = old('scope_items', $product->scope_items ?? []); @endphp--}}
+                {{--                        @forelse($scopeItems as $item)--}}
+                {{--                            <div class="flex gap-2 scope-item">--}}
+                {{--                                <input type="text" name="scope_items[]" value="{{ $item }}"--}}
+                {{--                                       class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"--}}
+                {{--                                       placeholder="e.g. Up to 5 pages">--}}
+                {{--                                <button type="button" onclick="this.closest('.scope-item').remove()"--}}
+                {{--                                        class="p-2 text-gray-400 hover:text-red-500 transition">--}}
+                {{--                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
+                {{--                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>--}}
+                {{--                                    </svg>--}}
+                {{--                                </button>--}}
+                {{--                            </div>--}}
+                {{--                        @empty--}}
+                {{--                            <div class="flex gap-2 scope-item">--}}
+                {{--                                <input type="text" name="scope_items[]"--}}
+                {{--                                       class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"--}}
+                {{--                                       placeholder="e.g. Up to 5 pages">--}}
+                {{--                                <button type="button" onclick="this.closest('.scope-item').remove()"--}}
+                {{--                                        class="p-2 text-gray-400 hover:text-red-500 transition">--}}
+                {{--                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
+                {{--                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>--}}
+                {{--                                    </svg>--}}
+                {{--                                </button>--}}
+                {{--                            </div>--}}
+                {{--                        @endforelse--}}
+                {{--                    </div>--}}
+                {{--                    <button type="button" id="add-scope-item"--}}
+                {{--                            class="mt-3 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 transition font-medium">--}}
+                {{--                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">--}}
+                {{--                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>--}}
+                {{--                        </svg>--}}
+                {{--                        Add item--}}
+                {{--                    </button>--}}
+                {{--                </div>--}}
 
                 <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6">
 
@@ -266,7 +282,8 @@ SEO setup"
                         {{-- Fixed price --}}
                         <div id="field-fixed" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fixed Price ($)</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fixed
+                                    Price ($)</label>
                                 <input type="number" name="fixed_price" step="0.01" min="0"
                                        value="{{ old('fixed_price', $product->fixed_price ?? '') }}"
                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -277,21 +294,24 @@ SEO setup"
                         {{-- Dropdown range --}}
                         <div id="field-dropdown" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Min Price ($)</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Min Price
+                                    ($)</label>
                                 <input type="number" name="price_min" step="0.01" min="0"
                                        value="{{ old('price_min', $product->price_min ?? '') }}"
                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                        placeholder="0.00">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Price ($)</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Price
+                                    ($)</label>
                                 <input type="number" name="price_max" step="0.01" min="0"
                                        value="{{ old('price_max', $product->price_max ?? '') }}"
                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                        placeholder="0.00">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Increment ($)</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Increment
+                                    ($)</label>
                                 <input type="number" name="price_increment" step="0.01" min="0"
                                        value="{{ old('price_increment', $product->price_increment ?? '') }}"
                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -302,7 +322,8 @@ SEO setup"
                         {{-- Hourly --}}
                         <div id="field-hourly" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hourly Rate ($/hr)</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hourly
+                                    Rate ($/hr)</label>
                                 <input type="number" name="hourly_rate" step="0.01" min="0"
                                        value="{{ old('hourly_rate', $product->hourly_rate ?? '') }}"
                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -312,7 +333,8 @@ SEO setup"
 
                         {{-- Setup Fee --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
+                            <label
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
                             <select name="frequency"
                                     class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 @foreach(['once_off' => 'Once Off', 'monthly' => 'Monthly', 'yearly' => 'Yearly'] as $val => $label)
@@ -353,14 +375,16 @@ SEO setup"
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                         <div class="sm:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Internal Notes</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Internal
+                                Notes</label>
                             <textarea name="notes" rows="3"
                                       class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                       placeholder="Internal notes, not shown to clients.">{{ old('notes', $product->notes ?? '') }}</textarea>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort
+                                Order</label>
                             <input type="number" name="sort_order" min="0"
                                    value="{{ old('sort_order', $product->sort_order ?? 0) }}"
                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -378,7 +402,34 @@ SEO setup"
                             </button>
                             <input type="hidden" name="is_active" id="is-active-input"
                                    value="{{ old('is_active', $product->is_active ?? true) ? '1' : '0' }}">
-                            <span class="text-sm text-gray-700 dark:text-gray-300">Active (visible in quotes builder)</span>
+                            <span
+                                class="text-sm text-gray-700 dark:text-gray-300">Active</span>
+                        </div>
+
+                        <div class="flex items-center gap-3 pt-6">
+                            <button
+                                type="button"
+                                id="toggle-quote-default"
+                                role="switch"
+                                aria-checked="{{ old('quote_default', $product->quote_default ?? true) ? 'true' : 'false' }}"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+            {{ old('quote_default', $product->quote_default ?? false) ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600' }}">
+
+        <span
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+                {{ old('quote_default', $product->quote_default ?? false) ? 'translate-x-6' : 'translate-x-1' }}">
+        </span>
+                            </button>
+
+                            <input
+                                type="hidden"
+                                name="quote_default"
+                                id="quote-default-input"
+                                value="{{ old('quote_default', $product->quote_default ?? false) ? '1' : '0' }}">
+
+                            <span class="text-sm text-gray-700 dark:text-gray-300">
+        Default in Quotes
+    </span>
                         </div>
 
                     </div>
@@ -403,182 +454,171 @@ SEO setup"
         </form>
     </div>
 
-    @push('scripts')
-        <script>
-            // Price type toggle
-            const priceFields = { fixed: 'field-fixed', dropdown: 'field-dropdown', hourly: 'field-hourly' };
+    <script>
+        // Price type toggle
+        const priceFields = {fixed: 'field-fixed', dropdown: 'field-dropdown', hourly: 'field-hourly'};
 
-            function updatePriceFields() {
-                const selected = document.querySelector('input[name="price_type"]:checked')?.value;
-                Object.entries(priceFields).forEach(([type, id]) => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = (type === selected) ? '' : 'none';
-                });
+        function updatePriceFields() {
+            const selected = document.querySelector('input[name="price_type"]:checked')?.value;
+            Object.entries(priceFields).forEach(([type, id]) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = (type === selected) ? '' : 'none';
+            });
+        }
+
+        document.querySelectorAll('input[name="price_type"]').forEach(r => {
+            r.addEventListener('change', updatePriceFields);
+        });
+
+        updatePriceFields();
+
+        const scopeTextarea = document.getElementById('scope-textarea');
+        const scopeHidden = document.getElementById('scope-hidden-inputs');
+
+
+        function updateScopeItems() {
+            scopeHidden.innerHTML = '';
+
+            const lines = scopeTextarea.value
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+
+            lines.forEach(line => {
+
+                const input = document.createElement('input');
+
+                input.type = 'hidden';
+                input.name = 'scope_items[]';
+                input.value = line;
+
+                scopeHidden.appendChild(input);
+
+            });
+        }
+
+
+        scopeTextarea.addEventListener('input', updateScopeItems);
+
+        updateScopeItems();
+
+        // Logo upload — preview + drag-and-drop
+        const logoInput = document.getElementById('logo-input');
+        const logoPreview = document.getElementById('logo-preview');
+        const logoPlaceholder = document.getElementById('logo-placeholder');
+        const logoFilename = document.getElementById('logo-filename');
+        const dropzone = document.getElementById('logo-dropzone');
+
+        function handleLogoFile(file) {
+            if (!file) return;
+            logoFilename.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            logoFilename.classList.remove('hidden');
+            logoPlaceholder.classList.add('hidden');
+
+            if (file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    logoPreview.src = e.target.result;
+                    logoPreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
             }
+        }
 
-            document.querySelectorAll('input[name="price_type"]').forEach(r => {
-                r.addEventListener('change', updatePriceFields);
-            });
+        logoInput.addEventListener('change', () => handleLogoFile(logoInput.files[0]));
 
-            updatePriceFields();
-
-            // // Scope items
-            // document.getElementById('add-scope-item').addEventListener('click', () => {
-            //     const container = document.getElementById('scope-items');
-            //     const div = document.createElement('div');
-            //     div.className = 'flex gap-2 scope-item';
-            //     div.innerHTML = `
-            //     <input type="text" name="scope_items[]"
-            //            class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            //            placeholder="e.g. Up to 5 pages">
-            //     <button type="button" onclick="this.closest('.scope-item').remove()"
-            //             class="p-2 text-gray-400 hover:text-red-500 transition">
-            //         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            //             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            //         </svg>
-            //     </button>`;
-            //     container.appendChild(div);
-            // });
-            const scopeTextarea = document.getElementById('scope-textarea');
-            const scopeHidden = document.getElementById('scope-hidden-inputs');
-
-
-            function updateScopeItems()
-            {
-                scopeHidden.innerHTML = '';
-
-                const lines = scopeTextarea.value
-                    .split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0);
-
-
-                lines.forEach(line => {
-
-                    const input = document.createElement('input');
-
-                    input.type = 'hidden';
-                    input.name = 'scope_items[]';
-                    input.value = line;
-
-                    scopeHidden.appendChild(input);
-
-                });
+        dropzone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropzone.classList.add('border-blue-400', 'bg-blue-50/50');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-blue-400', 'bg-blue-50/50');
+        });
+        dropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-400', 'bg-blue-50/50');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                // Assign to the input so it goes with the form
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                logoInput.files = dt.files;
+                handleLogoFile(file);
             }
+        });
 
+        // Active toggle
+        function initToggle(buttonId, inputId) {
+            const toggleBtn = document.getElementById(buttonId);
+            const input = document.getElementById(inputId);
 
-            scopeTextarea.addEventListener('input', updateScopeItems);
-
-
-            // Populate on edit page
-            updateScopeItems();
-
-            // Logo upload — preview + drag-and-drop
-            const logoInput     = document.getElementById('logo-input');
-            const logoPreview   = document.getElementById('logo-preview');
-            const logoPlaceholder = document.getElementById('logo-placeholder');
-            const logoFilename  = document.getElementById('logo-filename');
-            const dropzone      = document.getElementById('logo-dropzone');
-
-            function handleLogoFile(file) {
-                if (! file) return;
-                logoFilename.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-                logoFilename.classList.remove('hidden');
-                logoPlaceholder.classList.add('hidden');
-
-                if (file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        logoPreview.src = e.target.result;
-                        logoPreview.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-
-            logoInput.addEventListener('change', () => handleLogoFile(logoInput.files[0]));
-
-            dropzone.addEventListener('dragover', e => {
-                e.preventDefault();
-                dropzone.classList.add('border-blue-400', 'bg-blue-50/50');
-            });
-            dropzone.addEventListener('dragleave', () => {
-                dropzone.classList.remove('border-blue-400', 'bg-blue-50/50');
-            });
-            dropzone.addEventListener('drop', e => {
-                e.preventDefault();
-                dropzone.classList.remove('border-blue-400', 'bg-blue-50/50');
-                const file = e.dataTransfer.files[0];
-                if (file) {
-                    // Assign to the input so it goes with the form
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    logoInput.files = dt.files;
-                    handleLogoFile(file);
-                }
-            });
-
-            // Active toggle
-            const toggleBtn = document.getElementById('toggle-active');
-            const activeInput = document.getElementById('is-active-input');
+            if (!toggleBtn || !input) return;
 
             toggleBtn.addEventListener('click', () => {
                 const isActive = toggleBtn.getAttribute('aria-checked') === 'true';
+
                 toggleBtn.setAttribute('aria-checked', !isActive);
-                activeInput.value = isActive ? '0' : '1';
+                input.value = isActive ? '0' : '1';
+
                 toggleBtn.classList.toggle('bg-blue-600', !isActive);
                 toggleBtn.classList.toggle('bg-gray-200', isActive);
                 toggleBtn.classList.toggle('dark:bg-gray-600', isActive);
+
                 const knob = toggleBtn.querySelector('span');
                 knob.classList.toggle('translate-x-6', !isActive);
                 knob.classList.toggle('translate-x-1', isActive);
             });
-        </script>
-        <script>
-            document.addEventListener("DOMContentLoaded", function () {
-                const editors = document.querySelectorAll('.quill-editor');
-                const quillInstances = [];
+        }
 
-                // 1. Initialize all editors dynamically
-                editors.forEach(editorEl => {
-                    const quill = new Quill(editorEl, {
-                        theme: 'snow',
-                        modules: {
-                            toolbar: [
-                                ['bold', 'italic', 'underline'],
-                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                ['clean']
-                            ]
-                        }
-                    });
+        // Initialise all toggles
+        initToggle('toggle-active', 'is-active-input');
+        initToggle('toggle-quote-default', 'quote-default-input');
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const editors = document.querySelectorAll('.quill-editor');
+            const quillInstances = [];
 
-                    // Track the instance along with its relative element structure
-                    quillInstances.push({
-                        quill: quill,
-                        container: editorEl
-                    });
+            // 1. Initialize all editors dynamically
+            editors.forEach(editorEl => {
+                const quill = new Quill(editorEl, {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline'],
+                            [{'list': 'ordered'}, {'list': 'bullet'}],
+                            ['clean']
+                        ]
+                    }
                 });
 
-                // 2. Intercept form submission to sync data
-                if (quillInstances.length > 0) {
-                    // Find the form containing the first editor instance
-                    const form = quillInstances[0].container.closest('form');
-
-                    if (form) {
-                        form.addEventListener('submit', function () {
-                            quillInstances.forEach(instance => {
-                                // Find the wrapper parent containing both the editor and the hidden textarea
-                                const wrapper = instance.container.closest('.rich-text-wrapper');
-                                const hiddenInput = wrapper.querySelector('.hidden-quill-input');
-
-                                // Sync html data
-                                hiddenInput.value = instance.quill.root.innerHTML;
-                            });
-                        });
-                    }
-                }
+                // Track the instance along with its relative element structure
+                quillInstances.push({
+                    quill: quill,
+                    container: editorEl
+                });
             });
-        </script>
-    @endpush
+
+            // 2. Intercept form submission to sync data
+            if (quillInstances.length > 0) {
+                // Find the form containing the first editor instance
+                const form = quillInstances[0].container.closest('form');
+
+                if (form) {
+                    form.addEventListener('submit', function () {
+                        quillInstances.forEach(instance => {
+                            // Find the wrapper parent containing both the editor and the hidden textarea
+                            const wrapper = instance.container.closest('.rich-text-wrapper');
+                            const hiddenInput = wrapper.querySelector('.hidden-quill-input');
+
+                            // Sync html data
+                            hiddenInput.value = instance.quill.root.innerHTML;
+                        });
+                    });
+                }
+            }
+        });
+    </script>
 
 </x-app-layout>

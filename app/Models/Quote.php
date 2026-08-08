@@ -124,5 +124,22 @@ class Quote extends Model
     {
         return $this->hasMany(QuoteSignature::class);
     }
+    public function getPdfFilenameAttribute(): string
+    {
+        $categories = $this->items
+            ->map(function ($item) {
+                return $item->product?->category?->name
+                    ?? $item->category_name;
+            })
+            ->filter()
+            ->unique()
+            ->implode(' - ');
+
+        $client = $this->client_name ?: 'Client';
+
+        $date = now()->format('d-M-Y');
+
+        return "AIIT - Proposal To {$client} - {$categories} - by AT-{$date}.pdf";
+    }
 
 }

@@ -22,11 +22,11 @@ class QuoteController extends Controller
         $query = Quote::withCount('items')
             ->latest();
 
-        if ($status = $request->get('status')) {
+        if ($status = $request->input('status')) {
             $query->where('status', $status);
         }
 
-        if ($search = $request->get('search')) {
+        if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('client_name', 'like', "%{$search}%")
                     ->orWhere('quote_number', 'like', "%{$search}%")
@@ -141,61 +141,6 @@ class QuoteController extends Controller
     // Show
     // -----------------------------------------------------------------------
 
-    public function show(Quote $quote): View
-    {
-        $quote->load('items.product.category')->withCount('items');
-        $defaultSrc = asset('images/default.png');
-        $coverSrc    = asset('images/img.png');
-        $closingSrc  = asset('images/media/image67.jpg');
-        $partnersSrc = asset('images/partners_.png');
-        $threeStepRollOutSrc = asset('images/threestep.jpeg');
-        $items = $quote->items->map(function ($item) use ($defaultSrc) {
-
-            if (
-                $item->product &&
-                $item->product->image_url &&
-                file_exists(public_path('storage/' . $item->product->image_url))
-            ) {
-                $item->product_image_src = asset(
-                    'storage/' . $item->product->image_url
-                );
-            } else {
-                $item->product_image_src = $defaultSrc;
-            }
-
-            return $item;
-        });
-
-        $groupedItems = $items
-            ->groupBy(function ($item) {
-                return $item->product?->category?->name
-                    ?? $item->category_name
-                    ?? '';
-            })
-            ->map(function ($categoryItems, $categoryName) {
-
-                $category = $categoryItems->first()?->product?->category;
-
-                return [
-                    'name' => $categoryName,
-
-                    'image' => $category?->icon
-                        ? asset('storage/' . $category->icon)
-                        : null,
-
-                    'items' => $categoryItems,
-                ];
-            })
-            ->values();
-
-        return view('admin.quotes.show', compact(
-            'quote',
-            'items',
-            'groupedItems',
-            'defaultSrc',
-            'coverSrc','closingSrc','partnersSrc','threeStepRollOutSrc'));
-    }
-
     // -----------------------------------------------------------------------
     // Edit
     // -----------------------------------------------------------------------
@@ -271,6 +216,7 @@ class QuoteController extends Controller
                     'scope_of_works'    => $item['scope_of_works'] ?? null,
                     'key_scope_keyword' => $item['key_scope_keyword'] ?? null,
                     'unit_price'        => (float) ($item['unit_price'] ?? 0),
+                    'setup_fee'        => (float) ($item['setup_fee'] ?? 0),
                     'hourly_rate'       => $item['hourly_rate'] ?? null,
                     'frequency'         => $item['frequency'] ?? 'once_off',
                     'image_url'         => $item['image_url'] ?? null,
@@ -320,7 +266,6 @@ class QuoteController extends Controller
         }
 
         if (in_array($request->send_via, ['sms', 'both'])) {
-
             // Twilio / MessageBird / Vonage
 
         }
@@ -458,120 +403,106 @@ class QuoteController extends Controller
 //    }
 
 
+    public function show(Quote $quote)
+    {
+        $data = $this->buildQuoteData($quote, forPdf: false);
+
+        return view('admin.quotes.show', $data);
+    }
+
     public function pdf(Request $request, Quote $quote)
     {
         ini_set('memory_limit', '1024M');
         set_time_limit(300);
 
-        $quote->load([
-            'items.product.category'
-        ]);
+        $data = $this->buildQuoteData($quote, true);
 
-        // Static images
-        $coverSrc    = public_path('images/img.png');
-        $defaultSrc  = public_path('images/default.png');
-        $closingSrc  = public_path('images/media/image67.jpg');
-        $partnersSrc = public_path('images/partners_.png');
-        $threeStepRollOutSrc = public_path('images/threestep.jpeg');
+        $pdf = Pdf::loadView('admin.quotes.pdf', $data)
+            ->setPaper('a4', 'landscape')
+            ->setOption('isRemoteEnabled', true)
+            ->setOption('isFontSubsettingEnabled', true)
+            ->setOption('dpi', 96)
+            ->setWarnings(false);
+
+        return $pdf->stream("{$quote->getPdfFilenameAttribute()}");
+    }
+
+    private function buildQuoteData(Quote $quote, bool $forPdf = false): array
+    {
+        $quote->load(['items.product.category']);
+
+        // ─── Path resolver ───────────────────────────────────────────
+        // PDF needs absolute file paths, browser needs web URLs
+        $path = fn (string $storagePath) => $forPdf
+            ? public_path('storage/' . $storagePath)
+            : asset('storage/' . $storagePath);
+
+        $staticPath = fn (string $publicPath) => $forPdf
+            ? public_path($publicPath)
+            : asset($publicPath);
+
+        $exists = fn (string $storagePath) => file_exists(public_path('storage/' . $storagePath));
+        // ─────────────────────────────────────────────────────────────
+
+        $coverSrc            = $staticPath('images/img.png');
+        $defaultSrc          = $staticPath('images/default.png');
+        $closingSrc          = $staticPath('images/media/image67.jpg');
+        $partnersSrc         = $staticPath('images/partners_.png');
+        $threeStepRollOutSrc = $staticPath('images/threestep.jpeg');
 
         $configImages = collect(config('quote.images', []))
-            ->map(function ($img) {
-                return [
-                    'placeholder' => $img['placeholder'],
-                    'src' => public_path($img['image']),
-                ];
-            })
-            ->filter(fn ($img) => file_exists($img['src']))
+            ->map(fn ($img) => [
+                'placeholder' => $img['placeholder'],
+                'src'         => $staticPath($img['image']),
+            ])
+            ->filter(fn ($img) => $forPdf
+                ? file_exists(public_path(ltrim(parse_url($img['src'], PHP_URL_PATH), '/')))
+                : true
+            )
             ->values();
 
-        // Client logo
         $clientLogoSrc = null;
-
-        if (
-            $quote->logo_url &&
-            file_exists(public_path('storage/' . $quote->logo_url))
-        ) {
-            $clientLogoSrc = public_path('storage/' . $quote->logo_url);
+        if ($quote->logo_url && $exists($quote->logo_url)) {
+            $clientLogoSrc = $path($quote->logo_url);
         }
 
-        // Product images
-        $items = $quote->items->map(function ($item) use ($defaultSrc) {
-
-            if (
-                $item->product &&
-                $item->product->image_url &&
-                file_exists(public_path('storage/' . $item->product->image_url))
-            ) {
-                $item->product_image_src = public_path(
-                    'storage/' . $item->product->image_url
-                );
-            } else {
-                $item->product_image_src = $defaultSrc;
-            }
+        $items = $quote->items->map(function ($item) use ($path, $defaultSrc, $exists) {
+            $item->product_image_src = ($item->product?->image_url && $exists($item->product->image_url))
+                ? $path($item->product->image_url)
+                : $defaultSrc;
 
             return $item;
         });
 
         $groupedItems = $items
-            ->groupBy(function ($item) {
-                return $item->product?->category?->name
-                    ?? $item->category_name
-                    ?? '';
-            })
-            ->map(function ($categoryItems, $categoryName) {
-
+            ->groupBy(fn ($item) => $item->product?->category?->name ?? $item->category_name ?? '')
+            ->map(function ($categoryItems, $categoryName) use ($path) {
                 $category = $categoryItems->first()?->product?->category;
 
                 return [
-                    'name' => $categoryName,
-
-                    'image' => $category?->icon
-                        ? public_path('storage/' . $category->icon)
-                        : null,
-
+                    'name'  => $categoryName,
+                    'image' => $category?->icon ? $path($category->icon) : null,
                     'items' => $categoryItems,
                 ];
             })
             ->values();
 
-        $data = [
-            'quote' => $quote,
-            'items' => $items,
-            'groupedItems' => $groupedItems,
-            'coverSrc' => $coverSrc,
-            'defaultSrc' => $defaultSrc,
-            'closingSrc' => $closingSrc,
-            'partnersSrc' => $partnersSrc,
+        return [
+            'quote'               => $quote,
+            'items'               => $items,
+            'groupedItems'        => $groupedItems,
+            'coverSrc'            => $coverSrc,
+            'defaultSrc'          => $defaultSrc,
+            'closingSrc'          => $closingSrc,
+            'partnersSrc'         => $partnersSrc,
             'threeStepRollOutSrc' => $threeStepRollOutSrc,
-            'clientLogoSrc' => $clientLogoSrc,
-            'configImages' => $configImages,
-            'stageColumns' => collect(config('quote.stage_columns')),
-            'stageAccents' => [
-                '#fbbf24',
-                '#f97316',
-                '#c2410c',
-            ],
-
-            'termsAndConditions' =>
-                $quote->terms_and_conditions
-                    ?: config('quote.default_terms'),
+            'clientLogoSrc'       => $clientLogoSrc,
+            'configImages'        => $configImages,
+            'stageColumns'        => collect(config('quote.stage_columns')),
+            'stageAccents'        => ['#fbbf24', '#f97316', '#c2410c'],
+            'termsAndConditions'  => $quote->terms_and_conditions ?: config('quote.default_terms'),
         ];
-        $pdf = Pdf::loadView('admin.quotes.pdf', $data)
-            ->setPaper('a4', 'landscape')
-            ->setOption('isRemoteEnabled', true)
-            ->setOption('isFontSubsettingEnabled', false)
-            ->setOption('defaultMediaType', 'print')
-            ->setOption('dpi', 96)
-            ->setWarnings(false);
-
-        return $pdf->stream(
-            "{$quote->quote_number}.pdf",
-            [
-                'Attachment' => false,
-            ]
-        );
     }
-
     private static function cachedBase64(string $path, int $width, int $height): ?string
     {
         $fullPath = public_path($path);

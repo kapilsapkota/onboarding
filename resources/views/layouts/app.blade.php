@@ -10,50 +10,56 @@
 
     <title>{{ config('app.name', 'Onboarding AIIT') }}</title>
 
-    <!-- Fonts -->
-{{--    <link rel="preconnect" href="https://bunny.net">--}}
-{{--    <link href="https://bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />--}}
-
-    <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Inline fix for Alpine x-cloak utility -->
     <style>[x-cloak] { display: none !important; }</style>
 </head>
-<body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-900" x-data="{ sidebarOpen: false }">
 
-<!-- Sidebar Layout Included Nationally -->
-@include('layouts.navigation')
+<body
+    class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-900 min-h-screen flex"
+    x-data="{
+        collapsed: localStorage.getItem('sidebarCollapsed') === 'true',
+        mobileOpen: false,
+        init() {
+            this.$watch('collapsed', val => localStorage.setItem('sidebarCollapsed', val));
+        }
+    }"
+>
 
-<!-- Main Content wrapper containing clean desktop margin adjustments -->
-<div class="flex flex-col min-h-screen md:pl-64">
+{{-- Sidebar --}}
+<div class="print:hidden">
+    @include('layouts.navigation')
+</div>
 
-    <!-- Unified App Top Bar Header Layout -->
+{{-- Main content shifts via margin-left, matching sidebar width --}}
+<div
+    class="flex flex-col flex-1 min-h-screen min-w-0 overflow-hidden transition-all duration-200 ease-in-out"
+    :class="{
+            'lg:ml-64': !collapsed,
+            'lg:ml-16': collapsed
+        }"
+>
+    {{-- Top Bar --}}
     <header class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm sticky top-0 z-30 w-full print:hidden">
-        <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
-            <div class="flex items-center gap-4 w-full">
+        <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center gap-4">
 
-                <!-- Mobile Hamburger Button - ALWAYS visible on mobile, outside isset rule -->
-                <button @click="sidebarOpen = true"
-                        type="button"
-                        class="p-2 -ml-2 text-gray-500 rounded-md md:hidden hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 shrink-0">
-                    <span class="sr-only">Open sidebar</span>
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
+            {{-- Mobile hamburger --}}
+            <button @click="mobileOpen = true"
+                    type="button"
+                    class="p-2 -ml-2 text-gray-500 rounded-md lg:hidden hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 shrink-0">
+                <span class="sr-only">Open sidebar</span>
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
 
-                <!-- Render Header Title Text cleanly when defined -->
-                @isset($header)
-                    <div class="w-full">
-                        {{ $header }}
-                    </div>
-                @endisset
-            </div>
+            @isset($header)
+                <div class="w-full">{{ $header }}</div>
+            @endisset
         </div>
     </header>
 
-    <main class="flex-1 py-6 px-4 sm:px-6 lg:px-8 w-full max-w-full mx-auto">
+    <main class="flex-1 py-6 px-4 sm:px-6 lg:px-8 w-full print:w-full">
         {{ $slot }}
     </main>
 </div>
@@ -63,7 +69,6 @@
         const modal = document.getElementById(`deleteModal_${id}`);
         if (modal) modal.classList.remove('hidden');
     }
-
     function closeDeleteModal(id) {
         const modal = document.getElementById(`deleteModal_${id}`);
         if (modal) modal.classList.add('hidden');
