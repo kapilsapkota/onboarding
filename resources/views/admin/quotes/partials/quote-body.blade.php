@@ -79,19 +79,20 @@
                                 </div>
                             @endif
 
+                            @if($item->notes)
+                                <div class="item-note">
+                                    <strong>Note:</strong>
+                                </div>
+                                <div class="item-description">{{ $item->notes }}</div>
+                            @endif
+
                             <div class="item-price">
                                 Total Price ${{ number_format($item->unit_price, 0) }} + GST @if($item->frequency_label) {{ $item->frequency_label }}@endif
                             </div>
 
                             @if($item->setup_fee && $item->setup_fee > 0)
-                                <div class="item-price">
+                                <div class="item-setup-fee">
                                     Setup Fee ${{ number_format($item->setup_fee, 0) }} + GST (Once off)
-                                </div>
-                            @endif
-
-                            @if($item->notes)
-                                <div class="item-note">
-                                    <strong>Note:</strong> {{ $item->notes }}
                                 </div>
                             @endif
                         </td>
@@ -106,7 +107,6 @@
     @endif
 @endforeach
 
-
 @foreach($configImages as $image)
     <div class="quote-page">
         <div class="bleed-wrap">
@@ -117,7 +117,8 @@
     </div>
 @endforeach
 
-<div class="terms-page">
+
+<div class="quote-page terms-page quote-page-terms">
     <table class="terms-table">
 
         <thead>
@@ -168,23 +169,25 @@
     </table>
 </div>
 
-<div class="quote-page" style="page-break-before: always;">
+<div class="quote-page">
     <div class="sig-page">
-
-        @if($quote->signed_at)
-            <div class="sig-badge">
-                &#10003; &nbsp;Signed {{ $quote->signed_at->format('d M Y, h:i A') }}
-            </div>
-        @endif
+        @php
+            $signature = $quote->signatures
+                ->sortByDesc('signed_at')
+                ->first();
+        @endphp
 
         <table class="sig-row">
             <tr>
                 <td style="vertical-align:bottom; padding-bottom:4px; white-space:nowrap; padding-right:12px;">
                     <span class="sig-label">Company / Business Name:</span>
                 </td>
+
                 <td style="vertical-align:bottom; width:100%;">
-                    @if($quote->signed_company_name)
-                        <span class="sig-value sig-line">{{ $quote->signed_company_name }}</span>
+                    @if($signature?->company_name)
+                        <span class="sig-value sig-line">
+                    {{ $signature->company_name }}
+                </span>
                     @else
                         <span class="sig-line">&nbsp;</span>
                     @endif
@@ -200,9 +203,12 @@
                             <td style="white-space:nowrap; padding-right:10px; padding-bottom:4px; vertical-align:bottom;">
                                 <span class="sig-label">Authorised Person:</span>
                             </td>
+
                             <td style="vertical-align:bottom; width:100%;">
-                                @if($quote->signed_name)
-                                    <span class="sig-value sig-line">{{ $quote->signed_name }}</span>
+                                @if($signature?->authorised_person)
+                                    <span class="sig-value sig-line">
+                                {{ $signature->authorised_person }}
+                            </span>
                                 @else
                                     <span class="sig-line">&nbsp;</span>
                                 @endif
@@ -210,15 +216,19 @@
                         </tr>
                     </table>
                 </td>
+
                 <td class="sig-half" style="vertical-align:bottom;">
                     <table style="width:100%;border-collapse:collapse;">
                         <tr>
                             <td style="white-space:nowrap; padding-right:10px; padding-bottom:4px; vertical-align:bottom;">
                                 <span class="sig-label">Position:</span>
                             </td>
+
                             <td style="vertical-align:bottom; width:100%;">
-                                @if($quote->signed_position)
-                                    <span class="sig-value sig-line">{{ $quote->signed_position }}</span>
+                                @if($signature?->position)
+                                    <span class="sig-value sig-line">
+                                {{ $signature->position }}
+                            </span>
                                 @else
                                     <span class="sig-line">&nbsp;</span>
                                 @endif
@@ -232,24 +242,32 @@
         <table class="sig-row">
             <tr>
                 <td class="sig-half" style="vertical-align:top;">
-                    <div class="sig-label" style="margin-bottom:8px;">Signature:</div>
+                    <div class="sig-label" style="margin-bottom:8px;">
+                        Signature:
+                    </div>
+
                     <div class="sig-box">
-                        @if(isset($quote->signature))
-                            <img src="{{ $quote->signature->signature_image }}" alt="Signature">
+                        @if($signatureSrc)
+                            <img
+                                src="{{ $signatureSrc }}"
+                                alt="Authorised Signature"
+                            >
                         @endif
                     </div>
                 </td>
+
                 <td class="sig-half" style="vertical-align:bottom;">
                     <table style="width:100%;border-collapse:collapse;">
                         <tr>
                             <td style="white-space:nowrap; padding-right:10px; padding-bottom:4px; vertical-align:bottom;">
                                 <span class="sig-label">Date:</span>
                             </td>
+
                             <td style="vertical-align:bottom; width:100%;">
-                                @if($quote->signed_at)
+                                @if($signature?->signed_at)
                                     <span class="sig-value sig-line">
-                                        {{ $quote->signed_at->format('d / m / Y') }}
-                                    </span>
+                                {{ $signature->signed_at->format('d / m / Y') }}
+                            </span>
                                 @else
                                     <span class="sig-line">&nbsp;</span>
                                 @endif
@@ -260,7 +278,7 @@
             </tr>
         </table>
 
-        <div style="position:absolute; bottom:40px; left:40px; right:40px;">
+        <div>
             <div class="sig-disclaimer">
                 The person whose name and signature appears above warrants that they are authorised to enter<br>
                 into this agreement with {{ config('app.company_name', 'All in IT Solutions Pty Ltd') }}
@@ -268,11 +286,111 @@
             </div>
         </div>
 
+{{--        @if($quote->signature?->signed_at)--}}
+{{--            <div class="sig-badge">--}}
+{{--                &#10003; &nbsp;Signed {{ $quote->signed_at->format('d M Y, h:i A') }}--}}
+{{--            </div>--}}
+{{--        @endif--}}
+
+{{--        <table class="sig-row">--}}
+{{--            <tr>--}}
+{{--                <td style="vertical-align:bottom; padding-bottom:4px; white-space:nowrap; padding-right:12px;">--}}
+{{--                    <span class="sig-label">Company / Business Name:</span>--}}
+{{--                </td>--}}
+{{--                <td style="vertical-align:bottom; width:100%;">--}}
+{{--                    @if($quote->signed_company_name)--}}
+{{--                        <span class="sig-value sig-line">{{ $quote->signed_company_name }}</span>--}}
+{{--                    @else--}}
+{{--                        <span class="sig-line">&nbsp;</span>--}}
+{{--                    @endif--}}
+{{--                </td>--}}
+{{--            </tr>--}}
+{{--        </table>--}}
+
+{{--        <table class="sig-row">--}}
+{{--            <tr>--}}
+{{--                <td class="sig-half" style="vertical-align:bottom;">--}}
+{{--                    <table style="width:100%;border-collapse:collapse;">--}}
+{{--                        <tr>--}}
+{{--                            <td style="white-space:nowrap; padding-right:10px; padding-bottom:4px; vertical-align:bottom;">--}}
+{{--                                <span class="sig-label">Authorised Person:</span>--}}
+{{--                            </td>--}}
+{{--                            <td style="vertical-align:bottom; width:100%;">--}}
+{{--                                @if($quote->signed_name)--}}
+{{--                                    <span class="sig-value sig-line">{{ $quote->signed_name }}</span>--}}
+{{--                                @else--}}
+{{--                                    <span class="sig-line">&nbsp;</span>--}}
+{{--                                @endif--}}
+{{--                            </td>--}}
+{{--                        </tr>--}}
+{{--                    </table>--}}
+{{--                </td>--}}
+{{--                <td class="sig-half" style="vertical-align:bottom;">--}}
+{{--                    <table style="width:100%;border-collapse:collapse;">--}}
+{{--                        <tr>--}}
+{{--                            <td style="white-space:nowrap; padding-right:10px; padding-bottom:4px; vertical-align:bottom;">--}}
+{{--                                <span class="sig-label">Position:</span>--}}
+{{--                            </td>--}}
+{{--                            <td style="vertical-align:bottom; width:100%;">--}}
+{{--                                @if($quote->signed_position)--}}
+{{--                                    <span class="sig-value sig-line">{{ $quote->signed_position }}</span>--}}
+{{--                                @else--}}
+{{--                                    <span class="sig-line">&nbsp;</span>--}}
+{{--                                @endif--}}
+{{--                            </td>--}}
+{{--                        </tr>--}}
+{{--                    </table>--}}
+{{--                </td>--}}
+{{--            </tr>--}}
+{{--        </table>--}}
+
+{{--        <table class="sig-row">--}}
+{{--            <tr>--}}
+{{--                <td class="sig-half" style="vertical-align:top;">--}}
+{{--                    <div class="sig-label" style="margin-bottom:8px;">Signature:</div>--}}
+{{--                    <div class="sig-box">--}}
+{{--                        @if(isset($quote->signature))--}}
+{{--                            <img src="{{ $quote->signature->signature_image }}" alt="Signature">--}}
+{{--                        @endif--}}
+{{--                    </div>--}}
+{{--                </td>--}}
+{{--                <td class="sig-half" style="vertical-align:bottom;">--}}
+{{--                    <table style="width:100%;border-collapse:collapse;">--}}
+{{--                        <tr>--}}
+{{--                            <td style="white-space:nowrap; padding-right:10px; padding-bottom:4px; vertical-align:bottom;">--}}
+{{--                                <span class="sig-label">Date:</span>--}}
+{{--                            </td>--}}
+{{--                            <td style="vertical-align:bottom; width:100%;">--}}
+{{--                                @if($quote->signed_at)--}}
+{{--                                    <span class="sig-value sig-line">--}}
+{{--                                        {{ $quote->signed_at->format('d / m / Y') }}--}}
+{{--                                    </span>--}}
+{{--                                @else--}}
+{{--                                    <span class="sig-line">&nbsp;</span>--}}
+{{--                                @endif--}}
+{{--                            </td>--}}
+{{--                        </tr>--}}
+{{--                    </table>--}}
+{{--                </td>--}}
+{{--            </tr>--}}
+{{--        </table>--}}
+
+{{--        <div>--}}
+{{--            <div class="sig-disclaimer">--}}
+{{--                The person whose name and signature appears above warrants that they are authorised to enter<br>--}}
+{{--                into this agreement with {{ config('app.company_name', 'All in IT Solutions Pty Ltd') }}--}}
+{{--                on behalf of the above company / business.--}}
+{{--            </div>--}}
+{{--        </div>--}}
+
     </div>
 </div>
 
+
+
+
 @if($closingSrc)
-    <div class="quote-page">
+    <div class="quote-page closing-page">
         <div class="bleed-wrap">
             <img src="{{ $closingSrc }}" alt="All in IT Solutions" class="bleed-img">
         </div>

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\EmailService;
+use App\Services\SmsService;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -12,7 +14,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(EmailService::class);
+        $this->app->singleton(SmsService::class);
     }
 
     /**

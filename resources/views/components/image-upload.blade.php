@@ -3,6 +3,7 @@
     'removeName' => 'remove_image',
     'current' => null,
     'label' => 'Image',
+    'isRequired' => false,
     'accept' => 'image/*',
 ])
 

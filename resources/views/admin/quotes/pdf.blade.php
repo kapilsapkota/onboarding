@@ -6,6 +6,7 @@
     @include('admin.quotes.partials.quote-styles')
 </head>
 <body>
+{{--@php dd($configImages); @endphp--}}
 @include('admin.quotes.partials.quote-body')
 </body>
 </html>

@@ -62,7 +62,9 @@
                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
                     <div>
-                        <label class="block text-sm font-medium mb-1">Client Name *</label>
+                        <label class="block text-sm font-medium mb-1">
+                            Company Name <span class="text-red-500">*</span>
+                        </label>
                         <input
                             required
                             name="client_name"
@@ -73,7 +75,9 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-1">Contact</label>
+                        <label class="block text-sm font-medium mb-1">
+                            Contact Person <span class="text-red-500">*</span>
+                        </label>
                         <input
                             name="contact_name"
                             type="text"
@@ -83,7 +87,9 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-1">Email</label>
+                        <label class="block text-sm font-medium mb-1">
+                            Email <span class="text-red-500">*</span>
+                        </label>
                         <input
                             name="email"
                             type="email"
@@ -113,15 +119,18 @@
                     </div>
 
                     <div>
-                        <label for="expires_at" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Expires At
-                        </label>
+                        <label class="block text-sm font-medium mb-1">Expires at</label>
 
                         <input
                             id="expires_at"
                             name="expires_at"
                             type="date"
-                            value="{{ old('expires_at', isset($quote) ? optional($quote->expires_at)->toDateString() : '') }}"
+                            value="{{ old(
+                                'expires_at',
+                                isset($quote)
+                                    ? optional($quote->expires_at)->toDateString()
+                                    : now()->addMonth()->toDateString()
+                            ) }}"
                             class="w-full rounded-lg border-gray-300"
                         >
                     </div>
@@ -172,10 +181,10 @@
                         </tr>
                         </thead>
 
-                        <tbody class="divide-y">
-
                         <template x-for="(item, index) in items" :key="index">
+                            <tbody class="divide-y">
 
+                            {{-- MAIN ITEM ROW --}}
                             <tr class="align-top">
 
                                 {{-- PRODUCT --}}
@@ -208,13 +217,16 @@
                                                 class="block w-full text-left px-4 py-3 hover:bg-blue-50 border-b"
                                             >
                                                 <div class="font-medium" x-text="product.name"></div>
+
                                                 <div class="text-xs text-gray-500">
                                                     <span x-text="product.category?.name"></span>
                                                     •
+
                                                     <span
                                                         x-show="product.price_type == 'fixed'"
                                                         x-text="'$' + Number(product.fixed_price).toLocaleString()"
                                                     ></span>
+
                                                     <span
                                                         x-show="product.price_type == 'dropdown'"
                                                         x-text="'$' + Number(product.price_min).toLocaleString() + ' – $' + Number(product.price_max).toLocaleString()"
@@ -231,16 +243,28 @@
                                         </div>
                                     </div>
 
-                                    {{-- Selected product summary --}}
+                                    {{-- Selected product --}}
                                     <template x-if="item.product_id">
-                                        <div class="mt-3">
-                                            <div class="font-medium text-sm" x-text="item.product_name"></div>
-                                            <div class="text-xs text-gray-500" x-text="item.category_name"></div>
-                                            <textarea
-                                                rows="4"
-                                                x-model="item.scope_of_works"
-                                                class="mt-2 w-full rounded border-gray-300 text-xs"
-                                            ></textarea>
+                                        <div class="mt-2">
+                                            <div
+                                                class="font-medium text-sm"
+                                                x-text="item.product_name"
+                                            ></div>
+
+                                            <div
+                                                class="text-xs text-gray-500"
+                                                x-text="item.category_name"
+                                            ></div>
+
+                                            <button
+                                                type="button"
+                                                @click="item.showDetails = !item.showDetails"
+                                                class="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800"
+                                            >
+            <span
+                x-text="item.showDetails ? '− Hide details' : '+ Edit details'"
+            ></span>
+                                            </button>
                                         </div>
                                     </template>
 
@@ -258,28 +282,26 @@
 
                                 {{-- UNIT PRICE --}}
                                 <td class="p-4">
+                                    <div class="flex items-center gap-2 w-36">
+                                        <span class="text-sm text-gray-500">$</span>
 
-                                    <template x-if="item.price_type == 'fixed'">
-                                        <div
-                                            class="font-semibold"
-                                            x-text="'$' + Number(item.unit_price).toLocaleString('en-AU', { minimumFractionDigits: 2 })"
-                                        ></div>
-                                    </template>
-
-                                    <template x-if="item.price_type == 'dropdown'">
-                                        <select
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
                                             x-model.number="item.unit_price"
-                                            class="w-full rounded-lg border-gray-300"
+                                            class="w-full rounded-lg border-gray-300 text-right"
                                         >
-                                            <template x-for="price in getPriceOptions(item)" :key="price">
-                                                <option
-                                                    :value="price"
-                                                    x-text="'$' + price.toLocaleString()"
-                                                ></option>
-                                            </template>
-                                        </select>
-                                    </template>
+                                    </div>
 
+                                    <template x-if="item.price_type === 'dropdown'">
+                                        <div class="mt-1 text-xs text-gray-400">
+                                            Suggested:
+                                            $<span x-text="Number(item.price_min).toLocaleString()"></span>
+                                            –
+                                            $<span x-text="Number(item.price_max).toLocaleString()"></span>
+                                        </div>
+                                    </template>
                                 </td>
 
                                 {{-- SETUP FEE --}}
@@ -298,8 +320,14 @@
 
                                     <template x-if="item.hourly_rate">
                                         <div>
-                                            <span class="font-medium" x-text="calculateHours(item)"></span>
-                                            <span class="text-xs text-gray-400"> hrs</span>
+                        <span
+                            class="font-medium"
+                            x-text="calculateHours(item)"
+                        ></span>
+
+                                            <span class="text-xs text-gray-400">
+                            hrs
+                        </span>
                                         </div>
                                     </template>
 
@@ -311,17 +339,19 @@
 
                                 {{-- FREQUENCY --}}
                                 <td class="p-4 text-center">
-                                        <span
-                                            class="inline-flex px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs"
-                                            x-text="frequencyLabel(item.frequency)"
-                                        ></span>
+                <span
+                    class="inline-flex px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs"
+                    x-text="frequencyLabel(item.frequency)"
+                ></span>
                                 </td>
 
                                 {{-- LINE TOTAL --}}
                                 <td class="p-4 text-right font-semibold">
-                                        <span
-                                            x-text="'$' + lineTotal(item).toLocaleString('en-AU', { minimumFractionDigits: 2 })"
-                                        ></span>
+                <span
+                    x-text="'$' + lineTotal(item).toLocaleString('en-AU', {
+                        minimumFractionDigits: 2
+                    })"
+                ></span>
                                 </td>
 
                                 {{-- REMOVE --}}
@@ -330,25 +360,64 @@
                                         type="button"
                                         @click="removeItem(index)"
                                         class="text-gray-400 hover:text-red-600"
-                                    >✕</button>
+                                    >
+                                        ✕
+                                    </button>
                                 </td>
 
                             </tr>
 
+                            {{-- ITEM DETAILS ROW --}}
+                            <template x-if="item.product_id && item.showDetails">
+                                <tr class="bg-gray-50 dark:bg-gray-900/30">
+                                    <td colspan="8" class="px-4 py-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Scope of Works
+                                                </label>
+
+                                                <textarea
+                                                    rows="3"
+                                                    x-model="item.scope_of_works"
+                                                    class="w-full rounded-lg border-gray-300 text-sm"
+                                                    placeholder="Scope of works..."
+                                                ></textarea>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Key Scope Keyword
+                                                </label>
+
+                                                <textarea
+                                                    rows="3"
+                                                    x-model="item.key_scope_keyword"
+                                                    class="w-full rounded-lg border-gray-300 text-sm"
+                                                    placeholder="Scope of works..."
+                                                ></textarea>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Notes
+                                                </label>
+
+                                                <textarea
+                                                    rows="3"
+                                                    x-model="item.notes"
+                                                    class="w-full rounded-lg border-gray-300 text-sm"
+                                                    placeholder="Additional notes..."
+                                                ></textarea>
+                                            </div>
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+
+                            </tbody>
                         </template>
-
-                        <tr x-show="items.length === 0">
-                            <td colspan="7" class="text-center py-12 text-gray-400">
-                                No products added.
-                                <button
-                                    type="button"
-                                    @click="addBlankRow()"
-                                    class="text-blue-600 hover:underline"
-                                >Add product</button>
-                            </td>
-                        </tr>
-
-                        </tbody>
                         <tfoot>
                         <tr>
                             <td colspan="8" class="p-4 border-t">
@@ -440,7 +509,6 @@
 
                 init()
                 {
-                    // Flatten all products from every category for global search
                     this.products = categories.flatMap(category =>
                         (category.active_products || []).map(product => {
                             product.category_name = category.name;
@@ -448,7 +516,6 @@
                         })
                     );
 
-                    // Hydrate existing quote items when editing
                     if (existingItems && existingItems.length) {
                         existingItems.forEach(item => {
                             let product = item.product;
@@ -468,13 +535,14 @@
                                 hourly_rate:       item.hourly_rate ? Number(item.hourly_rate) : null,
                                 frequency:         item.frequency  || product?.frequency || 'once_off',
                                 setup_fee:    Number(item.setup_fee ?? 0),
+                                key_scope_keyword: item.key_scope_keyword || '',
                                 scope_of_works:    item.scope_of_works || '',
+                                notes:             item.notes || '',
                             });
                         });
                     } else {
-                        // *** NEW: pre-load every product as a default row ***
                         this.products
-                            .filter(product => Number(product.quote_default) === 1)
+                            .filter(product => product.quote_default)
                             .forEach(product => {
                             this.items.push({
                                 product_id:       product.id,
@@ -494,9 +562,11 @@
                                 hourly_rate:      product.hourly_rate ? Number(product.hourly_rate) : null,
                                 frequency:        product.frequency || 'once_off',
                                 setup_fee:    Number(product.setup_fee ?? 0),
+                                key_scope_keyword: product.key_scope_keyword || '',
                                 scope_of_works:   (product.scope_items || [])
                                     .map(s => s.replace(/^[-•]\s*/, ''))
                                     .join("\n"),
+                                notes:             product.notes || '',
                             });
                         });
                     }
@@ -509,23 +579,33 @@
                 addBlankRow()
                 {
                     this.items.push({
-                        product_id:       null,
-                        product_name:     '',
-                        category_name:    '',
-                        search:           '',
-                        filteredProducts: [],
-                        showResults:      true,
-                        quantity:         1,
-                        price_type:       'fixed',
-                        price_min:        0,
-                        price_max:        0,
-                        price_increment:  500,
-                        unit_price:       0,
-                        hourly_rate:      null,
-                        frequency:        'once_off',
-                        setup_fee:        0,
-                        scope_of_works:   '',
+                        product_id:        null,
+                        product_name:      '',
+                        category_name:     '',
+                        search:            '',
+                        filteredProducts:  [],
+                        showResults:       true,
+                        showDetails:       true,
+                        quantity:          1,
+                        price_type:         'fixed',
+                        price_min:         0,
+                        price_max:         0,
+                        price_increment:   500,
+                        unit_price:        0,
+                        hourly_rate:       null,
+                        frequency:         'once_off',
+                        setup_fee:         0,
+                        key_scope_keyword: '',
+                        scope_of_works:    '',
+                        notes:             '',
                     });
+                },
+                isProductSelected(productId, currentItem = null)
+                {
+                    return this.items.some(item =>
+                        item !== currentItem &&
+                        Number(item.product_id) === Number(productId)
+                    );
                 },
 
                 // ---------------------------------------------------------------
@@ -535,8 +615,11 @@
                 openSearch(item)
                 {
                     if (!item.filteredProducts.length) {
-                        item.filteredProducts = this.products.slice(0, 20);
+                        item.filteredProducts = this.products
+                            .filter(product => !this.isProductSelected(product.id, item))
+                            .slice(0, 20);
                     }
+
                     item.showResults = true;
                 },
 
@@ -548,13 +631,15 @@
                 {
                     let search = item.search.toLowerCase().trim();
 
-                    item.filteredProducts = search
-                        ? this.products.filter(p =>
-                            p.name.toLowerCase().includes(search)
+                    item.filteredProducts = this.products
+                        .filter(p => !this.isProductSelected(p.id, item))
+                        .filter(p =>
+                            !search
+                            || p.name.toLowerCase().includes(search)
                             || p.short_name?.toLowerCase().includes(search)
                             || p.category_name?.toLowerCase().includes(search)
-                        ).slice(0, 20)
-                        : this.products.slice(0, 20);
+                        )
+                        .slice(0, 20);
 
                     item.showResults = true;
                 },
@@ -565,24 +650,47 @@
 
                 selectProduct(item, product)
                 {
+                    if (this.isProductSelected(product.id, item)) {
+                        item.search = '';
+                        item.showResults = false;
+
+                        alert(`"${product.name}" is already added to this quote.`);
+
+                        return;
+                    }
+
                     item.product_id      = product.id;
                     item.product_name    = product.name;
                     item.category_name   = product.category_name;
                     item.search          = product.name;
                     item.showResults     = false;
+
                     item.price_type      = product.price_type;
-                    item.price_min       = Number(product.price_min      || 0);
-                    item.price_max       = Number(product.price_max      || 0);
+                    item.price_min       = Number(product.price_min || 0);
+                    item.price_max       = Number(product.price_max || 0);
                     item.price_increment = Number(product.price_increment || 500);
-                    item.unit_price      = product.price_type === 'fixed'
+
+                    item.unit_price = product.price_type === 'fixed'
                         ? Number(product.fixed_price)
                         : Number(product.price_min);
-                    item.hourly_rate     = product.hourly_rate ? Number(product.hourly_rate) : null;
-                    item.frequency       = product.frequency || 'once_off';
-                    item.setup_fee      = Number(product.setup_fee ?? 0);
+
+                    item.hourly_rate = product.hourly_rate
+                        ? Number(product.hourly_rate)
+                        : null;
+
+                    item.frequency = product.frequency || 'once_off';
+                    item.setup_fee = Number(product.setup_fee ?? 0);
+
+                    item.key_scope_keyword = product.key_scope_keyword || '';
+
                     item.scope_of_works = (product.scope_items || [])
-                        .map(item => item.replace(/^[-•]\s*/, ''))
+                        .map(scope => scope.replace(/^[-•]\s*/, ''))
                         .join("\n");
+
+                    item.notes = product.notes || '';
+
+                    // Open details when a new product is selected
+                    item.showDetails = true;
                 },
 
                 // ---------------------------------------------------------------
@@ -674,6 +782,8 @@
                             frequency:      item.frequency,
                             setup_fee:      item.setup_fee,
                             scope_of_works: item.scope_of_works,
+                            key_scope_keyword: item.key_scope_keyword,
+                            notes: item.notes,
                         }))
                     );
 

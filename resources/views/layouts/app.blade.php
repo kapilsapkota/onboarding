@@ -8,7 +8,7 @@
     <meta name="author" content="">
     <link rel="icon" href="{{ asset('images/aiit.webp') }}">
 
-    <title>{{ config('app.name', 'Onboarding AIIT') }}</title>
+    <title>{{ $title ?? config('app.name', 'Onboarding AIIT') }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 

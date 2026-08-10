@@ -71,6 +71,23 @@ class QuoteItem extends Model
             if ($item->hourly_rate && $item->hourly_rate > 0) {
                 $item->hours = round($lineTotal / (float) $item->hourly_rate, 1);
             }
+
+            $quote = $item->quote;
+
+            if ($quote && $quote->isLocked()) {
+                throw new \LogicException(
+                    'This quote has already been sent and can no longer be edited.'
+                );
+            }
+        });
+        static::deleting(function (QuoteItem $item) {
+            $quote = $item->quote;
+
+            if ($quote && $quote->isLocked()) {
+                throw new \LogicException(
+                    'This quote has already been sent and can no longer be edited.'
+                );
+            }
         });
     }
 

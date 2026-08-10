@@ -73,6 +73,22 @@ return [
         'default_account_code' => env('XERO_DEFAULT_ACCOUNT_CODE', '200'),
         'direct_debit_failure_fee' => env('XERO_DIRECT_DEBIT_FAILURE_FEE', 10),
 
-    ]
+    ],
+    'twilio' => [
+        'account_sid' => env('TWILIO_ACCOUNT_SID'),
+        'auth_token'  => env('TWILIO_AUTH_TOKEN'),
+        'from'        => env('TWILIO_FROM'),
+    ],
+    'sharepoint' => [
+        'tenant_id'     => env('SHAREPOINT_TENANT_ID'),
+        'client_id'     => env('SHAREPOINT_CLIENT_ID'),
+        'client_secret' => env('SHAREPOINT_CLIENT_SECRET'),
+        'site_id' => env('SHAREPOINT_SITE_ID'),
+        'drive_id' => env('SHAREPOINT_DRIVE_ID'),
+    ],
+
+    'quotes' => [
+        'public_url_ttl' => (int) env('QUOTE_PUBLIC_URL_TTL', 7),
+    ],
 
 ];

@@ -236,26 +236,27 @@
 
     .item-scope-label {
         font-weight: bolder;
-        color: #374151;
-        margin-bottom: 10px;
+        color: #111827;
+        margin-top: 18px;
+        margin-bottom: 18px;
     }
-
 
     .item-scope-list li { margin-bottom: 6px; }
 
     .item-price {
         font-weight: bolder;
         color: #111827;
-        margin-top: 10px;
+        margin-top: 18px;
+    }
+    .item-setup-fee{
+        font-weight: bolder;
+        color: #111827;
     }
 
     .item-note {
-        font-size: 10px;
-        color: #92400e;
-        background: #fffbeb;
-        border-radius: 4px;
-        padding: 8px 12px;
-        margin-top: 10px;
+        font-weight: bold;
+        color: #111827;
+        margin-top: 18px;
     }
 
     /* ─────────────────────────────────────────
@@ -278,14 +279,19 @@
     }
 
     .terms-page {
+        width: auto;
+        max-width: none;
         background: #ffffff;
-        padding: 40px 48px;
+        padding: 40px !important;
+        margin: 0;
     }
 
     .terms-table {
         width: 100%;
+        max-width: 100%;
         border-collapse: collapse;
     }
+
     .terms-table thead {
         display: table-header-group;
     }
@@ -301,27 +307,38 @@
         margin: 20px 0 6px 0;
     }
 
-    /* spacer row between thead and first term */
-    .terms-spacer { height: 18px; }
+    /* Spacer */
+    .terms-spacer {
+        height: 18px;
+    }
 
     .term-td {
         vertical-align: top;
-        padding-bottom: 18px;
+        padding: 0 0 18px 0;
+        text-align: justify;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .term-title {
+        text-align: left;
         font-size: 13px;
         font-weight: bold;
         color: #1f2937;
         margin-bottom: 4px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .term-sub-title {
+        text-align: left;
         font-size: 12px;
         font-weight: 700;
         color: #374151;
         margin-top: 8px;
         margin-bottom: 3px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .term-body {
@@ -329,6 +346,8 @@
         color: #4b5563;
         line-height: 1.55;
         margin: 2px 0;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .term-points {
@@ -337,6 +356,13 @@
         padding-left: 18px;
         margin: 4px 0 0 0;
         line-height: 1.6;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .term-points li {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .term-footer-td {

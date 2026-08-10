@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class QuoteSignature extends Model
 {
@@ -16,4 +17,13 @@ class QuoteSignature extends Model
        'user_agent',
        'signed_at',
    ];
+
+   protected $casts = [
+       'signed_at' => 'datetime',
+   ];
+
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class);
+    }
 }
