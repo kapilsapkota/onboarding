@@ -66,7 +66,6 @@
         position: absolute;
         bottom: 0; left: 0; right: 0;
         height: 60%;
-        background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%);
     }
 
     .cover-panel {

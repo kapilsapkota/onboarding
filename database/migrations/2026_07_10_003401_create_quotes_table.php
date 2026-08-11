@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('mobile')->nullable();
             $table->string('website')->nullable();
             $table->string('logo_url')->nullable();
-            $table->string('sharepoint_file_url')->nullable();
+            $table->text('sharepoint_file_url')->nullable();
             $table->string('sharepoint_source_url')->nullable();
 
             $table->enum('status', ['draft', 'sent', 'accepted', 'rejected'])->default('draft');

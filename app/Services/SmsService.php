@@ -12,22 +12,6 @@ use Twilio\Rest\Client as TwilioClient;
 /**
  * Generic SMS service backed by Twilio.
  *
- * Wraps the Twilio SDK with consistent error handling and structured logging.
- * Reusable anywhere in the application — not specific to quotes.
- *
- * Registered as a singleton in AppServiceProvider so the TwilioClient
- * is only instantiated once per request/job.
- *
- * Usage:
- *   $result = app(SmsService::class)->send('+61412345678', 'Your quote is ready.');
- *   if (!$result->success) { ... }
- *
- * Config required (config/services.php):
- *   'twilio' => [
- *       'sid'   => env('TWILIO_ACCOUNT_SID'),
- *       'token' => env('TWILIO_AUTH_TOKEN'),
- *       'from'  => env('TWILIO_FROM_NUMBER'),
- *   ]
  */
 class SmsService
 {

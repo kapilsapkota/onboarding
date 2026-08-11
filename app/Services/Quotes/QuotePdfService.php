@@ -311,7 +311,7 @@ class QuotePdfService
             'defaultSrc'          => $defaultSrc,
             'closingSrc'          => $staticPath('images/media/image67.jpg'),
             'partnersSrc'         => $staticPath('images/partners_.png'),
-            'threeStepRollOutSrc' => $staticPath('images/threestep.jpeg'),
+            'threeStepRollOutSrc' => $staticPath('images/three-step.jpeg'),
             'clientLogoSrc'       => $clientLogoSrc,
             'configImages'        => $configImages,
             'stageColumns'        => collect(config('quote.stage_columns')),

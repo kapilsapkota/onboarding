@@ -19,6 +19,8 @@ use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\QuoteDeliveryController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\StripeTransactionController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -108,6 +110,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('{payout}', [StripePayoutController::class, 'show'])->name('show');
     });
 
+    Route::prefix('stripe/transactions')
+        ->name('stripe.transactions.')
+        ->middleware(['auth'])
+        ->group(function () {
+
+            Route::get('/', [
+                StripeTransactionController::class,
+                'index'
+            ])->name('index');
+
+            Route::get('/{transactionId}', [
+                StripeTransactionController::class,
+                'show'
+            ])->name('show');
+        });
+
     // ── Quotes ────────────────────────────────────────────────────────────────
     Route::resource('quotes', QuoteController::class);
     Route::get('quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
@@ -156,16 +174,16 @@ Route::post('quotes/{quote}/save-signature', [PublicQuoteController::class, 'sav
 // ── Public customer quote view (no auth, opaque token) ────────────────────────
 Route::get('/q/{token}', [PublicQuoteController::class, 'show'])
     ->name('quotes.public.view')
-    ->where('token', '[A-Za-z0-9]{64}');
+    ->where('token', '[A-Za-z0-9]{12}');
 // ── Public customer quote view (no auth, opaque token) ────────────────────────
 Route::get('/q/{token}', [PublicQuoteController::class, 'show'])
     ->name('quotes.public.view')
-    ->where('token', '[A-Za-z0-9]{64}');
+    ->where('token', '[A-Za-z0-9]{12}');
 
 // ── Public PDF stream (served from stored delivery file) ──────────────────────
 Route::get('/q/{token}/pdf', [PublicQuoteController::class, 'pdf'])
     ->name('quotes.public.pdf')
-    ->where('token', '[A-Za-z0-9]{64}');
+    ->where('token', '[A-Za-z0-9]{12}');
 
 Route::get('/quotes/{quote}/signatures/{signature}', [
     PublicQuoteController::class,

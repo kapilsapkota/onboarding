@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -67,6 +68,23 @@ class Quote extends Model
         return $this->hasMany(QuoteDelivery::class)->latest();
     }
 
+    public function parentQuote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class, 'parent_quote_id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(Quote::class, 'parent_quote_id')
+            ->orderBy('revision_number');
+    }
+
+    public function rootQuote(): Quote
+    {
+        return $this->parent_quote_id
+            ? $this->parentQuote->rootQuote()
+            : $this;
+    }
     /**
      * The most recent delivery — used by the show page to display
      * current delivery status without loading all history.
@@ -259,9 +277,9 @@ class Quote extends Model
             ->implode(' - ');
 
         $client = $this->client_name ?: 'Client';
-        $date   = now()->format('d-M-Y');
+        $date   = now()->format('d-m-y');
 
-        return "AIIT - Proposal To {$client} - {$categories} - by AT-{$date}.pdf";
+        return "AIIT - Proposal To {$client} - {$categories} - By AT-{$date}.pdf";
     }
 
     public function sendModalData(): array

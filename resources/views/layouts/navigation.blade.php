@@ -49,187 +49,326 @@
     </div>
 
     <!-- Active Content Navigation Link Links Wrapper Stack -->
-    <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
+    <nav class="flex-1 px-2 py-4 space-y-6 overflow-y-auto overflow-x-hidden">
 
-        <!-- Dashboard -->
-        <a href="{{ route('dashboard') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('dashboard') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Dashboard') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('dashboard') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Dashboard') }}</span>
-        </a>
+        {{-- ================================================================ --}}
+        {{-- ADMIN                                                            --}}
+        {{-- ================================================================ --}}
 
-        <!-- Companies -->
-        <a href="{{ route('admin.companies.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('admin.companies*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Companies') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('admin.companies*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Companies') }}</span>
-        </a>
+        <div>
 
-        <!-- Clients -->
-        <a href="{{ route('clients.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('clients.index') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Clients') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('clients.index') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Clients') }}</span>
-        </a>
+            <div
+                x-show="!collapsed"
+                x-transition
+                class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+            >
+                {{ __('Admin') }}
+            </div>
 
-        <!-- Xero -->
-        <a href="{{ route('admin.xero.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->is('admin/xero*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Xero') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/xero*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Xero') }}</span>
-        </a>
+            <div class="space-y-1">
 
-        <!-- Direct Debit Payments -->
-        <a href="{{ route('admin.directDebitPayment.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->is('admin/directDebitPayment*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Direct Debit Payments') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/directDebitPayment*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Direct Debit Payments') }}</span>
-        </a>
+                {{-- Dashboard --}}
+                <a href="{{ route('dashboard') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->routeIs('dashboard') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Dashboard') }}' : ''">
 
-        <!-- Stripe Payouts -->
-        <a href="{{ route('admin.payouts.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->is('admin/payouts*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Stripe Payouts') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/payouts*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Stripe Payouts') }}</span>
-        </a>
+                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('dashboard') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
 
-        <!-- Categories -->
-        <a href="{{ route('admin.categories.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->is('admin/categories*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Categories') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/categories*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Categories') }}</span>
-        </a>
+                    <span x-show="!collapsed"
+                          x-transition:enter="transition-opacity duration-150 delay-75"
+                          x-transition:enter-start="opacity-0"
+                          x-transition:enter-end="opacity-100"
+                          x-transition:leave="transition-opacity duration-75"
+                          x-transition:leave-start="opacity-100"
+                          x-transition:leave-end="opacity-0"
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Dashboard') }}
+                </span>
 
-        <!-- Products -->
-        <a href="{{ route('admin.products.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->is('admin/products*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Products') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/products*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Products') }}</span>
-        </a>
+                </a>
 
-        <!-- Quote -->
-        <a href="{{ route('admin.quotes.index') }}"
-           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->is('admin/quotes*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
-           :title="collapsed ? '{{ __('Quote') }}' : ''">
-            <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/quotes*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span x-show="!collapsed"
-                  x-transition:enter="transition-opacity duration-150 delay-75"
-                  x-transition:enter-start="opacity-0"
-                  x-transition:enter-end="opacity-100"
-                  x-transition:leave="transition-opacity duration-75"
-                  x-transition:leave-start="opacity-100"
-                  x-transition:leave-end="opacity-0"
-                  class="ml-3 whitespace-nowrap">{{ __('Quote') }}</span>
-        </a>
+                <div class="space-y-1">
+
+                <div
+                    x-show="!collapsed"
+                    x-transition
+                    class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+                >
+                    {{ __('Onboarding') }}
+                </div>
+
+                <div class="space-y-1">
+
+
+                {{-- Companies --}}
+                <a href="{{ route('admin.companies.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->routeIs('admin.companies*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Companies') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('admin.companies*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition:enter="transition-opacity duration-150 delay-75"
+                          x-transition:enter-start="opacity-0"
+                          x-transition:enter-end="opacity-100"
+                          x-transition:leave="transition-opacity duration-75"
+                          x-transition:leave-start="opacity-100"
+                          x-transition:leave-end="opacity-0"
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Companies') }}
+                </span>
+
+                </a>
+
+
+                {{-- Clients --}}
+                <a href="{{ route('clients.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->routeIs('clients.index') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Clients') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('clients.index') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Clients') }}
+                </span>
+
+                </a>
+
+                <div
+                    x-show="!collapsed"
+                    x-transition
+                    class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+                >
+                    {{ __('Direct Debit') }}
+                </div>
+
+                <div class="space-y-1">
+
+
+                {{-- Xero --}}
+                <a href="{{ route('admin.xero.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/xero*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Xero') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/xero*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Xero') }}
+                </span>
+
+                </a>
+
+
+                {{-- Direct Debit Payments --}}
+                <a href="{{ route('admin.directDebitPayment.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/directDebitPayment*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Direct Debit Payments') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/directDebitPayment*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Direct Debit Payments') }}
+                </span>
+
+                </a>
+
+
+                {{-- Stripe Payouts --}}
+                <a href="{{ route('admin.payouts.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/payouts*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Stripe Payouts') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/payouts*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Stripe Payouts') }}
+                </span>
+
+                </a>
+
+
+                {{-- Stripe Transactions --}}
+                <a href="{{ route('admin.stripe.transactions.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/stripe/transactions*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Stripe Transactions') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe/transactions*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M3 10h18M7 15h2m2 0h2m-8 4h10a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Stripe Transactions') }}
+                </span>
+
+                </a>
+
+            </div>
+        </div>
+
+
+        {{-- ================================================================ --}}
+        {{-- QUOTES                                                            --}}
+        {{-- ================================================================ --}}
+
+        <div>
+
+            <div
+                x-show="!collapsed"
+                x-transition
+                class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+            >
+                {{ __('Quotes') }}
+            </div>
+
+            <div class="space-y-1">
+
+                {{-- Categories --}}
+                <a href="{{ route('admin.categories.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/categories*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Categories') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/categories*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Categories') }}
+                </span>
+
+                </a>
+
+
+                {{-- Products --}}
+                <a href="{{ route('admin.products.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/products*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Products') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/products*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Products') }}
+                </span>
+
+                </a>
+
+
+                {{-- Quotes --}}
+                <a href="{{ route('admin.quotes.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/quotes*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Quotes') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/quotes*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Quotes') }}
+                </span>
+
+                </a>
+
+            </div>
+        </div>
 
     </nav>
 

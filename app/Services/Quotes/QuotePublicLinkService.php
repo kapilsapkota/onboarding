@@ -3,6 +3,7 @@
 namespace App\Services\Quotes;
 
 use App\Models\QuoteDelivery;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -30,31 +31,41 @@ class QuotePublicLinkService
      * Safe to call multiple times — always returns the same URL
      * once generated for a given delivery.
      */
+
     public function generateForDelivery(QuoteDelivery $delivery): string
     {
-        // ── Idempotency check ─────────────────────────────────────────────────
         if ($delivery->public_url && $delivery->public_token) {
             return $delivery->public_url;
         }
 
-        // ── Generate a secure opaque token ────────────────────────────────────
-        // 64 random hex characters = 256 bits of entropy.
-        // Unique constraint on the column provides a database-level guard.
-        $token = Str::random(64);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                $token = Str::lower(Str::random(12));
 
-        $url = route('quotes.public.view', ['token' => $token]);
+                $url = route('quotes.public.view', [
+                    'token' => $token,
+                ]);
 
-        $delivery->update([
-            'public_token' => $token,
-            'public_url'   => $url,
-        ]);
+                $delivery->update([
+                    'public_token' => $token,
+                    'public_url' => $url,
+                ]);
 
-        Log::info('quote_delivery.public_url_generated', [
-            'delivery_id' => $delivery->id,
-            'quote_id'    => $delivery->quote_id,
-        ]);
+                Log::info('quote_delivery.public_url_generated', [
+                    'delivery_id' => $delivery->id,
+                    'quote_id' => $delivery->quote_id,
+                ]);
 
-        return $url;
+                return $url;
+            } catch (QueryException $e) {
+                // Unique constraint violation - extremely unlikely.
+                if ($attempt === 4) {
+                    throw $e;
+                }
+            }
+        }
+
+        throw new \RuntimeException('Unable to generate unique quote token.');
     }
 
     /**

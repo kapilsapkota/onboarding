@@ -73,7 +73,7 @@ class ProductController extends Controller
             $q->where('quote_default', $request->boolean('quote_default'));
         });
 
-        $products = $query->paginate(20)->withQueryString();
+        $products = $query->paginate(100)->withQueryString();
 
         return view('admin.products.index', compact('products', 'categories'));
     }

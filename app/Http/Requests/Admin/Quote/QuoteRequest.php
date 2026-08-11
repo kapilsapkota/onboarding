@@ -27,7 +27,7 @@ class QuoteRequest extends FormRequest
             'contact_name'          => 'nullable|string|max:255',
             'email'                 => 'required|email|max:255',
             'mobile'                => 'required|string|digits:10|starts_with:04,05',
-            'website'               => 'nullable|string|max:255',
+            'website'               => 'required|url|max:255',
             'logo'                  => 'nullable|image|max:2048',
             'sharepoint_file_url'   => 'nullable|string|max:500',
             'sharepoint_source_url' => 'nullable|string|max:500',

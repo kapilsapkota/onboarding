@@ -582,13 +582,17 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
         $name  = $quote->contact_name ?? $quote->client_name ?? 'there';
 
         $lines   = [];
-        $lines[] = "Hi {$name}, your quote {$quote->quote_number} from AIIT is ready for review.";
+        $lines[] = "Hi {$name},";
+
+        $lines[] = "Thank you for choosing All in IT Solutions. See below link with your quote.";
 
         if (! empty($delivery->sms_message)) {
             $lines[] = trim($delivery->sms_message);
         }
 
         $lines[] = $delivery->public_url;
+
+        $lines[] = "www.allinit.solutions";
 
         return implode("\n\n", $lines);
     }

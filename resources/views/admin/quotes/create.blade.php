@@ -16,9 +16,15 @@
     <div
         class="py-6 max-w-7xl mx-auto sm:px-6 lg:px-8"
         x-data="quoteBuilder(
-            {{ $categories->toJson() }},
-            {{ isset($quote) ? $quote->items->load('product')->toJson() : '[]' }}
-        )"
+    @js($categories),
+    @js(
+        old('items')
+            ? json_decode(old('items'), true)
+            : (isset($quote)
+                ? $quote->items->load('product')->toArray()
+                : [])
+    )
+)"
     >
 
         @if($errors->any())
@@ -66,7 +72,7 @@
                             Company Name <span class="text-red-500">*</span>
                         </label>
                         <input
-                            required
+
                             name="client_name"
                             type="text"
                             value="{{ old('client_name', $quote->client_name ?? '') }}"
@@ -79,6 +85,7 @@
                             Contact Person <span class="text-red-500">*</span>
                         </label>
                         <input
+
                             name="contact_name"
                             type="text"
                             value="{{ old('contact_name', $quote->contact_name ?? '') }}"
@@ -91,6 +98,7 @@
                             Email <span class="text-red-500">*</span>
                         </label>
                         <input
+
                             name="email"
                             type="email"
                             value="{{ old('email', $quote->email ?? '') }}"
@@ -99,8 +107,9 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-1">Mobile</label>
+                        <label class="block text-sm font-medium mb-1">Mobile <span class="text-red-500">*</span></label>
                         <input
+
                             name="mobile"
                             type="text"
                             value="{{ old('mobile', $quote->mobile ?? '') }}"
@@ -109,8 +118,9 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium mb-1">Website</label>
+                        <label class="block text-sm font-medium mb-1">Website <span class="text-red-500">*</span> </label>
                         <input
+
                             name="website"
                             type="text"
                             value="{{ old('website', $quote->website ?? '') }}"
@@ -155,13 +165,6 @@
 
                 <div class="border-b px-6 py-4 flex items-center justify-between">
                     <h3 class="font-semibold">Quote Items</h3>
-                    <button
-                        type="button"
-                        @click="addBlankRow()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg"
-                    >
-                        + Add Row
-                    </button>
                 </div>
 
                 <div class="overflow-visible">
