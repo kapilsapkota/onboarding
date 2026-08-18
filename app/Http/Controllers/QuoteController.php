@@ -33,7 +33,7 @@ class QuoteController extends Controller
     public function index(Request $request): View
     {
         $query = Quote::query()
-            ->with('items')
+            ->with('items.product.category')
             ->withCount('items')
             ->latest();
 
@@ -49,7 +49,7 @@ class QuoteController extends Controller
             });
         }
 
-        $quotes = $query->paginate(25)->withQueryString();
+        $quotes = $query->paginate(100)->withQueryString();
 
         $statusCounts = Quote::select('status', DB::raw('count(*) as total'))
             ->groupBy('status')
@@ -477,7 +477,7 @@ class QuoteController extends Controller
         $coverSrc            = $staticPath('images/img.png');
         $defaultSrc          = $staticPath('images/default.png');
         $closingSrc          = $staticPath('images/media/image67.jpg');
-        $partnersSrc         = $staticPath('images/partners_.png');
+        $partnersSrc         = $staticPath('images/our-partner-logos.jpeg');
         $threeStepRollOutSrc = $staticPath('images/three-step.jpeg');
 
         $configImages = collect(config('quote.images', []))

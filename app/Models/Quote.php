@@ -46,6 +46,8 @@ class Quote extends Model
         'expires_at'  => 'datetime',
     ];
 
+    protected $appends = ['email_subject'];
+
     // -------------------------------------------------------------------------
     // Relationships
     // -------------------------------------------------------------------------
@@ -274,12 +276,46 @@ class Quote extends Model
             })
             ->filter()
             ->unique()
+            ->map(fn ($category) => $this->sanitizeFilenamePart($category))
             ->implode(' - ');
 
-        $client = $this->client_name ?: 'Client';
+        $client = $this->sanitizeFilenamePart($this->client_name ?: '');
         $date   = now()->format('d-m-y');
 
         return "AIIT - Proposal To {$client} - {$categories} - By AT-{$date}.pdf";
+    }
+
+    public function getEmailSubjectAttribute(): string
+    {
+        $categories = $this->items
+            ->map(function ($item) {
+                return $item->product?->category?->name
+                    ?? $item->category_name;
+            })
+            ->filter()
+            ->unique()
+            ->implode(' | ');
+
+        $client = $this->client_name ?: '-';
+        $quote_number = $this->quote_number;
+
+        return $categories
+            ? "{$client} - {$quote_number} - {$categories}"
+            : $client;
+    }
+    private function sanitizeFilenamePart(?string $value): string
+    {
+        if (!$value) {
+            return '';
+        }
+
+        // Remove characters that are invalid/problematic in filenames.
+        $value = preg_replace('/[\/\\\\:*?"<>|]/', '', $value);
+
+        // Replace multiple spaces with a single space.
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value, " .-");
     }
 
     public function sendModalData(): array
@@ -287,6 +323,7 @@ class Quote extends Model
         return [
             'id'           => $this->id,
             'quote_number' => $this->quote_number,
+            'email_subject' => $this->email_subject,
             'client_name'  => $this->client_name,
             'contact_name' => $this->contact_name,
             'email'        => $this->email,

@@ -69,7 +69,7 @@ class QuoteDeliveryService
                 'send_sms'      => $validated['send_sms'],
                 'email_address' => $emailAddress,
                 'phone_number'  => $phoneNumber,
-                'email_subject' => 'Quotation ' . $quote->quote_number,
+                'email_subject' => $quote->getEmailSubjectAttribute(),
                 'email_message' => $validated['email_message'] ?? null,
                 'sms_message'   => $validated['sms_message'] ?? null,
             ]);

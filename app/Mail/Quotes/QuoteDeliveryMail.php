@@ -38,7 +38,7 @@ class QuoteDeliveryMail extends Mailable
     {
         return new Envelope(
             subject: $this->delivery->email_subject
-            ?? 'Quotation ' . $this->delivery->quote->quote_number,
+            ?? $this->delivery->quote->email_subject,
         );
     }
 
@@ -51,7 +51,7 @@ class QuoteDeliveryMail extends Mailable
         $quote = $this->delivery->quote;
 
         return new Content(
-            view: 'emails.quotes.delivery',
+            markdown: 'emails.quotes.delivery',
             with: [
                 'quote'          => $quote,
                 'delivery'       => $this->delivery,
@@ -71,9 +71,6 @@ class QuoteDeliveryMail extends Mailable
 
     public function attachments(): array
     {
-        // Bail gracefully if something went wrong storing the PDF.
-        // The job checks pdfExists() before constructing this Mailable,
-        // so this guard is a safety net only.
         if (! $this->pdfService->pdfExists($this->delivery)) {
             return [];
         }

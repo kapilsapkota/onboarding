@@ -1,58 +1,62 @@
 <x-mail::message>
 # 🎉 New Client Onboarded
 
-A new client has been successfully added to the system.
+A new client has been successfully added to **{{ config('app.name') }}**.
 
----
+<x-mail::panel>
+**{{ $client->company_name ?? '-' }}**
 
-## 🏢 Company Details
-- **Name:** {{ $client->company_name ?? '-' }}
+{{ $client->industry ?? 'Industry not specified' }}
 
-- **Industry:** {{ $client->industry ?? '-' }}
+{{ $client->address ?? '-' }}, {{ $client->city ?? '-' }}, {{ $client->country ?? '-' }}
+</x-mail::panel>
 
-- **Website:**
+## Client Details
+
+**Website**
+
 @php
-$websites = $client->website ? json_decode($client->website, true) : [];
+    $websites = $client->website ? json_decode($client->website, true) : [];
 @endphp
+
 {{ !empty($websites) ? implode(', ', $websites) : '-' }}
 
-- **Location:**
-{{ $client->address }}, {{ $client->city }}, {{ $client->country }}
+## Contacts
 
----
+**Total Contacts:** {{ $client->contacts->count() }}
 
-## 👥 Contacts Summary
-- **Total Contacts:** {{ $client->contacts->count() }}
-- **Emails:**
-```
-{{ $client->contacts->pluck('email')->filter()->implode(', ') ?: '-' }}
-```
-- **Phones:**
-<x-mail::panel>
-{{ $client->contacts->pluck('phone')->filter()->implode(', ') ?: '-' }}
-</x-mail::panel>
----
+@if($client->contacts->pluck('email')->filter()->isNotEmpty())
+**Emails**
+
+{{ $client->contacts->pluck('email')->filter()->implode(', ') }}
+@endif
+
+@if($client->contacts->pluck('phone')->filter()->isNotEmpty())
+**Phones**
+
+{{ $client->contacts->pluck('phone')->filter()->implode(', ') }}
+@endif
 
 @if($client->pasted_employees)
-## 📋 Pasted Employees
+## Employees
+
 <x-mail::panel>
 {{ $client->pasted_employees }}
 </x-mail::panel>
 @endif
 
 @if($client->notes)
-## 📝 Notes
+## Notes
+
 <x-mail::panel>
 {{ $client->notes }}
 </x-mail::panel>
 @endif
 
----
-
 <x-mail::button :url="route('clients.show', $client)">
 View Client
 </x-mail::button>
 
-Thanks,
+Thanks,<br>
 {{ config('app.name') }}
 </x-mail::message>

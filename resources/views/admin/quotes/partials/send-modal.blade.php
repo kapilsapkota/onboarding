@@ -371,52 +371,55 @@
 
 
                                     {{-- Email --}}
-                                    <label
-                                        id="emailMethodCard"
-                                        class="group relative flex cursor-pointer items-start gap-3 rounded-xl border-2 border-green-500 bg-green-50 p-4 transition dark:border-green-500 dark:bg-green-900/10"
-                                    >
-
-                                        <input
-                                            type="checkbox"
-                                            id="send_email"
-                                            name="send_email"
-                                            value="1"
-                                            checked
-                                            class="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                    <div>
+                                        <label
+                                            id="emailMethodCard"
+                                            class="group relative flex cursor-pointer items-start gap-3 rounded-xl border-2 border-green-500 bg-green-50 p-4 transition dark:border-green-500 dark:bg-green-900/10"
                                         >
 
-                                        <div class="min-w-0">
+                                            <input
+                                                type="checkbox"
+                                                id="send_email"
+                                                name="send_email"
+                                                value="1"
+                                                checked
+                                                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                            >
 
-                                            <div class="flex items-center gap-2">
+                                            <div class="min-w-0">
 
-                                                <svg
-                                                    class="h-5 w-5 text-green-600 dark:text-green-400"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        stroke-width="1.8"
-                                                        d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                                    />
-                                                </svg>
+                                                <div class="flex items-center gap-2">
 
-                                                <span class="font-semibold text-gray-900 dark:text-white">
+                                                    <svg
+                                                        class="h-5 w-5 text-green-600 dark:text-green-400"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="1.8"
+                                                            d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+
+                                                    <span class="font-semibold text-gray-900 dark:text-white">
                                                     Email
                                                 </span>
 
+                                                </div>
+
+                                                <p
+                                                    id="sendEmailTo"
+                                                    class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400"
+                                                ></p>
+
                                             </div>
 
-                                            <p
-                                                id="sendEmailTo"
-                                                class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400"
-                                            ></p>
+                                        </label>   
+                                    </div>
 
-                                        </div>
-
-                                    </label>
 
 
                                     {{-- SMS --}}
@@ -954,12 +957,12 @@
 
                 setText(
                     'sendQuoteContactName',
-                    quote.contact_name || '—'
+                    quote.contact_name || '-'
                 );
 
                 setText(
                     'sendQuoteClientName',
-                    quote.client_name || '—'
+                    quote.client_name || '-'
                 );
 
                 setText(
@@ -1008,14 +1011,12 @@
                     'sendQuoteTotal',
                     formatMoney(quote.total)
                 );
-
-
                 /*
                  * Email subject
                  */
                 setText(
                     'sendEmailSubject',
-                    'Quotation ' + (quote.quote_number ?? '')
+                    (quote.email_subject ?? '')
                 );
 
 
@@ -1072,7 +1073,7 @@
                                 'px-4 py-3 text-gray-700 dark:text-gray-300';
 
                             description.textContent =
-                                item.product_name || '—';
+                                item.product_name || '-';
 
 
                             const quantity =

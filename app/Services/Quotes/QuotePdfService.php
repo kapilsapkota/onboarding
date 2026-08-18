@@ -310,7 +310,7 @@ class QuotePdfService
             'coverSrc'            => $staticPath('images/img.png'),
             'defaultSrc'          => $defaultSrc,
             'closingSrc'          => $staticPath('images/media/image67.jpg'),
-            'partnersSrc'         => $staticPath('images/partners_.png'),
+            'partnersSrc'         => $staticPath('images/our-partner-logos.jpeg'),
             'threeStepRollOutSrc' => $staticPath('images/three-step.jpeg'),
             'clientLogoSrc'       => $clientLogoSrc,
             'configImages'        => $configImages,
