@@ -199,31 +199,37 @@
         height: 210mm;
         border-collapse: collapse;
         table-layout: fixed;
+        page-break-inside: avoid;
+    }
+    .item-title-cell {
+        width: 100%;
+        padding: 5mm 10mm 0;
+        vertical-align: bottom;
     }
 
     .item-content-cell {
         width: 50%;
         vertical-align: top;
-        padding: 48px 40px;
+        padding: 0 40px;
     }
 
     .item-image-cell {
         width: 50%;
-        height: 210mm;
-        padding: 0;
-        vertical-align: top;
-        background: white;
-
-        background-size: cover;
-        background-position: center center;
-        background-repeat: no-repeat;
+        padding: 5mm;
+        vertical-align: middle;
+        text-align: center;
     }
 
-    .item-image-cell img {
-        width: 100%;
-        height: 210mm;
+    .item-image {
         display: block;
-        object-fit: cover;
+
+        max-width: 100%;
+        max-height: 195mm;
+
+        width: auto;
+        height: auto;
+
+        margin: 0 auto;
     }
 
     .item-title {

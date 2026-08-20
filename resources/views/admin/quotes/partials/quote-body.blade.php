@@ -62,8 +62,14 @@
             <div class="quote-page">
                 <table class="item-table">
                     <tr>
+                        <td class="item-title-cell" colspan="2">
+                            <div class="item-title">
+                                {{ $item->product_name }}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
                         <td class="item-content-cell">
-                            <div class="item-title">{{ $item->product_name }}</div>
                             <div class="item-scope-label">General Scope of Works</div>
 
                             @if($item->scope_of_works)
@@ -97,8 +103,13 @@
                             @endif
                         </td>
 
-                        <td class="item-image-cell"
-                            style="background-image: url('{{ $item->product_image_src ?? $defaultSrc }}');">
+                        <td class="item-image-cell">
+
+                                <img
+                                    src="{{ $item->product_image_src ?? $defaultSrc }}"
+                                    alt="{{ $item->product_name }}"
+                                    class="item-image"
+                                >
                         </td>
                     </tr>
                 </table>

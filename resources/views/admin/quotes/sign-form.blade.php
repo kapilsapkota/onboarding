@@ -25,26 +25,74 @@
     <!-- CONTAINER INTEGRATION WORKSPACE -->
     <div class="py-6 max-w-full mx-auto sm:px-6 lg:px-8 space-y-6">
         <!-- 1. FULL PAGE VIEWPORT PDF STREAM FRAME WITH LOADER -->
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border
-         border-gray-200 dark:border-gray-700 h-[60vh] min-h-[450px] relative"
-             x-data="{ isLoading: true }">
+        <!-- RESPONSIVE PDF VIEWER -->
+        <div
+            class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 relative"
+            x-data="{ isLoading: true }"
+        >
+            <!-- Loading Spinner -->
+            <div
+                x-show="isLoading"
+                class="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3"
+            >
+                <svg
+                    class="animate-spin w-8 h-8 text-blue-600 dark:text-blue-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                    ></circle>
 
-            <!-- Loading Spinner Overlay -->
-            <div x-show="isLoading"
-                 class="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xs z-10 flex flex-col items-center justify-center gap-3 transition-opacity duration-300">
-                <svg class="animate-spin w-8 h-8 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                 </svg>
-                <span class="text-xs font-semibold text-gray-600 dark:text-gray-300 tracking-wider uppercase">Loading Proposal Document...</span>
+
+                <span class="text-xs font-semibold text-gray-600 dark:text-gray-300 tracking-wider uppercase">
+            Loading Proposal Document...
+        </span>
             </div>
 
-            <!-- Iframe with @load event handler to dismiss the spinner -->
-            <iframe src="{{ route('admin.quotes.pdf', $quote->id) }}"
-                    class="w-full h-full block"
+            <!-- PDF Scroll Container -->
+            <div
+                class="
+            w-full
+            overflow-auto
+            overscroll-contain
+            bg-gray-100
+            dark:bg-gray-900
+
+            h-[70vh]
+            min-h-[500px]
+
+            sm:h-[75vh]
+            lg:h-[80vh]
+        "
+                style="-webkit-overflow-scrolling: touch;"
+            >
+                <iframe
+                    src="{{ route('admin.quotes.pdf', $quote->id) }}"
+                    class="
+                block
+                w-full
+                min-w-[100%]
+                h-full
+                border-0
+            "
                     frameborder="0"
                     loading="lazy"
-                    @load="isLoading = false"></iframe>
+                    @load="isLoading = false"
+                ></iframe>
+            </div>
         </div>
 
         <!-- BOTTOM STICKY / PANEL ACTION BAR -->
