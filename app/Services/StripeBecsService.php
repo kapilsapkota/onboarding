@@ -17,6 +17,10 @@ class StripeBecsService
     {
         $this->stripe = new StripeClient(config('services.stripe.secret'));
     }
+    public function client(): \Stripe\StripeClient
+    {
+        return new \Stripe\StripeClient(config('services.stripe.secret'));
+    }
 
     /**
      * Create and confirm an off-session PaymentIntent for a BECS direct debit.

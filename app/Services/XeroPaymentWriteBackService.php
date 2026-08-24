@@ -110,11 +110,6 @@ class XeroPaymentWriteBackService
         ]));
     }
 
-    /**
-     * Stable idempotency key so a retry of this job won't double-post.
-     * Based on the DirectDebitPayment's own ID — not the invoice — so that
-     * a manual retry payment for the same invoice gets a fresh key.
-     */
     private function idempotencyKey(DirectDebitPayment $ddPayment): string
     {
         return 'ddp-' . $ddPayment->id;

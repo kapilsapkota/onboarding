@@ -47,4 +47,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function stripeChargeBatches()
+    {
+        return $this->hasMany(StripeChargeBatch::class);
+    }
 }

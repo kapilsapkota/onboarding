@@ -15,13 +15,6 @@ use Illuminate\Support\Facades\Log;
 /**
  * Posts a settled DirectDebitPayment to Xero as a Payment record.
  *
- * Dispatched by StripeWebhookController when Stripe fires
- * payment_intent.succeeded — NOT immediately after gateway submission,
- * because BECS settlement takes 1-2 business days.
- *
- * Can also be dispatched manually to retry failed write-backs:
- *   DirectDebitPayment::awaitingXeroPostback()
- *       ->each(fn ($p) => WriteXeroPayment::dispatch($p->id));
  */
 class WriteXeroPayment implements ShouldQueue
 {

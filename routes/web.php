@@ -3,12 +3,14 @@
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DirectDebitPaymentController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\StripeBulkChargeController;
 use App\Http\Controllers\Admin\StripePayoutController;
 use App\Http\Controllers\Admin\XeroConnectionController;
 use App\Http\Controllers\Admin\XeroContactController;
 use App\Http\Controllers\Admin\XeroInvoiceController;
 use App\Http\Controllers\Admin\XeroSyncController;
 use App\Http\Controllers\Admin\XeroTenantSettingsController;
+use App\Http\Controllers\Admin\XeroWebhookController;
 use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
@@ -29,6 +31,8 @@ Route::get('/', function () {
 Route::get('/ddr', function () {
     return view('ddr');
 });
+Route::post('/webhooks/stripe', StripeWebhookController::class)->name('webhooks.stripe');
+Route::post('/webhooks/xero', XeroWebhookController::class)->name('webhooks.xero');
 
 Route::post('/onboarding/create-customer', [OnboardingController::class, 'createCustomer'])
     ->name('onboarding.create-customer');
@@ -126,6 +130,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
             ])->name('show');
         });
 
+    Route::prefix('stripe')->name('stripe.')->group(function () {
+        Route::get('bulk-charge', [StripeBulkChargeController::class, 'index'])->name('bulk-charge');
+        Route::post('bulk-charge/review', [StripeBulkChargeController::class, 'review'])->name('bulk-charge.review');
+        Route::post('bulk-charge/confirm', [StripeBulkChargeController::class, 'confirm'])->name('bulk-charge.confirm');
+        Route::get('batches/{batch}', [StripeBulkChargeController::class, 'showBatch'])->name('batches.show');
+        Route::get('batches', [StripeBulkChargeController::class, 'batches'])->name('batches.index');
+    });
+
+
     // ── Quotes ────────────────────────────────────────────────────────────────
     Route::resource('quotes', QuoteController::class);
     Route::get('quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
@@ -163,10 +176,6 @@ Route::prefix('settings/xero/tenants/{tenant}')
 Route::get('/xero/auth/callback', [XeroConnectionController::class, 'callback'])
     ->name('xero.auth.callback');
 
-// ── Webhooks ──────────────────────────────────────────────────────────────────
-Route::post('/webhooks/stripe', StripeWebhookController::class)->name('webhooks.stripe');
-Route::post('/webhooks/xero', \App\Http\Controllers\Admin\XeroWebhookController::class)->name('webhooks.xero');
-
 // ── Quote signing (authenticated customer link, signed URL) ───────────────────
 Route::get('quotes/{quote}/sign', [PublicQuoteController::class, 'showSignForm'])->name('quotes.sign');
 Route::post('quotes/{quote}/save-signature', [PublicQuoteController::class, 'saveSignature'])->name('quotes.save-signature');
@@ -189,3 +198,5 @@ Route::get('/quotes/{quote}/signatures/{signature}', [
     PublicQuoteController::class,
     'signature',
 ])->name('quotes.signature');
+
+
