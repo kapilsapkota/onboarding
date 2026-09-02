@@ -64,7 +64,6 @@ class SyncStripeBecsCustomers extends Command
             $pmPage = $stripe->customers->allPaymentMethods($stripeCustomer->id, $pmParams);
 
             if (! empty($pmPage->data)) {
-                // Upsert the customer once we know they have BECS methods
                 if (! $localCustomer) {
                     $localCustomer = StripeCustomer::updateOrCreate(
                         ['stripe_customer_id' => $stripeCustomer->id],

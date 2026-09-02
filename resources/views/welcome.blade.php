@@ -946,29 +946,38 @@ John Doe | john@company.com | +61412345678"
                 alert('Company Name is required.');
                 return;
             }
+            if (billingEmail) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            if (!accountName) {
-                alert('Account Name is required.');
-                return;
+                if (!emailRegex.test(billingEmail)) {
+                    alert('Please enter a valid Account Holder Email.');
+                    document.getElementById('becs_billing_email').focus();
+                    return;
+                }
             }
 
-            if (!billingEmail) {
-                alert('Account Holder Email is required.');
-                return;
-            }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (!emailRegex.test(billingEmail)) {
-                alert('Please enter a valid Account Holder Email.');
-                return;
-            }
-
-            if (!becsComplete) {
-                document.getElementById('becs-error').textContent =
-                    'Please enter a valid BSB and Account Number before continuing.';
-                return;
-            }
+            // if (!accountName) {
+            //     alert('Account Name is required.');
+            //     return;
+            // }
+            //
+            // if (!billingEmail) {
+            //     alert('Account Holder Email is required.');
+            //     return;
+            // }
+            //
+            // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            //
+            // if (!emailRegex.test(billingEmail)) {
+            //     alert('Please enter a valid Account Holder Email.');
+            //     return;
+            // }
+            //
+            // if (!becsComplete) {
+            //     document.getElementById('becs-error').textContent =
+            //         'Please enter a valid BSB and Account Number before continuing.';
+            //     return;
+            // }
         }
 
         if (currentStep < totalSteps) {
@@ -1115,36 +1124,6 @@ John Doe | john@company.com | +61412345678"
             alert(`${added} employee(s) added`);
         }
     });
-    // Create row
-    // function addEmployeeRow(name = '', email = '', phone = '') {
-    //     const container = document.getElementById('employees-container');
-    //
-    //     const row = document.createElement('div');
-    //     row.classList.add('employee-row');
-    //
-    //     row.innerHTML = `
-    //     <div>
-    //         <label class="field-label">Full Name</label>
-    //         <input type="text" name="employees[${employeeIndex}][name]" value="${name}" class="wld-input">
-    //     </div>
-    //     <div>
-    //         <label class="field-label">Email</label>
-    //         <input type="email" name="employees[${employeeIndex}][email]" value="${email}" class="wld-input">
-    //     </div>
-    //     <div>
-    //         <label class="field-label">Mobile</label>
-    //         <input type="tel" name="employees[${employeeIndex}][phone]" value="${phone}" class="wld-input">
-    //     </div>
-    //     <div style="display:flex; align-items:flex-end;">
-    //         <button type="button" onclick="this.closest('.employee-row').remove()" class="text-red-500 text-xs">
-    //             Remove
-    //         </button>
-    //     </div>
-    // `;
-    //
-    //     container.appendChild(row);
-    //     employeeIndex++;
-    // }
 
     function normalisePhone(raw) {
         if (!raw) return null;
@@ -1192,9 +1171,8 @@ John Doe | john@company.com | +61412345678"
         const submitBtn  = this.querySelector('button[type="submit"]');
         const accountName  = document.getElementById('becs_account_name')?.value?.trim();
         const billingEmail = document.getElementById('becs_billing_email')?.value?.trim();
-
         const pmId = document.getElementById('stripe_payment_method_id').value;
-        if (pmId) {
+        if (!becsComplete || pmId) {
             this.submit();
             return;
         }

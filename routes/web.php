@@ -55,7 +55,7 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__ . '/auth.php';
 
-Route::redirect('/onboarding', '/');
+//Route::redirect('/onboarding', '/');
 Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
 Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
 Route::get('/onboarding/thanks', [OnboardingController::class, 'thanks'])->name('onboarding.thanks');

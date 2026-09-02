@@ -246,7 +246,7 @@
                 <br><br>
                 You certify that you are either an account holder or an authorised signatory on the account listed above.
                 <br><br>
-                <a href="https://stripe.com.au/legal/becs-dd-service-agreement" target="_blank">https://stripe.com.au/legal/becs-dd-service-agreement</a>
+                <a href="https://stripe.com/au/legal/becs-dd-service-agreement" target="_blank">https://stripe.com/au/legal/becs-dd-service-agreement</a>
             </div>
 
             <div id="form-feedback"></div>
