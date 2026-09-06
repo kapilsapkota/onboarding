@@ -61,6 +61,7 @@ class StripePaymentDisputeNotification extends Notification implements ShouldQue
             ->cc([
                 'alit@allinit.com.au',
                 'kapils@allinit.com.au',
+                'accounts@allinit.com.au'
             ])
             ->view('emails.notifications.stripe-payment-dispute', [
                 'item' => $item,

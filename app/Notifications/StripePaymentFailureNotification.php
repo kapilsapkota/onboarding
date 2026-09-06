@@ -35,8 +35,8 @@ class StripePaymentFailureNotification extends Notification implements ShouldQue
     return (new MailMessage)
         ->cc([
             'alit@allinit.com.au',
-            'accounts@allinit.com.au',
-            'ea@allinit.com.au',
+            'kapils@allinit.com.au',
+            'accounts@allinit.com.au'
         ])
         ->subject(
             'Stripe payment failed - '

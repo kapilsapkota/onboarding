@@ -39,6 +39,7 @@ class StripePaymentSuccessNotification extends Notification implements ShouldQue
             ->cc([
                 'alit@allinit.com.au',
                 'kapils@allinit.com.au',
+                'accounts@allinit.com.au'
             ])
             ->greeting('Hi ' . ($notifiable->name ?: 'there') . ',')
             ->view('emails.notifications.stripe-payment-success', [
