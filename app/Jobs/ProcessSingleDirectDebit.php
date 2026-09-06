@@ -14,11 +14,6 @@ use Stripe\Exception\ApiErrorException;
 
 /**
  * Submits one invoice's direct debit charge to Stripe BECS.
- *
- * BECS is async — Stripe returns "processing" immediately.
- * We store the PaymentIntent ID and wait for the webhook:
- *   payment_intent.succeeded  → WriteXeroPayment
- *   payment_intent.payment_failed → mark failed
  */
 class ProcessSingleDirectDebit implements ShouldQueue
 {

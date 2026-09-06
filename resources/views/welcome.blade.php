@@ -12,13 +12,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
 
         :root {
-            --gold:       #C9A84C;
+            --gold: #C9A84C;
             --gold-hover: #B8963D;
             --gold-light: #FBF6E9;
-            --gold-ring:  rgba(201,168,76,0.2);
+            --gold-ring: rgba(201, 168, 76, 0.2);
         }
 
         .wld-input {
@@ -39,30 +41,59 @@
             border-color: var(--gold);
             box-shadow: 0 0 0 3px var(--gold-ring);
         }
+
         select.wld-input {
             font-size: 1rem; /* Must be explicitly 16px on iOS */
         }
 
-        .wld-input::placeholder { color: #9ca3af; }
+        .wld-input::placeholder {
+            color: #9ca3af;
+        }
 
         .wld-input-group:focus-within {
             border-color: var(--gold) !important;
             box-shadow: 0 0 0 3px var(--gold-ring);
         }
 
-        .step-pane { display: none; }
-        .step-pane.active { display: block; animation: fadeUp 0.2s ease both; }
+        .step-pane {
+            display: none;
+        }
+
+        .step-pane.active {
+            display: block;
+            animation: fadeUp 0.2s ease both;
+        }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Step sidebar */
-        .step-nav-item.is-active  { background: var(--gold-light); }
-        .step-bubble-active       { background: var(--gold) !important; color: #fff !important; }
-        .step-bubble-done         { background: #d1fae5 !important; color: #065f46 !important; }
-        .step-label-active        { color: #111827 !important; font-weight: 600; }
+        .step-nav-item.is-active {
+            background: var(--gold-light);
+        }
+
+        .step-bubble-active {
+            background: var(--gold) !important;
+            color: #fff !important;
+        }
+
+        .step-bubble-done {
+            background: #d1fae5 !important;
+            color: #065f46 !important;
+        }
+
+        .step-label-active {
+            color: #111827 !important;
+            font-weight: 600;
+        }
 
         /* Same/copy toggle */
         .same-toggle {
@@ -96,69 +127,110 @@
         }
 
         @media (max-width: 640px) {
-            .employee-row { grid-template-columns: 1fr; }
+            .employee-row {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Nav buttons */
         .btn-ghost {
-            display: inline-flex; align-items: center; gap: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             padding: 0.625rem 1.25rem;
             background: #fff;
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
             font-family: 'Inter', sans-serif;
-            font-size: 0.875rem; font-weight: 500;
+            font-size: 0.875rem;
+            font-weight: 500;
             color: #6b7280;
-            cursor: pointer; transition: all 0.15s;
+            cursor: pointer;
+            transition: all 0.15s;
         }
-        .btn-ghost:hover { background: #f9fafb; color: #374151; }
+
+        .btn-ghost:hover {
+            background: #f9fafb;
+            color: #374151;
+        }
 
         .btn-primary {
-            display: inline-flex; align-items: center; gap: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             padding: 0.625rem 1.5rem;
             background: var(--gold);
             border: none;
             border-radius: 0.5rem;
             font-family: 'Inter', sans-serif;
-            font-size: 0.875rem; font-weight: 700;
+            font-size: 0.875rem;
+            font-weight: 700;
             color: #fff;
-            cursor: pointer; transition: background 0.15s;
+            cursor: pointer;
+            transition: background 0.15s;
         }
-        .btn-primary:hover { background: var(--gold-hover); }
+
+        .btn-primary:hover {
+            background: var(--gold-hover);
+        }
 
         .btn-outline-sm {
-            display: inline-flex; align-items: center; gap: 0.375rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
             padding: 0.4rem 0.75rem;
             background: #fff;
             border: 1px dashed #d1d5db;
             border-radius: 0.5rem;
             font-family: 'Inter', sans-serif;
-            font-size: 0.75rem; font-weight: 500;
+            font-size: 0.75rem;
+            font-weight: 500;
             color: #9ca3af;
-            cursor: pointer; transition: all 0.15s;
+            cursor: pointer;
+            transition: all 0.15s;
         }
-        .btn-outline-sm:hover { border-color: var(--gold); color: var(--gold); }
+
+        .btn-outline-sm:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
 
         .btn-remove {
-            width: 2rem; height: 2rem;
+            width: 2rem;
+            height: 2rem;
             background: none;
             border: 1px solid #fee2e2;
             border-radius: 0.375rem;
             color: #fca5a5;
-            cursor: pointer; transition: all 0.15s;
-            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
         }
-        .btn-remove:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+
+        .btn-remove:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: #fef2f2;
+        }
 
         /* Card section header */
         .card-head {
             padding: 0.875rem 1.25rem;
             border-bottom: 1px solid #f3f4f6;
             background: #f9fafb;
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-        .card-head h3 { font-size: 0.875rem; font-weight: 600; color: #1f2937; }
+
+        .card-head h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
 
         /* Label */
         .field-label {
@@ -180,13 +252,30 @@
             border-bottom: 1px solid #f9fafb;
             font-size: 0.8125rem;
         }
-        .review-row:last-child { border-bottom: none; }
-        .review-key { color: #9ca3af; }
-        .review-val { color: #1f2937; }
-        .review-empty { color: #d1d5db; font-style: italic; }
+
+        .review-row:last-child {
+            border-bottom: none;
+        }
+
+        .review-key {
+            color: #9ca3af;
+        }
+
+        .review-val {
+            color: #1f2937;
+        }
+
+        .review-empty {
+            color: #d1d5db;
+            font-style: italic;
+        }
 
         /* Progress */
-        #progress-fill { background: var(--gold); transition: width 0.4s ease; }
+        #progress-fill {
+            background: var(--gold);
+            transition: width 0.4s ease;
+        }
+
         /* Prevent layout shift when keyboard opens */
         html, body {
             height: 100%;
@@ -198,6 +287,7 @@
             font-size: 1rem !important;
             touch-action: manipulation;
         }
+
         @media (max-width: 1024px) {
             aside {
                 position: relative !important;
@@ -230,12 +320,16 @@
                     ['Services',            'Services required'],
                     ['Employees',           'Staff list & bulk upload'],
                 ] as $i => $step)
-                    <div class="step-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 {{ $i === 0 ? 'is-active' : '' }}"
-                         data-step="{{ $i + 1 }}">
-                        <div class="step-bubble w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-gray-100 text-black transition-all duration-150 {{ $i === 0 ? 'step-bubble-active' : '' }}">
+                    <div
+                        class="step-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 {{ $i === 0 ? 'is-active' : '' }}"
+                        data-step="{{ $i + 1 }}">
+                        <div
+                            class="step-bubble w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-gray-100 text-black transition-all duration-150 {{ $i === 0 ? 'step-bubble-active' : '' }}">
                             <span class="step-num">{{ $i + 1 }}</span>
-                            <svg class="step-check hidden w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            <svg class="step-check hidden w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                      d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
                         <div class="min-w-0">
@@ -250,7 +344,8 @@
             </nav>
 
             <div class="hidden lg:block mt-auto pt-6 border-t border-gray-100">
-                <p class="text-xs text-black leading-relaxed">Nothing is mandatory except company name — submit with whatever you have and we'll follow up on the rest.</p>
+                <p class="text-xs text-black leading-relaxed">Nothing is mandatory except company name — submit with
+                    whatever you have and we'll follow up on the rest.</p>
             </div>
         </div>
     </aside>
@@ -334,7 +429,8 @@
                         </div>
 
                         <div class="p-5 space-y-4">
-                            <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for Direct Debits</p>
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for Direct
+                                Debits</p>
                             {{--                            <div class="p-4 border-l-4 border-orange-50 bg-orange-50 text-sm text-black">--}}
                             {{--                                <p>--}}
                             {{--                                    By providing your bank details, you agree to the Direct Debit Request and the Direct Debit Request--}}
@@ -356,11 +452,13 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols- gap-4">
                                 <div>
                                     <label class="field-label">Bank Name</label>
-                                    <input type="text" name="bank_name" value="{{ old('bank_name') }}" placeholder="Bank Name" class="wld-input">
+                                    <input type="text" name="bank_name" value="{{ old('bank_name') }}"
+                                           placeholder="Bank Name" class="wld-input">
                                 </div>
                                 <div>
                                     <label class="field-label">Branch</label>
-                                    <input type="text" name="bank_branch" value="{{ old('bank_branch') }}" placeholder="Add if known." class="wld-input">
+                                    <input type="text" name="bank_branch" value="{{ old('bank_branch') }}"
+                                           placeholder="Add if known." class="wld-input">
                                 </div>
                             </div>
 
@@ -385,10 +483,12 @@
                             {{--                            </div>--}}
 
                             <div class="p-5 space-y-4">
-                                <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for Direct Debits</p>
+                                <p class="text-xs font-bold text-black uppercase tracking-widest">Bank Details for
+                                    Direct Debits</p>
 
                                 {{-- REQUIRED by Stripe — must be visible to the user --}}
-                                <div class="p-4 border-l-4 border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-2 rounded-r-lg">
+                                <div
+                                    class="p-4 border-l-4 border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-2 rounded-r-lg">
                                     <p>
                                         By providing your bank details and submitting this form, you agree to the
                                         <a href="https://stripe.com/au/legal/becs-dd-service-agreement"
@@ -396,10 +496,12 @@
                                             BECS Direct Debit Service Agreement
                                         </a>
                                         and authorise <strong>Stripe Payments Australia Pty Ltd</strong> ACN 160 180 343
-                                        (Direct Debit User ID number 507156) to debit your account through BECS on behalf of
+                                        (Direct Debit User ID number 507156) to debit your account through BECS on
+                                        behalf of
                                         <strong>All in IT Solutions</strong> for amounts separately communicated to you.
                                     </p>
-                                    <p>You certify that you are an account holder or authorised signatory on the account listed below.</p>
+                                    <p>You certify that you are an account holder or authorised signatory on the account
+                                        listed below.</p>
                                 </div>
 
                                 {{-- Account holder name (plain text field — needed for Stripe) --}}
@@ -433,12 +535,12 @@
                                 <input type="hidden" name="stripe_payment_method_id" id="stripe_payment_method_id">
                                 <input type="hidden" name="stripe_customer_id" id="stripe_customer_id">
                                 <input type="hidden" name="mandate_id" id="mandate_id">
-                                <input type="hidden" name="stripe_setup_intent_id"   id="stripe_setup_intent_id">
+                                <input type="hidden" name="stripe_setup_intent_id" id="stripe_setup_intent_id">
 
                                 {{-- Keep these for your records too --}}
-                                <input type="hidden" name="bank_name"      id="hidden_bank_name">
-                                <input type="hidden" name="bank_branch"    id="hidden_bank_branch">
-                                <input type="hidden" name="bsb"            id="hidden_bsb">
+                                <input type="hidden" name="bank_name" id="hidden_bank_name">
+                                <input type="hidden" name="bank_branch" id="hidden_bank_branch">
+                                <input type="hidden" name="bsb" id="hidden_bsb">
                                 <input type="hidden" name="account_number" id="hidden_account_number">
                             </div>
                         </div>
@@ -454,9 +556,11 @@
 
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
                                 @foreach($providers as $index => $provider)
-                                    <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-105">
+                                    <label
+                                        class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-105">
                                         <!-- Logo Image -->
-                                        <img src="{{ asset('images/'.$provider->logo) }}" alt="{{ $provider->name }} Logo" class="h-8 w-12 object-contain">
+                                        <img src="{{ asset('images/'.$provider->logo) }}"
+                                             alt="{{ $provider->name }} Logo" class="h-8 w-12 object-contain">
 
                                         <!-- Checkbox and Provider Name -->
                                         <div>
@@ -479,15 +583,36 @@
                                     <input type="url" name="websites[]" value="{{ old('websites.0') }}"
                                            placeholder="https://yourwebsite.com" class="wld-input flex-1">
                                     <button type="button" class="btn-remove remove-website hidden" title="Remove">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
                             <button type="button" id="add-website-btn" class="btn-outline-sm">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 5v14M5 12h14"/>
+                                </svg>
                                 Add another website
                             </button>
                         </div>
+
+                        <div class="p-5 space-y-4">
+                            <p class="text-xs font-bold text-black uppercase tracking-widest">
+                                Microsoft Tenant URL (If known)
+                            </p>
+
+                            <input
+                                type="text"
+                                name="microsoft_tenant_url"
+                                value="{{ old('microsoft_tenant_url') }}"
+                                placeholder="Enter your Microsoft Tenant URL. Eg. https://your-tenant.sharepoint.com"
+                                class="wld-input w-full"
+                            >
+                        </div>
+
 
                         <div class="p-5 space-y-4">
                             <p class="text-xs font-bold text-black uppercase tracking-widest">Address</p>
@@ -506,29 +631,45 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <label class="field-label">City / Suburb</label>
-                                    <input type="text" name="city" value="{{ old('city') }}" placeholder="Sydney" class="wld-input">
+                                    <input type="text" name="city" value="{{ old('city') }}" placeholder="Sydney"
+                                           class="wld-input">
                                 </div>
                                 <div>
                                     <label class="field-label">State</label>
                                     <select name="state" class="wld-input">
                                         <option value="">Select State</option>
-                                        <option value="NSW" {{ old('state') == 'NSW' ? 'selected' : '' }}>New South Wales</option>
-                                        <option value="VIC" {{ old('state') == 'VIC' ? 'selected' : '' }}>Victoria</option>
-                                        <option value="QLD" {{ old('state') == 'QLD' ? 'selected' : '' }}>Queensland</option>
-                                        <option value="WA" {{ old('state') == 'WA' ? 'selected' : '' }}>Western Australia</option>
-                                        <option value="SA" {{ old('state') == 'SA' ? 'selected' : '' }}>South Australia</option>
-                                        <option value="TAS" {{ old('state') == 'TAS' ? 'selected' : '' }}>Tasmania</option>
-                                        <option value="ACT" {{ old('state') == 'ACT' ? 'selected' : '' }}>Australian Capital Territory</option>
-                                        <option value="NT" {{ old('state') == 'NT' ? 'selected' : '' }}>Northern Territory</option>
+                                        <option value="NSW" {{ old('state') == 'NSW' ? 'selected' : '' }}>New South
+                                            Wales
+                                        </option>
+                                        <option value="VIC" {{ old('state') == 'VIC' ? 'selected' : '' }}>Victoria
+                                        </option>
+                                        <option value="QLD" {{ old('state') == 'QLD' ? 'selected' : '' }}>Queensland
+                                        </option>
+                                        <option value="WA" {{ old('state') == 'WA' ? 'selected' : '' }}>Western
+                                            Australia
+                                        </option>
+                                        <option value="SA" {{ old('state') == 'SA' ? 'selected' : '' }}>South
+                                            Australia
+                                        </option>
+                                        <option value="TAS" {{ old('state') == 'TAS' ? 'selected' : '' }}>Tasmania
+                                        </option>
+                                        <option value="ACT" {{ old('state') == 'ACT' ? 'selected' : '' }}>Australian
+                                            Capital Territory
+                                        </option>
+                                        <option value="NT" {{ old('state') == 'NT' ? 'selected' : '' }}>Northern
+                                            Territory
+                                        </option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="field-label">Post Code</label>
-                                    <input type="text" name="post_code" value="{{ old('post_code') }}" placeholder="2000" class="wld-input">
+                                    <input type="text" name="post_code" value="{{ old('post_code') }}"
+                                           placeholder="2000" class="wld-input">
                                 </div>
                                 <div>
                                     <label class="field-label">Country</label>
-                                    <input type="text" name="country" value="{{ old('country') }}" placeholder="Australia" class="wld-input">
+                                    <input type="text" name="country" value="{{ old('country') }}"
+                                           placeholder="Australia" class="wld-input">
                                 </div>
                             </div>
                         </div>
@@ -545,8 +686,10 @@
                                 ] as [$sname,$slabel,$sprefix])
                                     <div>
                                         <label class="field-label">{{ $slabel }}</label>
-                                        <div class="flex rounded-lg border border-gray-200 overflow-hidden wld-input-group transition">
-                                            <span class="inline-flex items-center px-2.5 bg-gray-50 text-black text-xs border-r border-gray-200 flex-shrink-0 font-mono">{{ $sprefix }}</span>
+                                        <div
+                                            class="flex rounded-lg border border-gray-200 overflow-hidden wld-input-group transition">
+                                            <span
+                                                class="inline-flex items-center px-2.5 bg-gray-50 text-black text-xs border-r border-gray-200 flex-shrink-0 font-mono">{{ $sprefix }}</span>
                                             <input type="text" name="{{ $sname }}" value="{{ old($sname) }}"
                                                    placeholder="handle"
                                                    class="wld-input">
@@ -634,7 +777,10 @@
                     {{-- Same as main toggle --}}
                     <label class="same-toggle mb-4 block" id="ap-same-label">
                         <input type="checkbox" id="ap_same_as_main" onchange="toggleSameAs('ap', this.checked)">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
                         Same as Main Contact — copy details across
                     </label>
 
@@ -685,7 +831,10 @@
 
                     <label class="same-toggle mb-4 block">
                         <input type="checkbox" id="tech_same_as_main" onchange="toggleSameAs('tech', this.checked)">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
                         Same as Main Contact — copy details across
                     </label>
 
@@ -746,7 +895,8 @@
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 @foreach($services as $index => $service)
                                     <div class="space-y-3">
-                                        <label class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                        <label
+                                            class="flex items-center gap-3 border border-gray-200 rounded-md px-3 py-2 hover:bg-gray-50 cursor-pointer">
                                             <input type="checkbox"
                                                    name="services[]"
                                                    value="{{ $service }}"
@@ -773,7 +923,8 @@
                 <div class="step-pane" id="pane-6">
                     <div class="mb-5">
                         <h2 class="text-xl font-bold text-black tracking-tight">Employees List</h2>
-                        <p class="text-sm text-gray-500 mt-1">Add staff members individually or upload a file with your contacts list.</p>
+                        <p class="text-sm text-gray-500 mt-1">Add staff members individually or upload a file with your
+                            contacts list.</p>
                     </div>
 
                     {{-- Manual employees --}}
@@ -786,15 +937,18 @@
                             <div class="employee-row">
                                 <div>
                                     <label class="field-label">Full Name</label>
-                                    <input type="text" name="employees[0][name]" placeholder="Jane Smith" class="wld-input">
+                                    <input type="text" name="employees[0][name]" placeholder="Jane Smith"
+                                           class="wld-input">
                                 </div>
                                 <div>
                                     <label class="field-label">Email</label>
-                                    <input type="email" name="employees[0][email]" placeholder="jane@company.com" class="wld-input">
+                                    <input type="email" name="employees[0][email]" placeholder="jane@company.com"
+                                           class="wld-input">
                                 </div>
                                 <div>
                                     <label class="field-label">Mobile</label>
-                                    <input type="tel" name="employees[0][phone]" placeholder="+61 4xx xxx xxx" class="wld-input">
+                                    <input type="tel" name="employees[0][phone]" placeholder="+61 4xx xxx xxx"
+                                           class="wld-input">
                                 </div>
                                 <div style="padding-bottom: 0; display:flex; align-items:flex-end;">
                                     <div style="height:2rem"></div>
@@ -802,8 +956,12 @@
                             </div>
                         </div>
                         <div class="px-5 pb-5">
-                            <button type="button" id="add-employee-btn" class="btn-outline-sm w-full justify-center mt-1">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+                            <button type="button" id="add-employee-btn"
+                                    class="btn-outline-sm w-full justify-center mt-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 5v14M5 12h14"/>
+                                </svg>
                                 Add another employee
                             </button>
                         </div>
@@ -840,13 +998,17 @@ John Doe | john@company.com | +61412345678"
                             <span class="text-xs text-black">CSV or PDF accepted</span>
                         </div>
                         <div class="p-5">
-                            <div class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg py-8 group"
-                                 onclick="document.getElementById('staff_contacts_file').click();"
-                                 style="cursor: pointer;">
-                                <svg class="w-8 h-8 text-gray-300 group-hover:text-yellow-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            <div
+                                class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg py-8 group"
+                                onclick="document.getElementById('staff_contacts_file').click();"
+                                style="cursor: pointer;">
+                                <svg class="w-8 h-8 text-gray-300 group-hover:text-yellow-400 transition" fill="none"
+                                     stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
-                                <span class="text-sm font-medium text-gray-500">Click to upload staff contacts file</span>
+                                <span
+                                    class="text-sm font-medium text-gray-500">Click to upload staff contacts file</span>
                                 <span class="text-xs text-black">CSV or PDF, max 10MB</span>
                                 {{-- ✅ Input is now completely outside the clickable area --}}
                                 <input type="file"
@@ -860,13 +1022,20 @@ John Doe | john@company.com | +61412345678"
                         </div>
                     </div>
                     {{-- Final submit --}}
-                    <div class="flex justify-between pt-2 pb-6" style="position: relative; z-index: 10;">                        <button type="button" onclick="prevStep()" class="btn-ghost">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <div class="flex justify-between pt-2 pb-6" style="position: relative; z-index: 10;">
+                        <button type="button" onclick="prevStep()" class="btn-ghost">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 19l-7-7 7-7"/>
+                            </svg>
                             Back
                         </button>
                         <button type="submit" class="btn-primary" style="padding: 0.7rem 2rem;">
                             Submit Profile
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M5 13l4 4L19 7"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -899,9 +1068,9 @@ John Doe | john@company.com | +61412345678"
 
         // Sidebar
         document.querySelectorAll('.step-nav-item').forEach((item, i) => {
-            const step    = i + 1;
-            const bubble  = item.querySelector('.step-bubble');
-            const numEl   = item.querySelector('.step-num');
+            const step = i + 1;
+            const bubble = item.querySelector('.step-bubble');
+            const numEl = item.querySelector('.step-num');
             const checkEl = item.querySelector('.step-check');
             const labelEl = item.querySelector('.step-label');
 
@@ -926,11 +1095,11 @@ John Doe | john@company.com | +61412345678"
         });
 
         // Progress
-        document.getElementById('progress-fill').style.width  = pcts[currentStep - 1];
+        document.getElementById('progress-fill').style.width = pcts[currentStep - 1];
         document.getElementById('progress-label').textContent = stepLabels[currentStep - 1];
-        document.getElementById('progress-pct').textContent   = pcts[currentStep - 1];
+        document.getElementById('progress-pct').textContent = pcts[currentStep - 1];
 
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     function nextStep() {
@@ -986,22 +1155,27 @@ John Doe | john@company.com | +61412345678"
         }
     }
 
-    function prevStep() { if (currentStep > 1) { currentStep--; updateUI(); } }
+    function prevStep() {
+        if (currentStep > 1) {
+            currentStep--;
+            updateUI();
+        }
+    }
 
     // ── Same-as-main toggle ──
     function toggleSameAs(prefix, checked) {
-        const srcName  = document.getElementById('main_name');
+        const srcName = document.getElementById('main_name');
         const srcEmail = document.getElementById('main_email');
         const srcPhone = document.getElementById('main_phone');
 
-        const tgtName  = document.getElementById(`${prefix}_name`);
+        const tgtName = document.getElementById(`${prefix}_name`);
         const tgtEmail = document.getElementById(`${prefix}_email`);
         const tgtPhone = document.getElementById(`${prefix}_phone`);
 
-        const fields   = document.getElementById(`${prefix}-fields`);
+        const fields = document.getElementById(`${prefix}-fields`);
 
         if (checked) {
-            tgtName.value  = srcName?.value  || '';
+            tgtName.value = srcName?.value || '';
             tgtEmail.value = srcEmail?.value || '';
             tgtPhone.value = srcPhone?.value || '';
             fields.style.opacity = '0.5';
@@ -1023,7 +1197,8 @@ John Doe | john@company.com | +61412345678"
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>`;
         row.querySelector('.remove-website').addEventListener('click', () => {
-            row.style.opacity = '0'; row.style.transition = 'opacity 0.15s';
+            row.style.opacity = '0';
+            row.style.transition = 'opacity 0.15s';
             setTimeout(() => row.remove(), 150);
         });
         document.getElementById('websites-container').appendChild(row);
@@ -1055,7 +1230,8 @@ John Doe | john@company.com | +61412345678"
                 </button>
             </div>`;
         row.querySelector('.remove-employee').addEventListener('click', () => {
-            row.style.opacity = '0'; row.style.transition = 'opacity 0.15s';
+            row.style.opacity = '0';
+            row.style.transition = 'opacity 0.15s';
             setTimeout(() => row.remove(), 150);
         });
         document.getElementById('employees-container').appendChild(row);
@@ -1138,17 +1314,18 @@ John Doe | john@company.com | +61412345678"
 
         return null;
     }
+
     // ── Stripe BECS Setup ──────────────────────────────────────────
-    const stripe   = Stripe('{{ config("services.stripe.key") }}');
+    const stripe = Stripe('{{ config("services.stripe.key") }}');
     const elements = stripe.elements();
 
     const becsElement = elements.create('auBankAccount', {
         style: {
             base: {
-                color:           '#111827',
-                fontSize:        '16px',
-                fontFamily:      'Inter, sans-serif',
-                '::placeholder': { color: '#9ca3af' },
+                color: '#111827',
+                fontSize: '16px',
+                fontFamily: 'Inter, sans-serif',
+                '::placeholder': {color: '#9ca3af'},
             }
         }
     });
@@ -1168,8 +1345,8 @@ John Doe | john@company.com | +61412345678"
     document.getElementById('onboarding-form').addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const submitBtn  = this.querySelector('button[type="submit"]');
-        const accountName  = document.getElementById('becs_account_name')?.value?.trim();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const accountName = document.getElementById('becs_account_name')?.value?.trim();
         const billingEmail = document.getElementById('becs_billing_email')?.value?.trim();
         const pmId = document.getElementById('stripe_payment_method_id').value;
         if (!becsComplete || pmId) {
@@ -1178,12 +1355,12 @@ John Doe | john@company.com | +61412345678"
         }
 
         // Show loading state
-        submitBtn.disabled    = true;
+        submitBtn.disabled = true;
         submitBtn.textContent = 'Setting up mandate…';
 
         try {
             const siRes = await fetch('{{ route("onboarding.setup-intent") }}', {
-                method:  'POST',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
@@ -1191,12 +1368,12 @@ John Doe | john@company.com | +61412345678"
                         || '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
-                    company_name:  document.querySelector('[name="company_name"]')?.value,
+                    company_name: document.querySelector('[name="company_name"]')?.value,
                     billing_email: billingEmail,
                 })
             });
 
-            const { client_secret, customer_id, error: siError } = await siRes.json();
+            const {client_secret, customer_id, error: siError} = await siRes.json();
 
             if (siError) throw new Error(siError);
 
@@ -1204,11 +1381,11 @@ John Doe | john@company.com | +61412345678"
 
             document.getElementById('stripe_customer_id').value = customer_id;
 
-            const { setupIntent, error } = await stripe.confirmAuBecsDebitSetup(client_secret, {
+            const {setupIntent, error} = await stripe.confirmAuBecsDebitSetup(client_secret, {
                 payment_method: {
-                    au_becs_debit:   becsElement,
+                    au_becs_debit: becsElement,
                     billing_details: {
-                        name:  accountName  || document.querySelector('[name="company_name"]')?.value,
+                        name: accountName || document.querySelector('[name="company_name"]')?.value,
                         email: billingEmail || '',
                     },
                 },
@@ -1217,13 +1394,13 @@ John Doe | john@company.com | +61412345678"
             if (error) throw new Error(error.message);
 
             document.getElementById('stripe_payment_method_id').value = setupIntent.payment_method;
-            document.getElementById('stripe_setup_intent_id').value   = setupIntent.id;
+            document.getElementById('stripe_setup_intent_id').value = setupIntent.id;
 
             this.submit(); // Normal form POST continues
 
         } catch (err) {
             document.getElementById('becs-error').textContent = err.message;
-            submitBtn.disabled    = false;
+            submitBtn.disabled = false;
             submitBtn.textContent = 'Submit Profile';
         }
     });

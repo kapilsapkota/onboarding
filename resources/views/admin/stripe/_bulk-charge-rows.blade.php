@@ -26,12 +26,11 @@
             >
         </td>
         <td class="px-5 py-4">
-            <input
-                type="text"
+            <textarea
                 maxlength="255"
                 placeholder="e.g. Invoice #1234"
                 class="description-input w-56 px-3 py-1.5 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600"
-            >
+            ></textarea>
         </td>
     </tr>
 @empty

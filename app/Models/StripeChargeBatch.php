@@ -20,7 +20,7 @@ class StripeChargeBatch extends Model
     ];
 
     protected $casts = [
-        'started_at'   => 'datetime',
+        'started_at' => 'datetime',
         'completed_at' => 'datetime',
     ];
 
@@ -34,26 +34,28 @@ class StripeChargeBatch extends Model
     {
         $items = $this->items()->get();
 
-        $total     = $items->count();
+        $total = $items->count();
         $succeeded = $items->where('status', 'succeeded')->count();
-        $failed    = $items->where('status', 'failed')->count();
-        $pending   = $items->whereIn('status', ['pending', 'processing'])->count();
+        $failed = $items->where('status', 'failed')->count();
+        $disputed = $items->where('status', 'disputed')->count();
+        $pending = $items->whereIn('status', ['pending', 'processing'])->count();
 
         if ($pending > 0) {
             $status = 'processing';
         } elseif ($succeeded === $total) {
             $status = 'completed';
-        } elseif ($failed === $total) {
+        } elseif (($failed + $disputed) === $total) {
             $status = 'failed';
         } else {
             $status = 'completed_with_errors';
         }
 
         $this->update([
-            'status'       => $status,
+            'status' => $status,
             'completed_at' => $pending === 0 ? now() : null,
         ]);
     }
+
 
     /** Formats total_amount cents as a dollar string. */
     public function formattedTotal(): string
@@ -61,7 +63,7 @@ class StripeChargeBatch extends Model
         return '$' . number_format($this->total_amount / 100, 2);
     }
 
-    public function createdBy() : BelongsTo
+    public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
     }

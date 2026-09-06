@@ -35,6 +35,12 @@
                                value="{{ old('company_phone', $client->company_phone) }}">
                     </div>
 
+                    <div>
+                        <label class="{{ $label }}">Microsoft Tenant URL</label>
+                        <input class="{{ $input }}" name="microsoft_tenant_url"
+                               value="{{ old('microsoft_tenant_url', $client->microsoft_tenant_url ?? '') }}">
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="{{ $label }}">Industry</label>

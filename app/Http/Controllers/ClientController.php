@@ -121,6 +121,7 @@ class ClientController extends Controller
             $client->update([
                 'company_name'   => $data['company_name']   ?? null,
                 'industry'       => $data['industry']       ?? null,
+                'microsoft_tenant_url'       => $data['microsoft_tenant_url']       ?? null,
                 'website'        => $data['website']        ?? null,
                 'address_second'        => $data['address_second']        ?? null,
                 'address'        => $data['address']        ?? null,

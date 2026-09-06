@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\StripeChargeBatch;
+use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
 use App\Services\StripeBulkChargeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Stripe\Exception\ApiErrorException;
+use Stripe\StripeClient;
 
 class StripeBulkChargeController extends Controller
 {
-    public function __construct(private StripeBulkChargeService $service) {}
+    public function __construct(private StripeBulkChargeService $service)
+    {
+    }
 
     /** Displays the customer selection and amount entry form. */
     public function index(Request $request): View
@@ -21,16 +26,16 @@ class StripeBulkChargeController extends Controller
         $search = $request->string('search')->toString();
 
         $customers = StripeCustomer::query()
-            ->whereHas('paymentMethods', fn ($q) => $q
+            ->whereHas('paymentMethods', fn($q) => $q
                 ->where('type', 'au_becs_debit')
                 ->where('status', 'active')
             )
-            ->with(['paymentMethods' => fn ($q) => $q
+            ->with(['paymentMethods' => fn($q) => $q
                 ->where('type', 'au_becs_debit')
                 ->where('status', 'active')
                 ->orderByDesc('is_default')
             ])
-            ->when($search, fn ($q) => $q
+            ->when($search, fn($q) => $q
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
             )
@@ -56,11 +61,11 @@ class StripeBulkChargeController extends Controller
     public function confirm(Request $request): RedirectResponse
     {
         $request->validate([
-            'items'                            => ['required', 'array', 'min:1'],
-            'items.*.stripe_customer_id'       => ['required', 'integer'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.stripe_customer_id' => ['required', 'integer'],
             'items.*.stripe_payment_method_id' => ['required', 'integer'],
-            'items.*.amount'                   => ['required', 'integer', 'min:1'],
-            'items.*.description'              => ['nullable', 'string', 'max:255'],
+            'items.*.amount' => ['required', 'integer', 'min:1'],
+            'items.*.description' => ['nullable', 'string', 'max:255'],
         ]);
 
         $items = $this->buildValidatedItems($request->input('items'));
@@ -98,8 +103,8 @@ class StripeBulkChargeController extends Controller
         $items = [];
 
         foreach ($posted as $row) {
-            $customerId = (int) ($row['stripe_customer_id'] ?? 0);
-            $amountCents = (int) ($row['amount'] ?? 0);
+            $customerId = (int)($row['stripe_customer_id'] ?? 0);
+            $amountCents = (int)($row['amount'] ?? 0);
 
             if ($amountCents < 1) {
                 continue;
@@ -108,28 +113,71 @@ class StripeBulkChargeController extends Controller
             // Never trust a PM ID from the browser - verify ownership server-side
             $customer = StripeCustomer::find($customerId);
 
-            if (! $customer) {
+            if (!$customer) {
                 continue;
             }
 
-            $pm = StripePaymentMethod::where('id', (int) ($row['stripe_payment_method_id'] ?? 0))
+            $pm = StripePaymentMethod::where('id', (int)($row['stripe_payment_method_id'] ?? 0))
                 ->where('stripe_customer_id', $customer->id)
                 ->where('type', 'au_becs_debit')
                 ->where('status', 'active')
                 ->first();
 
-            if (! $pm) {
+            if (!$pm) {
                 continue;
             }
 
             $items[] = [
-                'stripe_customer_id'       => $customer->id,
+                'stripe_customer_id' => $customer->id,
                 'stripe_payment_method_id' => $pm->id,
-                'amount'                   => $amountCents,
-                'description'              => isset($row['description']) ? trim($row['description']) : null,
+                'amount' => $amountCents,
+                'description' => isset($row['description']) ? trim($row['description']) : null,
             ];
         }
 
         return $items;
     }
+
+    /** Cancels a single charge item and its Stripe PaymentIntent. */
+    public function cancel(StripeChargeBatchItem $item): RedirectResponse
+    {
+        $item->refresh();
+
+        if (in_array($item->status, ['succeeded', 'failed', 'cancelled'], true)) {
+            return back()->withErrors([
+                'cancel' => 'This charge cannot be cancelled.',
+            ]);
+        }
+
+        try {
+            if ($item->stripe_payment_intent_id) {
+                $stripe = new StripeClient(config('services.stripe.secret'));
+
+                $intent = $stripe->paymentIntents->cancel(
+                    $item->stripe_payment_intent_id
+                );
+
+                $item->update([
+                    'status' => 'cancelled',
+                    'stripe_data' => $intent->toArray(),
+                ]);
+            } else {
+                $item->update([
+                    'status' => 'cancelled',
+                ]);
+            }
+
+            $item->batch->recalculateStatus();
+
+            return back()->with(
+                'success',
+                'Charge cancelled successfully.'
+            );
+        } catch (ApiErrorException $e) {
+            return back()->withErrors([
+                'cancel' => 'Unable to cancel the Stripe payment: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
 }

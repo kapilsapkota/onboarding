@@ -44,7 +44,8 @@ class Client extends Model
         'stripe_payment_method_id',
         'mandate_id',
         'mandate_status',
-        'user_id'
+        'user_id',
+        'microsoft_tenant_url'
     ];
 
     protected $casts = [

@@ -105,6 +105,7 @@
                                 ['Company Phone',       $client->company_phone,                                                                    'text'],
                                 ['ABN/ACN',           $client->abn ?? null,                                                                     'text'],
                                 ['Industry',      $client->industry,                                                                        'text'],
+                                ['Microsoft Tenant URL',      $client->microsoft_tenant_url ?? '',                                                                        'text'],
                                 ['Service Providers',      collect(json_decode($client->service_providers))->filter()->join(', '),  'text'],
                                 ['Website',      collect(json_decode($client->website))->filter()->join(', '),                                                                         'link'],
                                 ['Address',       collect([$client->address, $client->city, $client->country])->filter()->join(', '),        'text'],

@@ -9,6 +9,9 @@ use App\Models\DirectDebitPayment;
 use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
+use App\Notifications\StripePaymentDisputeNotification;
+use App\Notifications\StripePaymentFailureNotification;
+use App\Notifications\StripePaymentSuccessNotification;
 use App\Services\StripeBecsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,13 +21,15 @@ use Stripe\Webhook;
 
 class StripeWebhookController extends Controller
 {
-    public function __construct(private StripeBecsService $stripe) {}
+    public function __construct(private StripeBecsService $stripe)
+    {
+    }
 
     public function __invoke(Request $request): Response
     {
-        $payload   = $request->getContent();
+        $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        $secret    = config('services.stripe.webhook_secret');
+        $secret = config('services.stripe.webhook_secret');
 
         try {
             $event = Webhook::constructEvent($payload, $sigHeader, $secret);
@@ -38,29 +43,35 @@ class StripeWebhookController extends Controller
         try {
             match ($event->type) {
                 // Payment intents
-                'payment_intent.succeeded'      => $this->handleSucceeded($event->data->object),
+                'payment_intent.succeeded' => $this->handleSucceeded($event->data->object),
                 'payment_intent.payment_failed' => $this->handleFailed($event->data->object),
                 'payment_intent.processing',
-                'payment_intent.canceled'       => $this->handleBulkChargeStatusUpdate($event->data->object),
+                'payment_intent.canceled' => $this->handleBulkChargeStatusUpdate($event->data->object),
 
                 // Customer sync
                 'customer.created',
-                'customer.updated'              => $this->handleCustomerUpsert($event->data->object),
-                'customer.deleted'              => $this->handleCustomerDeleted($event->data->object),
+                'customer.updated' => $this->handleCustomerUpsert($event->data->object),
+                'customer.deleted' => $this->handleCustomerDeleted($event->data->object),
 
                 // Payment method sync
-                'payment_method.attached'       => $this->handlePaymentMethodAttached($event->data->object),
-                'payment_method.updated'        => $this->handlePaymentMethodUpdated($event->data->object),
-                'payment_method.detached'       => $this->handlePaymentMethodDetached($event->data->object),
+                'payment_method.attached' => $this->handlePaymentMethodAttached($event->data->object),
+                'payment_method.updated' => $this->handlePaymentMethodUpdated($event->data->object),
+                'payment_method.detached' => $this->handlePaymentMethodDetached($event->data->object),
 
                 // Mandate
-                'mandate.updated'               => $this->handleMandateUpdated($event->data->object),
+                'mandate.updated' => $this->handleMandateUpdated($event->data->object),
 
-                default                         => null,
+                'charge.dispute.created' => $this->handleDisputeCreated($event->data->object),
+
+                'charge.dispute.updated' => $this->handleDisputeUpdated($event->data->object),
+                'charge.dispute.closed' => $this->handleDisputeClosed($event->data->object),
+
+
+                default => null,
             };
         } catch (\Throwable $e) {
             Log::error('StripeWebhook: unhandled exception in event handler', [
-                'type'  => $event->type,
+                'type' => $event->type,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -79,17 +90,17 @@ class StripeWebhookController extends Controller
 
         $existing = StripeCustomer::where('stripe_customer_id', $customer->id)->first();
 
-        if (! $existing && ! $defaultPmId) {
+        if (!$existing && !$defaultPmId) {
             return;
         }
 
         if ($existing) {
             $existing->update([
-                'name'                      => $customer->name,
-                'email'                     => $customer->email,
+                'name' => $customer->name,
+                'email' => $customer->email,
                 'default_payment_method_id' => $defaultPmId,
-                'stripe_data'               => $customer->toArray(),
-                'last_synced_at'            => now(),
+                'stripe_data' => $customer->toArray(),
+                'last_synced_at' => now(),
             ]);
 
             Log::info('StripeWebhook: customer updated in local DB', ['stripe_id' => $customer->id]);
@@ -119,21 +130,21 @@ class StripeWebhookController extends Controller
 
         $stripeCustomerId = $this->resolveId($pm->customer);
 
-        if (! $stripeCustomerId) {
+        if (!$stripeCustomerId) {
             Log::warning('StripeWebhook: payment_method.attached has no customer', ['pm_id' => $pm->id]);
             return;
         }
 
         $localCustomer = $this->upsertCustomerFromStripe($stripeCustomerId);
 
-        if (! $localCustomer) {
+        if (!$localCustomer) {
             return;
         }
 
         $this->upsertPaymentMethod($pm, $localCustomer);
 
         Log::info('StripeWebhook: BECS payment method attached and synced', [
-            'pm_id'       => $pm->id,
+            'pm_id' => $pm->id,
             'customer_id' => $stripeCustomerId,
         ]);
     }
@@ -147,16 +158,16 @@ class StripeWebhookController extends Controller
 
         $local = StripePaymentMethod::where('stripe_payment_method_id', $pm->id)->first();
 
-        if (! $local) {
+        if (!$local) {
             $this->handlePaymentMethodAttached($pm);
             return;
         }
 
         $local->update([
-            'last4'               => $pm->au_becs_debit->last4 ?? null,
+            'last4' => $pm->au_becs_debit->last4 ?? null,
             'account_holder_name' => $pm->billing_details->name ?? null,
-            'stripe_data'         => $pm->toArray(),
-            'last_synced_at'      => now(),
+            'stripe_data' => $pm->toArray(),
+            'last_synced_at' => now(),
         ]);
 
         Log::info('StripeWebhook: BECS payment method updated', ['pm_id' => $pm->id]);
@@ -167,9 +178,9 @@ class StripeWebhookController extends Controller
     {
         $updated = StripePaymentMethod::where('stripe_payment_method_id', $pm->id)
             ->update([
-                'status'         => 'inactive',
-                'is_default'     => false,
-                'stripe_data'    => $pm->toArray(),
+                'status' => 'inactive',
+                'is_default' => false,
+                'stripe_data' => $pm->toArray(),
                 'last_synced_at' => now(),
             ]);
 
@@ -198,7 +209,7 @@ class StripeWebhookController extends Controller
                 $ddPayment->invoice->markPaymentSettled();
 
                 Log::info('StripeWebhook: payment_intent.succeeded — DD payment marked settled', [
-                    'id'                => $ddPayment->id,
+                    'id' => $ddPayment->id,
                     'payment_intent_id' => $intent->id,
                 ]);
 
@@ -215,14 +226,21 @@ class StripeWebhookController extends Controller
                 ]);
             } else {
                 $batchItem->update([
-                    'status'      => 'succeeded',
+                    'status' => 'succeeded',
                     'stripe_data' => $intent->toArray(),
                 ]);
 
-                $batchItem->batch->recalculateStatus();
+                $batch = $batchItem->batch;
+
+                if ($batch) {
+                    $batch->recalculateStatus();
+                    $batch->createdBy?->notify(
+                        new StripePaymentSuccessNotification($batchItem->id)
+                    );
+                }
 
                 Log::info('StripeWebhook: payment_intent.succeeded — batch item marked succeeded', [
-                    'id'                => $batchItem->id,
+                    'id' => $batchItem->id,
                     'payment_intent_id' => $intent->id,
                 ]);
             }
@@ -232,8 +250,8 @@ class StripeWebhookController extends Controller
     private function handleFailed(object $intent): void
     {
         $lastError = $intent->last_payment_error;
-        $reason    = $lastError?->message ?? 'Payment failed';
-        $code      = $lastError?->code    ?? null;
+        $reason = $lastError?->message ?? 'Payment failed';
+        $code = $lastError?->code ?? null;
 
         $ddPayment = $this->findDirectDebitPayment($intent);
 
@@ -247,10 +265,10 @@ class StripeWebhookController extends Controller
                 $ddPayment->invoice->markPaymentFailed($reason);
 
                 Log::warning('StripeWebhook: payment_intent.payment_failed — DD payment marked failed', [
-                    'id'                => $ddPayment->id,
+                    'id' => $ddPayment->id,
                     'payment_intent_id' => $intent->id,
-                    'code'              => $code,
-                    'reason'            => $reason,
+                    'code' => $code,
+                    'reason' => $reason,
                 ]);
 
                 HandleFailedDirectDebitPayment::dispatch($ddPayment->id);
@@ -266,18 +284,24 @@ class StripeWebhookController extends Controller
                 ]);
             } else {
                 $batchItem->update([
-                    'status'        => 'failed',
-                    'stripe_data'   => $intent->toArray(),
+                    'status' => 'failed',
+                    'stripe_data' => $intent->toArray(),
                     'error_message' => $reason,
                 ]);
 
-                $batchItem->batch->recalculateStatus();
+                $batch = $batchItem->batch;
+
+                $batch->recalculateStatus();
+
+                $batch->createdBy?->notify(
+                    new StripePaymentFailureNotification($batchItem->id)
+                );
 
                 Log::warning('StripeWebhook: payment_intent.payment_failed — batch item marked failed', [
-                    'id'                => $batchItem->id,
+                    'id' => $batchItem->id,
                     'payment_intent_id' => $intent->id,
-                    'code'              => $code,
-                    'reason'            => $reason,
+                    'code' => $code,
+                    'reason' => $reason,
                 ]);
             }
         }
@@ -288,23 +312,23 @@ class StripeWebhookController extends Controller
     {
         $batchItem = $this->findBatchItem($intent);
 
-        if (! $batchItem) {
+        if (!$batchItem) {
             return;
         }
 
         $status = $intent->status === 'processing' ? 'processing' : 'failed';
 
         $batchItem->update([
-            'status'      => $status,
+            'status' => $status,
             'stripe_data' => $intent->toArray(),
         ]);
 
         $batchItem->batch->recalculateStatus();
 
         Log::info('StripeWebhook: batch item status updated', [
-            'id'                => $batchItem->id,
+            'id' => $batchItem->id,
             'payment_intent_id' => $intent->id,
-            'status'            => $status,
+            'status' => $status,
         ]);
     }
 
@@ -316,14 +340,14 @@ class StripeWebhookController extends Controller
 
         $paymentMethodId = $this->resolveId($mandate->payment_method);
 
-        if (! $paymentMethodId) {
+        if (!$paymentMethodId) {
             return;
         }
 
         Client::where('stripe_payment_method_id', $paymentMethodId)
             ->update([
                 'stripe_payment_method_id' => null,
-                'mandate_status'           => 'inactive',
+                'mandate_status' => 'inactive',
             ]);
 
         StripePaymentMethod::where('stripe_payment_method_id', $paymentMethodId)
@@ -353,17 +377,17 @@ class StripeWebhookController extends Controller
             return StripeCustomer::updateOrCreate(
                 ['stripe_customer_id' => $stripeCustomerId],
                 [
-                    'name'                      => $stripeCustomer->name,
-                    'email'                     => $stripeCustomer->email,
+                    'name' => $stripeCustomer->name,
+                    'email' => $stripeCustomer->email,
                     'default_payment_method_id' => $defaultPmId,
-                    'stripe_data'               => $stripeCustomer->toArray(),
-                    'last_synced_at'            => now(),
+                    'stripe_data' => $stripeCustomer->toArray(),
+                    'last_synced_at' => now(),
                 ]
             );
         } catch (\Throwable $e) {
             Log::error('StripeWebhook: failed to retrieve customer from Stripe', [
                 'stripe_customer_id' => $stripeCustomerId,
-                'error'              => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return null;
@@ -378,14 +402,14 @@ class StripeWebhookController extends Controller
         StripePaymentMethod::updateOrCreate(
             ['stripe_payment_method_id' => $pm->id],
             [
-                'stripe_customer_id'  => $localCustomer->id,
-                'type'                => $pm->type,
-                'last4'               => $pm->au_becs_debit->last4 ?? null,
+                'stripe_customer_id' => $localCustomer->id,
+                'type' => $pm->type,
+                'last4' => $pm->au_becs_debit->last4 ?? null,
                 'account_holder_name' => $pm->billing_details->name ?? null,
-                'is_default'          => $pm->id === $defaultPmId,
-                'status'              => 'active',
-                'stripe_data'         => $pm->toArray(),
-                'last_synced_at'      => now(),
+                'is_default' => $pm->id === $defaultPmId,
+                'status' => 'active',
+                'stripe_data' => $pm->toArray(),
+                'last_synced_at' => now(),
             ]
         );
     }
@@ -405,7 +429,7 @@ class StripeWebhookController extends Controller
                 'invoice.client',
                 'invoice.tenant',
                 'invoice.tenant.connection',
-            ])->find((int) $ddPaymentId);
+            ])->find((int)$ddPaymentId);
 
             if ($ddPayment) {
                 return $ddPayment;
@@ -431,7 +455,7 @@ class StripeWebhookController extends Controller
     /** Resolves a Stripe object or string ID to a string ID. */
     private function resolveId(mixed $value): ?string
     {
-        if (is_string($value) && ! empty($value)) {
+        if (is_string($value) && !empty($value)) {
             return $value;
         }
 
@@ -445,4 +469,192 @@ class StripeWebhookController extends Controller
 
         return $this->resolveId($raw);
     }
+
+    /**
+     * Handles a newly created Stripe dispute.
+     */
+    private function handleDisputeCreated(object $dispute): void
+    {
+        $batchItem = $this->findBatchItemFromDispute($dispute);
+
+        if (!$batchItem) {
+            return;
+        }
+
+        /*
+         * Stripe may retry the same webhook.
+         * Do not send another notification if we have already processed
+         * this exact dispute.
+         */
+        $existingDisputeId = data_get(
+            $batchItem->stripe_data,
+            'dispute.id'
+        );
+
+        if ($existingDisputeId === ($dispute->id ?? null)) {
+            Log::info('StripeWebhook: dispute.created already processed, skipping', [
+                'batch_item_id' => $batchItem->id,
+                'dispute_id' => $dispute->id,
+            ]);
+
+            return;
+        }
+
+        $this->saveDisputeData($batchItem, $dispute);
+
+        $batchItem->update([
+            'status' => 'disputed',
+        ]);
+
+        $batch = $batchItem->batch;
+
+        if ($batch) {
+            $batch->recalculateStatus();
+        }
+
+        /*
+         * Notification implements ShouldQueue, so this does not send
+         * the email synchronously from the webhook request.
+         */
+        $batch?->createdBy?->notify(
+            new StripePaymentDisputeNotification($batchItem->id)
+        );
+
+        Log::warning('StripeWebhook: dispute created for batch item', [
+            'batch_item_id' => $batchItem->id,
+            'payment_intent_id' => $this->resolveId($dispute->payment_intent ?? null),
+            'dispute_id' => $dispute->id ?? null,
+            'reason' => $dispute->reason ?? null,
+            'status' => $dispute->status ?? null,
+            'amount' => $dispute->amount ?? null,
+            'currency' => $dispute->currency ?? null,
+        ]);
+    }
+
+    /**
+     * Handles updates to an existing Stripe dispute.
+     *
+     * We keep the local batch item as "disputed" because the dispute
+     * is still an active issue for the payment.
+     */
+    private function handleDisputeUpdated(object $dispute): void
+    {
+        $batchItem = $this->findBatchItemFromDispute($dispute);
+
+        if (!$batchItem) {
+            return;
+        }
+
+        $this->saveDisputeData($batchItem, $dispute);
+
+        /*
+         * Do not change the payment item back to succeeded just because
+         * Stripe sent a dispute.updated event.
+         */
+        if ($batchItem->status !== 'disputed') {
+            $batchItem->update([
+                'status' => 'disputed',
+            ]);
+
+            $batchItem->batch?->recalculateStatus();
+        }
+
+        Log::warning('StripeWebhook: dispute updated for batch item', [
+            'batch_item_id' => $batchItem->id,
+            'dispute_id' => $dispute->id ?? null,
+            'status' => $dispute->status ?? null,
+            'reason' => $dispute->reason ?? null,
+        ]);
+    }
+
+    /**
+     * Handles a closed Stripe dispute.
+     *
+     * Stripe's dispute status tells us the final outcome:
+     *
+     * - won  = merchant won the dispute
+     * - lost = merchant lost the dispute
+     *
+     * We keep the payment item as "disputed" so that the original
+     * payment status is not incorrectly changed to failed/succeeded.
+     *
+     * The final dispute result is stored in stripe_data.dispute.
+     */
+    private function handleDisputeClosed(object $dispute): void
+    {
+        $batchItem = $this->findBatchItemFromDispute($dispute);
+
+        if (!$batchItem) {
+            return;
+        }
+
+        $this->saveDisputeData($batchItem, $dispute);
+
+        $disputeStatus = $dispute->status ?? null;
+
+        /*
+         * A closed dispute can be won or lost.
+         *
+         * Keep the batch item as disputed so the payment history clearly
+         * shows that the payment went through a dispute.
+         */
+        if ($batchItem->status !== 'disputed') {
+            $batchItem->update([
+                'status' => 'disputed',
+            ]);
+
+            $batchItem->batch?->recalculateStatus();
+        }
+
+        Log::warning('StripeWebhook: dispute closed for batch item', [
+            'batch_item_id' => $batchItem->id,
+            'dispute_id' => $dispute->id ?? null,
+            'status' => $disputeStatus,
+            'reason' => $dispute->reason ?? null,
+            'amount' => $dispute->amount ?? null,
+            'currency' => $dispute->currency ?? null,
+        ]);
+    }
+
+    /**
+     * Finds a batch item from the PaymentIntent associated with a dispute.
+     */
+    private function findBatchItemFromDispute(object $dispute): ?StripeChargeBatchItem
+    {
+        $paymentIntentId = $this->resolveId(
+            $dispute->payment_intent ?? null
+        );
+
+        if (!$paymentIntentId) {
+            Log::warning('StripeWebhook: dispute has no payment intent', [
+                'dispute_id' => $dispute->id ?? null,
+            ]);
+
+            return null;
+        }
+
+        return StripeChargeBatchItem::where(
+            'stripe_payment_intent_id',
+            $paymentIntentId
+        )->first();
+    }
+
+    /**
+     * Stores the complete Stripe dispute object under stripe_data.dispute.
+     */
+    private function saveDisputeData(
+        StripeChargeBatchItem $batchItem,
+        object                $dispute
+    ): void
+    {
+        $stripeData = $batchItem->stripe_data ?? [];
+
+        $stripeData['dispute'] = $dispute->toArray();
+
+        $batchItem->update([
+            'stripe_data' => $stripeData,
+        ]);
+    }
+
+
 }

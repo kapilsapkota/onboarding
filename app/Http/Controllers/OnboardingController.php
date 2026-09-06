@@ -42,6 +42,7 @@ class OnboardingController extends Controller
             'company_name'   => $data['company_name']   ?? null,
             'company_phone'   => $data['company_phone']   ?? null,
             'industry'       => $data['industry']       ?? null,
+            'microsoft_tenant_url'       => $data['microsoft_tenant_url']       ?? null,
             'website'        =>  !empty($websites) ? json_encode($websites) : null,
             'address'        => $data['address']        ?? null,
             'address_second'        => $data['address_second']        ?? null,
