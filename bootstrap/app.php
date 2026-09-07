@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\MigrationToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             '/webhooks/stripe',
             '/webhooks/xero',
+        ]);
+        $middleware->alias([
+            'migration.token' => MigrationToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

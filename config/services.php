@@ -92,5 +92,8 @@ return [
     'quotes' => [
         'public_url_ttl' => (int) env('QUOTE_PUBLIC_URL_TTL', 7),
     ],
+    'migration' => [
+        'token' => env('MIGRATION_TOKEN'),
+    ]
 
 ];

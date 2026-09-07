@@ -199,4 +199,9 @@ Route::get('/quotes/{quote}/signatures/{signature}', [
     'signature',
 ])->name('quotes.signature');
 
+Route::post(
+    '/internal/migration/clients',
+    [\App\Http\Controllers\Api\ClientMigrationController::class, 'store']
+)->middleware('migration.token');
+
 
