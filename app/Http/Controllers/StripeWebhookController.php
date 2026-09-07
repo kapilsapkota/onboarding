@@ -316,7 +316,7 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        $status = $intent->status === 'processing' ? 'processing' : 'failed';
+        $status = $intent->status === 'processing' ? 'processing' : $intent->status;
 
         $batchItem->update([
             'status' => $status,
