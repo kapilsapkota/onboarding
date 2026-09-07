@@ -57,6 +57,10 @@ return [
         'Audio Visual',
         'Photography & Videography',
         'AI Development & Automation',
-    ]
+    ],
+    'new_app' => [
+        'url' => env('NEW_APP_URL'),
+        'token' => env('NEW_APP_MIGRATION_TOKEN'),
+    ],
 
 ];
