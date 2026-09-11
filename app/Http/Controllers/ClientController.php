@@ -13,6 +13,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Stripe\StripeClient;
+use App\Models\StripeCustomer;
+use App\Models\StripePaymentMethod;
 
 class ClientController extends Controller
 {
@@ -233,5 +236,241 @@ class ClientController extends Controller
         ]);
 
         return back()->with('success', 'Xero contact assigned successfully.');
+    }
+
+public function createPaymentMethodSetup(Request $request, Client $client)
+{
+    $data = $request->validate([
+        'customer_name'  => ['required', 'string', 'max:255'],
+        'customer_email' => ['required', 'email', 'max:255'],
+    ]);
+
+    $stripe = new StripeClient(config('services.stripe.secret'));
+
+    if ($client->stripe_customer_id) {
+        // Update existing Stripe customer with latest details
+        $stripeCustomer = $stripe->customers->update($client->stripe_customer_id, [
+            'name'  => $data['customer_name'],
+            'email' => $data['customer_email'],
+        ]);
+    } else {
+        // Create new Stripe customer
+        $stripeCustomer = $stripe->customers->create([
+            'name'     => $data['customer_name'],
+            'email'    => $data['customer_email'],
+            'metadata' => ['client_id' => (string) $client->id],
+        ]);
+
+        $client->update(['stripe_customer_id' => $stripeCustomer->id]);
+    }
+
+    StripeCustomer::updateOrCreate(
+        ['stripe_customer_id' => $stripeCustomer->id],
+        [
+            'name'           => $data['customer_name'],
+            'email'          => $data['customer_email'],
+            'stripe_data'    => $stripeCustomer->toArray(),
+            'last_synced_at' => now(),
+        ]
+    );
+
+    $setupIntent = $stripe->setupIntents->create([
+        'customer'             => $stripeCustomer->id,
+        'usage'                => 'off_session',
+        'payment_method_types' => ['card', 'au_becs_debit'],
+        'metadata'             => ['client_id' => (string) $client->id],
+    ]);
+
+    return response()->json(['client_secret' => $setupIntent->client_secret]);
+}
+
+public function storePaymentMethod(Request $request, Client $client)
+    {
+        $validated = $request->validate([
+            'setup_intent_id' => ['required', 'string'],
+            'make_default' => ['nullable', 'boolean'],
+        ]);
+
+        $stripe = new StripeClient(config('services.stripe.secret'));
+
+        $setupIntent = $stripe->setupIntents->retrieve(
+            $validated['setup_intent_id']
+        );
+
+        /*
+         * Security check.
+         *
+         * Make sure this SetupIntent belongs to this client.
+         */
+        if ($setupIntent->customer !== $client->stripe_customer_id) {
+            abort(403, 'Payment setup does not belong to this client.');
+        }
+
+        if ($setupIntent->status !== 'succeeded') {
+            return back()->with(
+                'error',
+                'Payment method setup was not completed.'
+            );
+        }
+
+        $paymentMethodId = $setupIntent->payment_method;
+
+        if (!$paymentMethodId) {
+            return back()->with(
+                'error',
+                'Stripe did not return a payment method.'
+            );
+        }
+
+        $paymentMethod = $stripe->paymentMethods->retrieve(
+            $paymentMethodId
+        );
+
+        /*
+         * Get our local Stripe customer.
+         */
+        $stripeCustomer = StripeCustomer::firstOrCreate(
+            [
+                'stripe_customer_id' => $client->stripe_customer_id,
+            ],
+            [
+                'name' => $client->company_name,
+                'email' => $client->primary_email,
+            ]
+        );
+
+        /*
+         * Extract display information.
+         */
+        $last4 = null;
+        $accountHolderName = $paymentMethod->billing_details->name ?? null;
+
+        if ($paymentMethod->type === 'card') {
+            $last4 = $paymentMethod->card->last4 ?? null;
+        }
+
+        if ($paymentMethod->type === 'au_becs_debit') {
+            $last4 = $paymentMethod->au_becs_debit->last4 ?? null;
+        }
+
+        /*
+         * Save the payment method locally.
+         */
+        $localPaymentMethod = StripePaymentMethod::updateOrCreate(
+            [
+                'stripe_payment_method_id' => $paymentMethod->id,
+            ],
+            [
+                'stripe_customer_id' => $stripeCustomer->id,
+                'type' => $paymentMethod->type,
+                'last4' => $last4,
+                'account_holder_name' => $accountHolderName,
+                'is_default' => false,
+                'status' => 'active',
+                'stripe_data' => $paymentMethod->toArray(),
+                'last_synced_at' => now(),
+            ]
+        );
+
+        /*
+         * Make it the default payment method if requested.
+         */
+        if ($request->boolean('make_default')) {
+
+            $stripe->customers->update(
+                $client->stripe_customer_id,
+                [
+                    'invoice_settings' => [
+                        'default_payment_method' => $paymentMethod->id,
+                    ],
+                ]
+            );
+
+            $stripeCustomer->paymentMethods()
+                ->where('id', '!=', $localPaymentMethod->id)
+                ->update([
+                    'is_default' => false,
+                ]);
+
+            $localPaymentMethod->update([
+                'is_default' => true,
+            ]);
+
+            $stripeCustomer->update([
+                'default_payment_method_id' => $paymentMethod->id,
+            ]);
+        }
+
+        return redirect()
+            ->route('clients.show', $client)
+            ->with(
+                'success',
+                'Payment method added successfully.'
+            );
+    }
+
+    public function makeDefaultPaymentMethod(
+        Client $client,
+        StripePaymentMethod $paymentMethod
+    ): RedirectResponse {
+        if (!$client->stripe_customer_id) {
+            return back()->with('error', 'This client does not have a Stripe customer.');
+        }
+
+        if ($paymentMethod->stripeCustomer?->stripe_customer_id != $client->stripe_customer_id){
+            return back()->with('error', 'This payment method does not belong to this client.');
+        }
+
+        if ($paymentMethod->status !== 'active') {
+            return back()->with('error', 'This payment method is not active.');
+        }
+
+        try {
+            $stripe = new StripeClient(config('services.stripe.secret'));
+
+            // Set the default payment method on the Stripe Customer.
+            $stripe->customers->update(
+                $client->stripe_customer_id,
+                [
+                    'invoice_settings' => [
+                        'default_payment_method' => $paymentMethod->stripe_payment_method_id,
+                    ],
+                ]
+            );
+
+            DB::transaction(function () use ($client, $paymentMethod) {
+                // Remove default from all other methods belonging to this customer.
+                StripePaymentMethod::where(
+                    'stripe_customer_id',
+                    $paymentMethod->stripe_customer_id
+                )->update([
+                    'is_default' => false,
+                ]);
+
+                // Make the selected method the default.
+                $paymentMethod->update([
+                    'is_default' => true,
+                    'status'     => 'active',
+                ]);
+
+                // If your clients table uses this field for charging:
+                $client->update([
+                    'stripe_payment_method_id' => $paymentMethod->stripe_payment_method_id,
+                ]);
+            });
+
+            return back()->with(
+                'success',
+                'Default payment method updated successfully.'
+            );
+
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with(
+                'error',
+                'Unable to change the default payment method.'
+            );
+        }
     }
 }

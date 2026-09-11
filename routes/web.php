@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\XeroSyncController;
 use App\Http\Controllers\Admin\XeroTenantSettingsController;
 use App\Http\Controllers\Admin\XeroWebhookController;
 use App\Http\Controllers\AdminChargeController;
+use App\Http\Controllers\Api\ClientMigrationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\OnboardingController;
@@ -78,6 +79,20 @@ Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function (
         ->middleware('auth');
     Route::post('clients/{client}/invoices/{invoice}/sync-xero', [ClientController::class, 'syncXero'])
         ->name('invoices.syncXero');
+    Route::post(
+        '/clients/{client}/payment-methods/setup',
+        [ClientController::class, 'createPaymentMethodSetup']
+    )->name('payment-methods.setup');
+
+    Route::post(
+        '/clients/{client}/payment-methods',
+        [ClientController::class, 'storePaymentMethod']
+    )->name('payment-methods.store');
+    Route::patch(
+        '/clients/{client}/payment-methods/{paymentMethod}/default',
+        [ClientController::class, 'makeDefaultPaymentMethod']
+    )->name('payment-methods.default');
+
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
@@ -199,9 +214,7 @@ Route::get('/quotes/{quote}/signatures/{signature}', [
     'signature',
 ])->name('quotes.signature');
 
-Route::post(
-    '/internal/migration/clients',
-    [\App\Http\Controllers\Api\ClientMigrationController::class, 'store']
+Route::post('api/internal/migration/clients', [ClientMigrationController::class, 'store']
 )->middleware('migration.token');
 
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\StripeCustomer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Stripe\StripeClient;
@@ -103,6 +104,7 @@ class StripePayoutController extends Controller
             $params = [
                 'payout' => $payoutId,
                 'limit' => 100,
+                'expand' => ['data.source'],
             ];
 
             if ($request->filled('starting_after')) {
@@ -114,7 +116,6 @@ class StripePayoutController extends Controller
                 $params['ending_before'] =
                     $request->string('ending_before')->toString();
             }
-
             /*
              * Important:
              *
@@ -133,6 +134,7 @@ class StripePayoutController extends Controller
                         ->all($params);
                 }
             );
+            $this->attachLocalCustomers($transactions);
 
         } elseif ($payout->reconciliation_status === 'in_progress') {
 
@@ -209,6 +211,40 @@ class StripePayoutController extends Controller
         ]);
     }
 
+    private function attachLocalCustomers($transactions): void
+    {
+        if (!$transactions || empty($transactions->data)) {
+            return;
+        }
+
+        // Collect customer IDs from transactions that have
+        // both a source and a customer.
+        $customerIds = collect($transactions->data)
+            ->map(function ($transaction) {
+                return $transaction->source?->customer;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // One local database query.
+        $customers = StripeCustomer::query()
+            ->whereIn('stripe_customer_id', $customerIds)
+            ->get()
+            ->keyBy('stripe_customer_id');
+
+        // Add customer_name to each transaction.
+        foreach ($transactions->data as $transaction) {
+            $customerId = $transaction->source?->customer;
+
+            $transaction->customer_name =
+                $customerId
+                    ? $customers->get($customerId)?->name
+                    : null;
+        }
+    }
+
 
     /**
      * Create a Stripe client.
@@ -251,8 +287,9 @@ class StripePayoutController extends Controller
      */
     private function payoutTransactionsCacheKey(
         string $payoutId,
-        array $params
-    ): string {
+        array  $params
+    ): string
+    {
         return 'stripe:payout:'
             . $payoutId
             . ':transactions:'
@@ -265,7 +302,8 @@ class StripePayoutController extends Controller
      */
     private function balanceTransactionCacheKey(
         string $transactionId
-    ): string {
+    ): string
+    {
         return 'stripe:balance-transaction:'
             . $transactionId;
     }

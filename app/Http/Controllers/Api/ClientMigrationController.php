@@ -7,6 +7,7 @@ use App\Models\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ClientMigrationController extends Controller
@@ -18,12 +19,95 @@ class ClientMigrationController extends Controller
 
             'client' => ['required', 'array'],
 
-            'contacts' => ['nullable', 'array'],
+            'contacts' => [
+                'required',
+                'array',
+            ],
+
+            'contacts.*' => [
+                'required',
+                'array',
+            ],
 
             'contacts.*.source_id' => [
                 'required',
                 'integer',
+                'min:1',
             ],
+
+            'contacts.*.full_name' => [
+                'present',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'contacts.*.role' => [
+                'present',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'contacts.*.contact_type' => [
+                'present',
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            'contacts.*.email' => [
+                'present',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'contacts.*.phone' => [
+                'present',
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'contacts.*.whatsapp' => [
+                'present',
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'contacts.*.linkedin_url' => [
+                'present',
+                'nullable',
+                'string',
+                'max:2048',
+            ],
+
+            'contacts.*.birthday' => [
+                'present',
+                'nullable',
+                'date',
+            ],
+
+            'contacts.*.email_opt_in' => [
+                'present',
+                'nullable',
+                'boolean',
+            ],
+
+            'contacts.*.sms_opt_in' => [
+                'present',
+                'nullable',
+                'boolean',
+            ],
+
+            'contacts.*.is_primary' => [
+                'present',
+                'nullable',
+                'boolean',
+            ],
+
         ]);
 
         try {
@@ -60,7 +144,7 @@ class ClientMigrationController extends Controller
                  * Contacts.
                  */
                 foreach ($data['contacts'] ?? [] as $contactData) {
-
+                    Log::info('Contact Data', $contactData);
                     $contact = $client->contacts()
                         ->where(
                             'migration_source_id',

@@ -24,12 +24,12 @@
     <style>
         /* Reduce the size of the DataTable buttons */
         .dataTables_wrapper .dt-buttons {
-            font-size: 12px;  /* Make text smaller */
+            font-size: 12px; /* Make text smaller */
             padding: 4px 8px; /* Reduce button padding */
         }
 
         .dt-button {
-            font-size: 12px;  /* Smaller text */
+            font-size: 12px; /* Smaller text */
             padding: 4px 8px; /* Smaller padding */
             margin-right: 4px; /* Space between buttons */
         }
@@ -38,6 +38,7 @@
         .dt-button:focus, .dt-button:hover {
             box-shadow: none; /* Remove hover focus effect */
         }
+
         #xero_results::-webkit-scrollbar {
             width: 6px;
         }
@@ -66,16 +67,19 @@
                     {{ $client->company_name ?: 'Client Profile' }}
                 </h2>
                 @if($client->status === 'active')
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Active</span>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Active</span>
                 @else
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-950">Inactive</span>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-950">Inactive</span>
                 @endif
             </div>
             <div class="flex gap-2 flex-shrink-0">
                 <a href="{{ route('clients.edit', $client) }}"
                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white transition ease-in-out duration-150">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                     Edit
                 </a>
@@ -95,9 +99,11 @@
 
                     {{-- Company Details --}}
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                        <div
+                            class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Company Details</h3>
-                            <span class="text-xs text-gray-950 dark:text-gray-500">Added {{ $client->created_at->format('d M Y') }}</span>
+                            <span
+                                class="text-xs text-gray-950 dark:text-gray-500">Added {{ $client->created_at->format('d M Y') }}</span>
                         </div>
                         <div class="divide-y divide-gray-100 dark:divide-gray-700">
                             @foreach([
@@ -112,19 +118,25 @@
                                 ['WhatsApp Group',$client->whatsapp_group ?? null,                                                          'link'],
                             ] as [$key, $val, $type])
                                 <div class="flex items-start gap-4 px-5 py-3">
-                                    <span class="w-32 flex-shrink-0 text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide pt-0.5">{{ $key }}</span>
+                                    <span
+                                        class="w-32 flex-shrink-0 text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide pt-0.5">{{ $key }}</span>
                                     <span class="flex-1 text-sm text-gray-800 dark:text-gray-200">
                                     @if(!$val)
                                             <span class="text-gray-300 dark:text-gray-600">—</span>
                                         @elseif($type === 'link')
-                                            <a href="{{ $val }}" target="_blank" class="text-yellow-600 dark:text-yellow-400 hover:underline break-all">{{ $val }}</a>
+                                            <a href="{{ $val }}" target="_blank"
+                                               class="text-yellow-600 dark:text-yellow-400 hover:underline break-all">{{ $val }}</a>
                                         @elseif($type === 'copy')
                                             <span class="flex items-center gap-2">
                                             <span class="break-all">{{ $val }}</span>
                                             <button onclick="copyText('{{ $val }}', this)"
-                                                    class="flex-shrink-0 text-gray-300 hover:text-yellow-500 transition" title="Copy">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                                    class="flex-shrink-0 text-gray-300 hover:text-yellow-500 transition"
+                                                    title="Copy">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                     viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="2"
+                                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                 </svg>
                                             </button>
                                         </span>
@@ -138,7 +150,8 @@
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                        <div
+                            class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Bank Details</h3>
                         </div>
 
@@ -151,7 +164,8 @@
                                 ['BSB',             $client->bsb,              'copy'],
                             ] as [$key, $val, $type])
                                 <div class="flex items-start gap-4 px-5 py-3">
-                <span class="w-32 flex-shrink-0 text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide pt-0.5">
+                <span
+                    class="w-32 flex-shrink-0 text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide pt-0.5">
                     {{ $key }}
                 </span>
 
@@ -183,12 +197,15 @@
 
                     {{-- Contacts --}}
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                        <div
+                            class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
                                 Contacts
-                                <span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-950">{{ $client->contacts->count() }}</span>
+                                <span
+                                    class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-950">{{ $client->contacts->count() }}</span>
                             </h3>
-                            <a href="{{ route('clients.edit', $client) }}" class="text-xs font-medium hover:underline" style="color:#C9A84C">+ Add Contact</a>
+                            <a href="{{ route('clients.edit', $client) }}" class="text-xs font-medium hover:underline"
+                               style="color:#C9A84C">+ Add Contact</a>
                         </div>
 
                         @forelse($client->contacts as $contact)
@@ -196,24 +213,31 @@
                                 {{-- Contact header --}}
                                 <div class="flex items-center justify-between px-5 py-3 bg-gray-50 dark:bg-gray-700/50">
                                     <div class="flex items-center gap-2">
-                                        <div class="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-3.5 h-3.5 text-gray-500 dark:text-gray-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div
+                                            class="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-3.5 h-3.5 text-gray-500 dark:text-gray-950" fill="none"
+                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                 <circle cx="12" cy="8" r="4" stroke-width="2"/>
-                                                <path stroke-linecap="round" stroke-width="2" d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                                                <path stroke-linecap="round" stroke-width="2"
+                                                      d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                                             </svg>
                                         </div>
                                         <div>
-                                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ $contact->full_name ?: '—' }}</span>
+                                            <span
+                                                class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ $contact->full_name ?: '—' }}</span>
                                             @if($contact->role)
-                                                <span class="ml-1.5 text-xs text-gray-950 dark:text-gray-500">{{ $contact->role }}</span>
+                                                <span
+                                                    class="ml-1.5 text-xs text-gray-950 dark:text-gray-500">{{ $contact->role }}</span>
                                             @endif
                                         </div>
                                         @if($contact->is_primary)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
-                                                  style="background:#FBF6E9;color:#C9A84C">Primary</span>
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                                                style="background:#FBF6E9;color:#C9A84C">Primary</span>
                                         @endif
                                         @if($contact->contact_type)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300">
                                             {{ $contact->contact_type }}
                                         </span>
                                         @endif
@@ -221,16 +245,19 @@
                                     {{-- Consent badges --}}
                                     <div class="flex gap-1.5">
                                         @if($contact->email_opt_in)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">✉ Email</span>
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">✉ Email</span>
                                         @endif
                                         @if($contact->sms_opt_in)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">💬 SMS</span>
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">💬 SMS</span>
                                         @endif
                                     </div>
                                 </div>
 
                                 {{-- Contact details --}}
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700 px-0">
+                                <div
+                                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700 px-0">
                                     @foreach([
                                         ['Email',    $contact->email,    'copy-email'],
                                         ['Phone',    $contact->phone,    'copy'],
@@ -241,14 +268,20 @@
                                             @if($value)
                                                 <div class="flex items-center gap-1.5">
                                                     @if($copyType === 'copy-email')
-                                                        <a href="mailto:{{ $value }}" class="text-sm text-yellow-600 dark:text-yellow-400 hover:underline truncate">{{ $value }}</a>
+                                                        <a href="mailto:{{ $value }}"
+                                                           class="text-sm text-yellow-600 dark:text-yellow-400 hover:underline truncate">{{ $value }}</a>
                                                     @else
-                                                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ $value }}</span>
+                                                        <span
+                                                            class="text-sm text-gray-700 dark:text-gray-300">{{ $value }}</span>
                                                     @endif
                                                     <button onclick="copyText('{{ $value }}', this)"
-                                                            class="flex-shrink-0 text-gray-300 hover:text-yellow-500 transition" title="Copy">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                                            class="flex-shrink-0 text-gray-300 hover:text-yellow-500 transition"
+                                                            title="Copy">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                             viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  stroke-width="2"
+                                                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                         </svg>
                                                     </button>
                                                 </div>
@@ -260,17 +293,21 @@
                                 </div>
 
                                 @if($contact->linkedin_url || $contact->birthday)
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700 border-t border-gray-100 dark:border-gray-700">
+                                    <div
+                                        class="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700 border-t border-gray-100 dark:border-gray-700">
                                         <div class="px-5 py-3">
-                                            <p class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide mb-0.5">LinkedIn</p>
+                                            <p class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide mb-0.5">
+                                                LinkedIn</p>
                                             @if($contact->linkedin_url)
-                                                <a href="{{ $contact->linkedin_url }}" target="_blank" class="text-sm text-yellow-600 dark:text-yellow-400 hover:underline truncate block">{{ $contact->linkedin_url }}</a>
+                                                <a href="{{ $contact->linkedin_url }}" target="_blank"
+                                                   class="text-sm text-yellow-600 dark:text-yellow-400 hover:underline truncate block">{{ $contact->linkedin_url }}</a>
                                             @else
                                                 <span class="text-sm text-gray-300 dark:text-gray-600">—</span>
                                             @endif
                                         </div>
                                         <div class="px-5 py-3">
-                                            <p class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide mb-0.5">Birthday</p>
+                                            <p class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide mb-0.5">
+                                                Birthday</p>
                                             <span class="text-sm text-gray-700 dark:text-gray-300">
                                         {{ $contact->birthday ? \Carbon\Carbon::parse($contact->birthday)->format('d M Y') : '—' }}
                                     </span>
@@ -281,7 +318,8 @@
                         @empty
                             <div class="px-5 py-10 text-center text-sm text-gray-950 dark:text-gray-500">
                                 No contacts yet.
-                                <a href="{{ route('clients.edit', $client) }}" class="hover:underline" style="color:#C9A84C">Add one →</a>
+                                <a href="{{ route('clients.edit', $client) }}" class="hover:underline"
+                                   style="color:#C9A84C">Add one →</a>
                             </div>
                         @endforelse
                     </div>
@@ -303,14 +341,17 @@
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
                                 Contacts
-                                <span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-950">{{ $client->contacts->count() }}</span>
+                                <span
+                                    class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-950">{{ $client->contacts->count() }}</span>
                             </h3>
-                            <a href="{{ route('clients.edit', $client) }}" class="text-xs font-medium hover:underline" style="color:#C9A84C">+ Add Contact</a>
+                            <a href="{{ route('clients.edit', $client) }}" class="text-xs font-medium hover:underline"
+                               style="color:#C9A84C">+ Add Contact</a>
                         </div>
 
                         <!-- Table for Contacts -->
                         <div class="overflow-x-auto">
-                            <table id="contactsTable" class="display table-auto w-full text-sm text-gray-800 dark:text-gray-200">
+                            <table id="contactsTable"
+                                   class="display table-auto w-full text-sm text-gray-800 dark:text-gray-200">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
@@ -326,15 +367,20 @@
                                         <td>{{ $contact->full_name ?: '—' }}</td>
                                         <td>
                                             @if($contact->email)
-                                                <a href="mailto:{{ $contact->email }}" class="text-yellow-600 dark:text-yellow-400">{{ $contact->email }}</a>
+                                                <a href="mailto:{{ $contact->email }}"
+                                                   class="text-yellow-600 dark:text-yellow-400">{{ $contact->email }}</a>
                                             @endif
                                         </td>
                                         <td>{{ $contact->phone ?: '—' }}</td>
                                         <td>{{ $contact->contact_type }}</td>
                                         <td>
-                                            <button onclick="copyText('{{ $contact->email }}')" title="Copy Email" class="text-gray-300 hover:text-yellow-500">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                            <button onclick="copyText('{{ $contact->email }}')" title="Copy Email"
+                                                    class="text-gray-300 hover:text-yellow-500">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                     viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="2"
+                                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                 </svg>
                                             </button>
                                         </td>
@@ -359,7 +405,8 @@
                             @if($client->services)
                                 @foreach($client->services as $service)
                                     <div class="flex items-center justify-between px-5 py-3">
-                                    <span class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide flex-shrink-0">
+                                    <span
+                                        class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide flex-shrink-0">
                                         {{ $service }}
                                     </span>
                                         @if(in_array($service, $client->services))
@@ -391,7 +438,8 @@
                             @endphp
                             @foreach($socials as [$name, $handle, $baseUrl, $prefix])
                                 <div class="flex items-center justify-between px-5 py-3">
-                                    <span class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide w-20 flex-shrink-0">{{ $name }}</span>
+                                    <span
+                                        class="text-xs font-medium text-gray-950 dark:text-gray-500 uppercase tracking-wide w-20 flex-shrink-0">{{ $name }}</span>
                                     @if($handle)
                                         <a href="{{ $baseUrl . ltrim($handle, '@') }}" target="_blank"
                                            class="text-sm hover:underline flex-1 truncate" style="color:#C9A84C">
@@ -417,8 +465,12 @@
                                 @csrf @method('PATCH')
                                 <select name="status"
                                         class="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-gray-200">
-                                    <option value="active"   {{ $client->status === 'active'   ? 'selected' : '' }}>Active</option>
-                                    <option value="inactive" {{ $client->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                    <option value="active" {{ $client->status === 'active'   ? 'selected' : '' }}>
+                                        Active
+                                    </option>
+                                    <option value="inactive" {{ $client->status === 'inactive' ? 'selected' : '' }}>
+                                        Inactive
+                                    </option>
                                 </select>
                                 <button type="submit"
                                         class="px-3 py-2 bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 text-xs font-semibold rounded-lg hover:bg-gray-700 transition">
@@ -430,7 +482,8 @@
                             <a href="{{ route('clients.edit', $client) }}"
                                class="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                                 Edit Profile
                             </a>
@@ -448,14 +501,115 @@
                         </div>
                     </div>
 
-                    <div class="border rounded-lg p-3
-    {{ $client->stripe_customer_id ? 'bg-green-50 border-green-200' : 'bg-gray-50' }}">
-                        <div class="text-sm font-semibold">Stripe</div>
+                    {{-- Stripe Payment Methods --}}
+                    <div class="border rounded-lg p-4
+    {{ $client->stripe_customer_id ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200' }}">
 
-                        <div class="text-xs text-gray-500">
-                            {{ $client->stripe_customer_id ? 'Connected' : 'Not connected' }}
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="text-sm font-semibold text-gray-800">
+                                    Stripe
+                                </div>
+
+                                <div class="text-xs text-gray-500 mt-1">
+                                    {{ $client->stripe_customer_id ? 'Customer connected' : 'No Stripe customer' }}
+                                </div>
+
+                                @if($client->stripeCustomer)
+                                    <div class="text-xs text-gray-400 mt-1">
+                                        {{ $client?->stripeCustomer?->name ?? '' }} {{ $client->stripeCustomer?->email ?? '' }}
+                                    </div>
+                                @endif
+                            </div>
+
+                            <button type="button"
+                                    onclick="openPaymentMethodModal()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2
+                       bg-yellow-500 hover:bg-yellow-600
+                       text-white text-xs font-semibold rounded-lg
+                       transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"
+                                          d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Add Payment Method
+                            </button>
                         </div>
+
+                        @php
+                            $stripeCustomer = $client->stripe_customer_id
+                                ? \App\Models\StripeCustomer::where(
+                                    'stripe_customer_id',
+                                    $client->stripe_customer_id
+                                )->with('paymentMethods')->first()
+                                : null;
+                        @endphp
+
+                        @if($stripeCustomer && $stripeCustomer->paymentMethods->count())
+                            <div class="mt-4 space-y-2">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                    Payment Methods
+                                </div>
+
+                                @foreach($stripeCustomer->paymentMethods as $paymentMethod)
+                                    <div class="flex items-center justify-between bg-white border rounded-lg px-3 py-2">
+
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-800">
+                                                @if($paymentMethod->type === 'au_becs_debit')
+                                                    BECS ••••{{ $paymentMethod->last4 }}
+                                                @elseif($paymentMethod->type === 'card')
+                                                    Card ••••{{ $paymentMethod->last4 }}
+                                                @else
+                                                    {{ strtoupper($paymentMethod->type) }}
+                                                @endif
+                                            </div>
+
+                                            <div class="text-xs text-gray-500">
+                                                {{ $paymentMethod->account_holder_name ?: '—' }}
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+    @if($paymentMethod->is_default)
+        <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+            Default
+        </span>
+    @else
+        <form method="POST"
+              action="{{ route('clients.payment-methods.default', [$client, $paymentMethod]) }}"
+              onsubmit="return confirm('Make this payment method the default?')">
+            @csrf
+            @method('PATCH')
+
+            <button type="submit"
+                    class="text-xs px-2 py-1 rounded-lg border border-yellow-300
+                           text-yellow-700 hover:bg-yellow-50 transition">
+                Make Default
+            </button>
+        </form>
+    @endif
+
+    @if($paymentMethod->status === 'active')
+        <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+            Active
+        </span>
+    @else
+        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">
+            {{ ucfirst($paymentMethod->status) }}
+        </span>
+    @endif
+</div>
+
+
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
+
 
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -549,7 +703,8 @@
                                 onclick="this.disabled=true; this.innerHTML='<svg class=\'animate-spin h-4 w-4 mr-2 inline\' viewBox=\'0 0 24 24\'></svg> Syncing...'; this.form.submit();"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"></path>
                             </svg>
                             Sync Fresh Invoices
                         </button>
@@ -625,7 +780,8 @@
                                     {{-- Recurring --}}
                                     <td class="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
                                         @if($invoice->xero_repeating_invoice_id && $invoice->repeatingInvoice)
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">
+                                            <span
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -641,7 +797,8 @@
                                     <td class="px-5 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                         ${{ number_format($invoice->total ?? 0, 2) }}
                                         @if($invoice->currency_code && $invoice->currency_code !== 'AUD')
-                                            <span class="text-gray-400 text-xs ml-1">{{ $invoice->currency_code }}</span>
+                                            <span
+                                                class="text-gray-400 text-xs ml-1">{{ $invoice->currency_code }}</span>
                                         @endif
                                     </td>
 
@@ -685,7 +842,8 @@
                                             @if(! $dd || $dd->status === 'failed')
 
                                                 @if(! $client->stripe_payment_method_id)
-                                                    <span class="text-xs text-gray-400" title="No BECS payment method on file">
+                                                    <span class="text-xs text-gray-400"
+                                                          title="No BECS payment method on file">
                     No DD method
                 </span>
                                                 @else
@@ -710,7 +868,8 @@
                                                 @else
                                                     {{-- Settled but not in Xero yet — show sync button --}}
                                                     <div class="flex flex-col items-end gap-1">
-                                                        <span class="text-xs text-green-600 font-medium">Collected</span>
+                                                        <span
+                                                            class="text-xs text-green-600 font-medium">Collected</span>
                                                         <form method="POST"
                                                               action="{{ route('clients.invoices.syncXero', [$client, $invoice]) }}"
                                                               onsubmit="return confirm('Queue Xero sync for invoice {{ $invoice->xero_invoice_number }}?')">
@@ -742,6 +901,220 @@
         </div>
     </div>
 
+<div id="paymentMethodModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex min-h-screen items-start justify-center px-4 py-8 sm:px-6">
+        <div class="fixed inset-0 bg-black/50" onclick="closePaymentMethodModal()"></div>
+
+        <div class="relative w-full max-w-2xl rounded-xl bg-white shadow-xl dark:bg-gray-800">
+            <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Add Payment Method</h3>
+                    <p class="mt-1 text-xs text-gray-500">Card or Australian BECS direct debit.</p>
+                </div>
+                <button type="button" onclick="closePaymentMethodModal()"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="paymentMethodForm"
+                  method="POST"
+                  action="{{ route('clients.payment-methods.store', $client) }}">
+                @csrf
+
+                <div class="max-h-[calc(100vh-180px)] overflow-y-auto px-6 py-6">
+                    <div id="payment-error"
+                         class="mb-5 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Customer Name
+                            </label>
+                            <input type="text"
+                                   id="payment_customer_name"
+                                   value="{{ $client->company_name }}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Email
+                            </label>
+                            <input type="email"
+                                   id="payment_customer_email"
+                                   value="{{ $client->primary_email }}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Payment Details
+                        </label>
+                        <div id="payment-element"
+                             class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-600">
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <label class="flex cursor-pointer items-center gap-3">
+                            <input type="checkbox"
+                                   name="make_default"
+                                   id="make_default"
+                                   value="1"
+                                   class="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">
+                                Make this the default payment method
+                            </span>
+                        </label>
+                    </div>
+
+                    <input type="hidden" name="setup_intent_id" id="setup_intent_id">
+                </div>
+
+                <div class="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+                    <button type="button"
+                            onclick="closePaymentMethodModal()"
+                            class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            id="savePaymentMethodButton"
+                            class="rounded-lg bg-yellow-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50">
+                        Save Payment Method
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe('{{ config('services.stripe.key') }}');
+
+    let elements = null;
+    let paymentElement = null;
+
+    function openPaymentMethodModal() {
+        document.getElementById('paymentMethodModal').classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        document.getElementById('payment-error').classList.add('hidden');
+        mountPaymentElement();
+    }
+
+    function closePaymentMethodModal() {
+        document.getElementById('paymentMethodModal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        destroyPaymentElement();
+    }
+
+    function showPaymentError(message) {
+        const el = document.getElementById('payment-error');
+        el.innerText = message;
+        el.classList.remove('hidden');
+    }
+
+    function mountPaymentElement() {
+        // Deferred mode - no client_secret needed upfront
+        elements = stripe.elements({
+            mode: 'setup',
+            currency: 'aud',
+            paymentMethodTypes: ['au_becs_debit'],
+        });
+
+        paymentElement = elements.create('payment', { layout: 'tabs' });
+        paymentElement.mount('#payment-element');
+    }
+
+    function destroyPaymentElement() {
+        if (paymentElement) {
+            paymentElement.destroy();
+            paymentElement = null;
+        }
+        elements = null;
+        document.getElementById('payment-element').innerHTML = '';
+    }
+
+    document.getElementById('paymentMethodForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const button = document.getElementById('savePaymentMethodButton');
+        button.disabled = true;
+        button.innerText = 'Saving...';
+        document.getElementById('payment-error').classList.add('hidden');
+
+        try {
+            const customerName = document.getElementById('payment_customer_name').value.trim();
+            const customerEmail = document.getElementById('payment_customer_email').value.trim();
+
+            if (!customerName) throw new Error('Customer name is required.');
+            if (!customerEmail) throw new Error('Email is required.');
+
+            // Step 1 - validate element fields before hitting the server
+            const { error: submitError } = await elements.submit();
+            if (submitError) throw new Error(submitError.message);
+
+            // Step 2 - create customer (if needed) + setup intent
+            const response = await fetch('{{ route('clients.payment-methods.setup', $client) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    customer_name: customerName,
+                    customer_email: customerEmail,
+                }),
+            });
+
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                throw new Error('Server returned an unexpected response.');
+            }
+
+            if (!response.ok) throw new Error(data.message || 'Unable to initialise payment setup.');
+
+            // Step 3 - confirm with client_secret returned from server
+            const { setupIntent, error } = await stripe.confirmSetup({
+                elements,
+                clientSecret: data.client_secret,
+                confirmParams: {
+                    payment_method_data: {
+                        billing_details: {
+                            name: customerName,
+                            email: customerEmail,
+                        },
+                    },
+                    return_url: window.location.href,
+                },
+                redirect: 'if_required',
+            });
+
+            if (error) throw new Error(error.message);
+            if (!setupIntent) throw new Error('Stripe did not return a SetupIntent.');
+            if (setupIntent.status !== 'succeeded') throw new Error('Payment method setup was not completed.');
+
+            document.getElementById('setup_intent_id').value = setupIntent.id;
+            this.submit();
+
+        } catch (error) {
+            showPaymentError(error.message);
+            button.disabled = false;
+            button.innerText = 'Save Payment Method';
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closePaymentMethodModal();
+    });
+</script>
 
     <script>
         function copyText(text, btn) {
@@ -753,7 +1126,7 @@
         }
     </script>
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             $('#contactsTable').DataTable({
                 responsive: true,
                 pageLength: 10,
@@ -765,9 +1138,9 @@
         });
 
         function copyText(text) {
-            navigator.clipboard.writeText(text).then(function() {
+            navigator.clipboard.writeText(text).then(function () {
                 alert('Copied to clipboard!');
-            }, function() {
+            }, function () {
                 alert('Failed to copy!');
             });
         }

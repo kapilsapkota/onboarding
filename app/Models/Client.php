@@ -83,4 +83,9 @@ class Client extends Model
     {
         return $this->hasMany(XeroContact::class);
     }
+
+    public function stripeCustomer()
+    {
+        return $this->belongsTo(StripeCustomer::class, 'stripe_customer_id', 'stripe_customer_id');
+    }
 }

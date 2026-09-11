@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             '/webhooks/stripe',
             '/webhooks/xero',
+            '/api/internal/migration/clients'
         ]);
         $middleware->alias([
             'migration.token' => MigrationToken::class,

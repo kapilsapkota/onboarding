@@ -282,9 +282,7 @@
 
             </div>
 
-
         @else
-
 
             {{-- =====================================================
                  SUMMARY
@@ -493,6 +491,7 @@
                                 Type
                             </th>
 
+
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                 Gross
                             </th>
@@ -503,6 +502,10 @@
 
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                 Total
+                            </th>
+
+                            <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Customer
                             </th>
 
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -570,6 +573,7 @@
                                 $searchText = strtolower(
                                     ($transaction->id ?? '') . ' ' .
                                     ($transaction->description ?? '') . ' ' .
+                                    ($transaction->customer_name ?? '') . ' ' .
                                     $type
                                 );
 
@@ -581,9 +585,6 @@
                                 data-search="{{ $searchText }}"
                                 data-type="{{ strtolower($type) }}"
                             >
-
-                                {{-- TYPE --}}
-
                                 <td class="px-6 py-5 whitespace-nowrap">
 
                                     <span
@@ -596,9 +597,6 @@
 
                                 </td>
 
-
-                                {{-- GROSS --}}
-
                                 <td class="px-6 py-5 text-right whitespace-nowrap">
 
                                     <div class="font-medium">
@@ -609,9 +607,6 @@
                                     </div>
 
                                 </td>
-
-
-                                {{-- FEE --}}
 
                                 <td class="px-6 py-5 text-right whitespace-nowrap">
 
@@ -647,6 +642,15 @@
                                     </span>
 
                                 </td>
+                                <td class="px-6 py-5 text-center whitespace-nowrap">
+
+                                    <div class="font-medium">
+
+                                        {{ $transaction->customer_name ?? 'N/A' }}
+
+                                    </div>
+
+                                </td>
 
 
                                 {{-- DESCRIPTION --}}
@@ -656,7 +660,6 @@
                                     <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
 
                                         {{ $transaction->description ?? '—' }}
-
                                     </div>
 
                                     <div class="mt-1 text-xs font-mono text-gray-500">
@@ -801,34 +804,31 @@
 
             function filterRows() {
 
-                const term = search.value.toLowerCase().trim();
+    const term = search.value.toLowerCase().trim();
+    const type = typeFilter.value.toLowerCase();
 
-                const type = typeFilter.value.toLowerCase();
+    document.querySelectorAll('.transaction-row').forEach(row => {
 
+        // Get all text displayed inside the row.
+        const text = row.textContent
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
 
-                document.querySelectorAll('.transaction-row').forEach(row => {
+        const rowType = row.dataset.type || '';
 
-                    const text = row.dataset.search || '';
+        const matchesSearch =
+            !term || text.includes(term);
 
-                    const rowType = row.dataset.type || '';
+        const matchesType =
+            !type || rowType === type;
 
-
-                    const matchesSearch =
-                        !term || text.includes(term);
-
-
-                    const matchesType =
-                        !type || rowType === type;
-
-
-                    row.style.display =
-                        matchesSearch && matchesType
-                            ? ''
-                            : 'none';
-
-                });
-
-            }
+        row.style.display =
+            matchesSearch && matchesType
+                ? ''
+                : 'none';
+    });
+}
 
 
             search.addEventListener('input', filterRows);

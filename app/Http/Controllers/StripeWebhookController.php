@@ -12,10 +12,12 @@ use App\Models\StripePaymentMethod;
 use App\Notifications\StripePaymentDisputeNotification;
 use App\Notifications\StripePaymentFailureNotification;
 use App\Notifications\StripePaymentSuccessNotification;
+use App\Notifications\StripePayoutSuccessNotification;
 use App\Services\StripeBecsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 
@@ -65,6 +67,8 @@ class StripeWebhookController extends Controller
 
                 'charge.dispute.updated' => $this->handleDisputeUpdated($event->data->object),
                 'charge.dispute.closed' => $this->handleDisputeClosed($event->data->object),
+
+                'payout.paid' => $this->handlePayoutPaid($event->data->object),
 
 
                 default => null,
@@ -570,14 +574,6 @@ class StripeWebhookController extends Controller
     /**
      * Handles a closed Stripe dispute.
      *
-     * Stripe's dispute status tells us the final outcome:
-     *
-     * - won  = merchant won the dispute
-     * - lost = merchant lost the dispute
-     *
-     * We keep the payment item as "disputed" so that the original
-     * payment status is not incorrectly changed to failed/succeeded.
-     *
      * The final dispute result is stored in stripe_data.dispute.
      */
     private function handleDisputeClosed(object $dispute): void
@@ -592,12 +588,6 @@ class StripeWebhookController extends Controller
 
         $disputeStatus = $dispute->status ?? null;
 
-        /*
-         * A closed dispute can be won or lost.
-         *
-         * Keep the batch item as disputed so the payment history clearly
-         * shows that the payment went through a dispute.
-         */
         if ($batchItem->status !== 'disputed') {
             $batchItem->update([
                 'status' => 'disputed',
@@ -654,6 +644,31 @@ class StripeWebhookController extends Controller
         $batchItem->update([
             'stripe_data' => $stripeData,
         ]);
+    }
+
+    private function handlePayoutPaid(object $payout): void
+    {
+        try {
+            Notification::route('mail', 'alit@allinit.com.au')
+                ->notify(
+                    new StripePayoutSuccessNotification(
+                        payoutId: $payout->id,
+                        amount: $payout->amount,
+                        currency: $payout->currency,
+                        arrivalDate: $payout->arrival_date ?? null,
+                    )
+                );
+
+            Log::info('StripeWebhook: payout.paid — notification queued', [
+                'payout_id' => $payout->id,
+                'amount' => $payout->amount,
+                'currency' => $payout->currency,
+                'arrival_date' => $payout->arrival_date ?? null,
+            ]);
+        }catch (\Throwable $e) {
+            Log::error('PayoutPaidNotification: failed to send email', [$e->getMessage()]);
+        }
+
     }
 
 
