@@ -439,13 +439,13 @@ public function storePaymentMethod(Request $request, Client $client)
             );
 
             DB::transaction(function () use ($client, $paymentMethod) {
-                // Remove default from all other methods belonging to this customer.
-                StripePaymentMethod::where(
-                    'stripe_customer_id',
-                    $paymentMethod->stripe_customer_id
-                )->update([
-                    'is_default' => false,
-                ]);
+                $client->load('stripeCustomer');
+                $stripeCustomer = $client->stripeCustomer;
+                if($stripeCustomer){
+                    $stripeCustomer->paymentMethods()->update([
+                        'is_default' => false,
+                    ]);
+                }
 
                 // Make the selected method the default.
                 $paymentMethod->update([

@@ -46,16 +46,93 @@ class StripeBulkChargeController extends Controller
         return view('admin.stripe.bulk-charge', compact('customers', 'search'));
     }
 
-    /** Lists all bulk charge batches. */
-    public function batches(): View
-    {
-        $batches = StripeChargeBatch::query()
-            ->with(['items.stripeCustomer', 'items.stripePaymentMethod'])
-            ->orderByDesc('created_at')
-            ->paginate(100);
+    /** Lists bulk charge batches or individual charges. */
+    public function batches(Request $request): View
+{
+    $view = $request->input('view', 'batches');
 
-        return view('admin.stripe.batches', compact('batches'));
+    $statuses = StripeChargeBatchItem::query()
+        ->whereNotNull('status')
+        ->where('status', '!=', '')
+        ->distinct()
+        ->orderBy('status')
+        ->pluck('status');
+
+    /*
+     * Normalise status[] input.
+     */
+    $selectedStatuses = $request->input('status', []);
+
+    if (!is_array($selectedStatuses)) {
+        $selectedStatuses = [$selectedStatuses];
     }
+
+    /*
+     * ITEM VIEW
+     */
+    if ($view === 'items') {
+        $items = StripeChargeBatchItem::query()
+            ->with([
+                'batch',
+                'stripeCustomer',
+                'stripePaymentMethod',
+            ])
+
+            // Search
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = trim($request->input('search'));
+
+                $query->where(function ($query) use ($search) {
+                    $query
+                        ->where('description', 'like', "%{$search}%")
+                        ->orWhere('stripe_payment_intent_id', 'like', "%{$search}%")
+                        ->orWhere('error_message', 'like', "%{$search}%")
+                        ->orWhereHas('stripeCustomer', function ($query) use ($search) {
+                            $query
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
+            })
+
+            // Status filter
+            ->when(!empty($selectedStatuses), function ($query) use ($selectedStatuses) {
+                $query->whereIn('status', $selectedStatuses);
+            })
+
+            ->latest()
+            ->paginate(100)
+            ->withQueryString();
+
+        return view('admin.stripe.batches', [
+            'items' => $items,
+            'statuses' => $statuses,
+            'selectedStatuses' => $selectedStatuses,
+            'view' => $view,
+        ]);
+    }
+
+    /*
+     * BATCH VIEW
+     */
+    $batches = StripeChargeBatch::query()
+        ->with([
+            'items.stripeCustomer',
+            'items.stripePaymentMethod',
+        ])
+        ->orderByDesc('created_at')
+        ->paginate(100)
+        ->withQueryString();
+
+    return view('admin.stripe.batches', [
+        'batches' => $batches,
+        'statuses' => $statuses,
+        'selectedStatuses' => $selectedStatuses,
+        'view' => $view,
+    ]);
+}
+
+
 
     /** Confirms and creates the batch - called directly from the review modal. */
     public function confirm(Request $request): RedirectResponse
