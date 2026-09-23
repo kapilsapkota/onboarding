@@ -10,70 +10,185 @@
 
     <title>{{ $title ?? config('app.name', 'Onboarding AIIT') }}</title>
 
+    {{-- Read sidebar state before the page paints --}}
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <style>[x-cloak] { display: none !important; }</style>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Prevent first-load layout jump
+        |--------------------------------------------------------------------------
+        */
+
+        @media (min-width: 1024px) {
+            html.sidebar-collapsed .app-main {
+                margin-left: 4rem;
+            }
+
+            html:not(.sidebar-collapsed) .app-main {
+                margin-left: 16rem;
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | No animation during initial paint
+        |--------------------------------------------------------------------------
+        */
+
+        html.sidebar-loading .app-main {
+            transition: none !important;
+        }
+    </style>
 </head>
 
 <body
     class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-900 min-h-screen flex"
     x-data="{
-        collapsed: localStorage.getItem('sidebarCollapsed') === 'true',
+        collapsed: false,
         mobileOpen: false,
+
         init() {
-            this.$watch('collapsed', val => localStorage.setItem('sidebarCollapsed', val));
+            this.collapsed =
+                localStorage.getItem('sidebarCollapsed') === 'true';
+
+            /*
+             * Remove the temporary loading state after Alpine has
+             * synchronized the sidebar state.
+             */
+            requestAnimationFrame(() => {
+                document.documentElement.classList.remove('sidebar-loading');
+            });
+
+            this.$watch('collapsed', value => {
+                localStorage.setItem('sidebarCollapsed', value);
+
+                /*
+                 * Keep the CSS preload state synchronized.
+                 */
+                if (value) {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                } else {
+                    document.documentElement.classList.remove('sidebar-collapsed');
+                }
+            });
         }
     }"
 >
 
-{{-- Sidebar --}}
-<div class="print:hidden">
-    @include('layouts.navigation')
-</div>
+    {{-- ================================================================
+         SIDEBAR
+    ================================================================= --}}
+    <div class="print:hidden">
+        @include('layouts.navigation')
+    </div>
 
-{{-- Main content shifts via margin-left, matching sidebar width --}}
-<div
-    class="flex flex-col flex-1 min-h-screen min-w-0 overflow-hidden transition-all duration-200 ease-in-out"
-    :class="{
+
+    {{-- ================================================================
+         MAIN CONTENT
+    ================================================================= --}}
+    <div
+        class="app-main flex flex-col flex-1 min-h-screen min-w-0 overflow-hidden"
+        :class="{
             'lg:ml-64': !collapsed,
             'lg:ml-16': collapsed
         }"
->
-    {{-- Top Bar --}}
-    <header class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm sticky top-0 z-30 w-full print:hidden">
-        <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center gap-4">
+    >
 
-            {{-- Mobile hamburger --}}
-            <button @click="mobileOpen = true"
+        {{-- ============================================================
+             TOP BAR
+        ============================================================= --}}
+        <header
+            class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm sticky top-0 z-30 w-full print:hidden"
+        >
+            <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center gap-4">
+
+                {{-- Mobile hamburger --}}
+                <button
+                    @click="mobileOpen = true"
                     type="button"
-                    class="p-2 -ml-2 text-gray-500 rounded-md lg:hidden hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 shrink-0">
-                <span class="sr-only">Open sidebar</span>
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
+                    class="p-2 -ml-2 text-gray-500 rounded-md lg:hidden
+                           hover:bg-gray-100 dark:hover:bg-gray-700
+                           focus:outline-none focus:ring-2
+                           focus:ring-inset focus:ring-indigo-500 shrink-0"
+                >
+                    <span class="sr-only">Open sidebar</span>
 
-            @isset($header)
-                <div class="w-full">{{ $header }}</div>
-            @endisset
-        </div>
-    </header>
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"
+                        />
+                    </svg>
+                </button>
 
-    <main class="flex-1 py-6 px-4 sm:px-6 lg:px-8 w-full print:w-full">
-        {{ $slot }}
-    </main>
-</div>
 
-<script>
-    function openDeleteModal(id) {
-        const modal = document.getElementById(`deleteModal_${id}`);
-        if (modal) modal.classList.remove('hidden');
-    }
-    function closeDeleteModal(id) {
-        const modal = document.getElementById(`deleteModal_${id}`);
-        if (modal) modal.classList.add('hidden');
-    }
-</script>
-@stack('scripts')
+                {{-- Page header --}}
+                @isset($header)
+                    <div class="w-full min-w-0">
+                        {{ $header }}
+                    </div>
+                @endisset
+
+            </div>
+        </header>
+
+
+        {{-- ============================================================
+             PAGE
+        ============================================================= --}}
+        <main
+            class="flex-1 py-6 px-4 sm:px-6 lg:px-8 w-full min-w-0 print:w-full"
+        >
+            {{ $slot }}
+        </main>
+
+    </div>
+
+
+    {{-- ================================================================
+         DELETE MODALS
+    ================================================================= --}}
+    <script>
+        function openDeleteModal(id) {
+            const modal = document.getElementById(`deleteModal_${id}`);
+
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeDeleteModal(id) {
+            const modal = document.getElementById(`deleteModal_${id}`);
+
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+
+    @stack('scripts')
+
 </body>
 </html>

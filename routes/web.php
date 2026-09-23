@@ -62,6 +62,8 @@ Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboar
 Route::get('/onboarding/thanks', [OnboardingController::class, 'thanks'])->name('onboarding.thanks');
 
 Route::middleware(['auth'])->prefix('admin')->name('clients.')->group(function () {
+    Route::get('/clients-export', [ClientController::class, 'export'])
+        ->name('export');
     Route::get('/clients', [ClientController::class, 'index'])->name('index');
     Route::get('/clients/{client}', [ClientController::class, 'show'])->name('show');
     Route::get('/clients/{client}/edit', [ClientController::class, 'edit'])->name('edit');

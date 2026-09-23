@@ -12,7 +12,11 @@
 
 <!-- Left Hand Sidebar Block Architecture Container -->
 <aside
-    class="print:hidden fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 transition-all duration-200 ease-in-out h-screen"
+    class="print:hidden fixed inset-y-0 left-0 z-50 flex flex-col
+           bg-white border-r border-gray-200
+           dark:bg-gray-800 dark:border-gray-700
+           transition-[width,transform] duration-200 ease-in-out
+           h-screen"
     :class="{
         'w-64': !collapsed,
         'w-16': collapsed,
