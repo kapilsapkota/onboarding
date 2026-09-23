@@ -76,6 +76,8 @@ class StripeBulkChargeController extends Controller
                 'batch',
                 'stripeCustomer',
                 'stripePaymentMethod',
+                'payout',
+                'balanceTransaction',
             ])
 
             // Search
@@ -100,6 +102,11 @@ class StripeBulkChargeController extends Controller
                 $query->whereIn('status', $selectedStatuses);
             })
 
+            // Reconciliation filter (reconciled / unreconciled)
+            ->when($request->filled('recon') && in_array($request->input('recon'), ['reconciled', 'unreconciled'], true), function ($query) use ($request) {
+                $query->where('reconciliation_status', $request->input('recon'));
+            })
+
             ->latest()
             ->paginate(100)
             ->withQueryString();
@@ -108,6 +115,7 @@ class StripeBulkChargeController extends Controller
             'items' => $items,
             'statuses' => $statuses,
             'selectedStatuses' => $selectedStatuses,
+            'selectedRecon' => $request->input('recon', ''),
             'view' => $view,
         ]);
     }
@@ -120,6 +128,16 @@ class StripeBulkChargeController extends Controller
             'items.stripeCustomer',
             'items.stripePaymentMethod',
         ])
+        ->withCount([
+            'items as succeeded_count' => fn($q) => $q->where('status', 'succeeded'),
+            'items as failed_count' => fn($q) => $q->where('status', 'failed'),
+            'items as reconciled_count' => fn($q) => $q->where('reconciliation_status', 'reconciled'),
+        ])
+        ->withSum(['items as succeeded_amount_sum' => fn($q) => $q->where('status', 'succeeded')], 'amount')
+        ->withSum(['items as failed_amount_sum' => fn($q) => $q->where('status', 'failed')], 'amount')
+        ->withSum(['items as reconciled_net_sum' => fn($q) => $q->where('reconciliation_status', 'reconciled')], 'net_amount')
+        ->withSum(['items as reconciled_gross_sum' => fn($q) => $q->where('reconciliation_status', 'reconciled')], 'gross_amount')
+        ->withSum(['items as reconciled_fee_sum' => fn($q) => $q->where('reconciliation_status', 'reconciled')], 'fee_amount')
         ->orderByDesc('created_at')
         ->paginate(100)
         ->withQueryString();

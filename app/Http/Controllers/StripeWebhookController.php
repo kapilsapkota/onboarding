@@ -14,6 +14,7 @@ use App\Notifications\StripePaymentFailureNotification;
 use App\Notifications\StripePaymentSuccessNotification;
 use App\Notifications\StripePayoutSuccessNotification;
 use App\Services\StripeBecsService;
+use App\Services\StripePayoutSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -69,6 +70,13 @@ class StripeWebhookController extends Controller
                 'charge.dispute.closed' => $this->handleDisputeClosed($event->data->object),
 
                 'payout.paid' => $this->handlePayoutPaid($event->data->object),
+                'payout.created',
+                'payout.updated' => $this->handlePayoutUpsert($event->data->object),
+                'payout.failed',
+                'payout.canceled' => $this->handlePayoutUpsert($event->data->object),
+
+                // Balance-transaction feed: charge carries the BT we reconcile against.
+                'charge.succeeded' => $this->handleChargeSucceeded($event->data->object),
 
 
                 default => null,
@@ -648,6 +656,9 @@ class StripeWebhookController extends Controller
 
     private function handlePayoutPaid(object $payout): void
     {
+        // Persist first so the reconciled view is correct even if mail fails.
+        $this->handlePayoutUpsert($payout);
+
         try {
             Notification::route('mail', 'alit@allinit.com.au')
                 ->notify(
@@ -669,6 +680,77 @@ class StripeWebhookController extends Controller
             Log::error('PayoutPaidNotification: failed to send email', [$e->getMessage()]);
         }
 
+    }
+
+    // -------------------------------------------------------------------------
+    // Payout / balance-transaction steady state (post backfill)
+    // -------------------------------------------------------------------------
+
+    /** Upserts the payout row; backfills its lines once reconciliation completes. */
+    private function handlePayoutUpsert(object $payout): void
+    {
+        $sync = app(StripePayoutSyncService::class);
+        $local = $sync->upsertPayout($payout);
+
+        Log::info('StripeWebhook: payout upserted', [
+            'payout_id' => $payout->id,
+            'status' => $payout->status ?? null,
+        ]);
+
+        // Stripe's payout object has NO reconciliation_status field, so we
+        // backfill on every actionable status instead. The upserts are
+        // idempotent, and listing by payout is the only way to learn
+        // which balance transactions Stripe attributed to this payout.
+        // Skipped for failed/canceled (nothing to attribute).
+        if (in_array($payout->status ?? null, ['pending', 'in_transit', 'paid'], true)) {
+            try {
+                $n = $sync->syncPayoutTransactions($local->stripe_payout_id);
+                Log::info('StripeWebhook: payout transactions backfilled', [
+                    'payout_id' => $payout->id, 'count' => $n,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('StripeWebhook: payout transaction backfill failed', [
+                    'payout_id' => $payout->id, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * charge.succeeded carries balance_transaction + payment_intent.
+     * Persist the BT immediately so items reconcile even before
+     * their payout exists (payout FK stays null until payout.* arrives).
+     */
+    private function handleChargeSucceeded(object $charge): void
+    {
+        try {
+            $raw = $charge->balance_transaction ?? null;
+            $btId = is_string($raw)
+                ? $raw
+                : (is_object($raw) && method_exists($raw, 'toArray')
+                    ? (($raw->toArray()['id'] ?? null))
+                    : ($raw->id ?? null));
+
+            if (! is_string($btId) || $btId === '') {
+                return;
+            }
+
+            $sync = app(StripePayoutSyncService::class);
+            $bt = $sync->client()->balanceTransactions->retrieve($btId, [
+                'expand' => ['source'],
+            ]);
+
+            $sync->upsertBalanceTransaction($bt);
+
+            Log::info('StripeWebhook: charge.succeeded — balance transaction stored', [
+                'charge_id' => $charge->id ?? null,
+                'balance_transaction' => $btId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('StripeWebhook: charge.succeeded BT sync failed', [
+                'charge_id' => $charge->id ?? null, 'error' => $e->getMessage(),
+            ]);
+        }
     }
 
 

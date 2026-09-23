@@ -84,4 +84,33 @@ class StripeChargeBatchItem extends Model
     {
         return '$' . number_format($this->amount / 100, 2);
     }
+
+    /** Gross as settled by Stripe (null until reconciled). */
+    public function formattedGross(): ?string
+    {
+        return $this->gross_amount === null
+            ? null
+            : '$' . number_format($this->gross_amount / 100, 2);
+    }
+
+    /** Stripe fee (null until reconciled). */
+    public function formattedFee(): ?string
+    {
+        return $this->fee_amount === null
+            ? null
+            : '$' . number_format($this->fee_amount / 100, 2);
+    }
+
+    /** Net payout amount (null until reconciled). */
+    public function formattedNet(): ?string
+    {
+        return $this->net_amount === null
+            ? null
+            : '$' . number_format($this->net_amount / 100, 2);
+    }
+
+    public function isReconciled(): bool
+    {
+        return $this->reconciliation_status === 'reconciled';
+    }
 }

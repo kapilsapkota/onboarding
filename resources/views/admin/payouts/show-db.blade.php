@@ -3,7 +3,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">
-                Stripe Payout - {{ $payout->id }}
+                Stripe Payout - {{ $payout->stripe_payout_id }}
             </h2>
         </div>
     </x-slot>
@@ -66,7 +66,7 @@
              * Transactions can be null when Stripe does not expose
              * individual transactions for this payout.
              */
-            $transactionData = $transactions?->data ?? [];
+            $transactionData = $transactions->items() ?? [];
 
             $transactionCount = count($transactionData);
 
@@ -85,6 +85,8 @@
             $currency = strtoupper($payout->currency);
 
             $reconciliationStatus = $payout->reconciliation_status ?? null;
+
+            $canListTransactions = $canListTransactions ?? ($transactions->total() > 0);
 
             $canShowTransactions = $canListTransactions
                 ?? ($reconciliationStatus === 'completed');
@@ -109,14 +111,14 @@
 
                     <div class="mt-2 text-sm {{ $status['sub'] }}">
                         Created:
-                        {{ \Carbon\Carbon::createFromTimestamp($payout->created)->format('d/m/Y H:i') }}
+                        {{ optional($payout->stripe_created_at)->format('d/m/Y H:i') ?? '—' }}
                     </div>
 
-                    @if($payout->arrival_date)
+                    @if($payout->arrival_at)
 
                         <div class="text-sm {{ $status['sub'] }}">
                             Arrival:
-                            {{ \Carbon\Carbon::createFromTimestamp($payout->arrival_date)->format('d/m/Y') }}
+                            {{ $payout->arrival_at->format('d/m/Y') }}
                         </div>
 
                     @endif
@@ -176,7 +178,7 @@
                     </div>
 
                     <div class="mt-1 font-mono text-sm break-all">
-                        {{ $payout->id }}
+                        {{ $payout->stripe_payout_id }}
                     </div>
 
                 </div>
@@ -349,31 +351,31 @@
                             </td>
 
 
-                            <td class="px-6 py-5 text-right font-semibold">
+                            <td id="summaryCount" class="px-6 py-5 text-right font-semibold">
                                 {{ $transactionCount }}
                             </td>
 
 
                             <td class="px-6 py-5 text-right">
 
-                                {{ $currency }}
-                                {{ number_format($gross / 100, 2) }}
+                                <span id="summaryGross">{{ $currency }}
+                                {{ number_format($gross / 100, 2) }}</span>
 
                             </td>
 
 
                             <td class="px-6 py-5 text-right text-red-600">
 
-                                -{{ $currency }}
-                                {{ number_format($fees / 100, 2) }}
+                                <span id="summaryFees">-{{ $currency }}
+                                {{ number_format($fees / 100, 2) }}</span>
 
                             </td>
 
 
                             <td class="px-6 py-5 text-right font-bold">
 
-                                {{ $currency }}
-                                {{ number_format($total / 100, 2) }}
+                                <span id="summaryTotal">{{ $currency }}
+                                {{ number_format($total / 100, 2) }}</span>
 
                             </td>
 
@@ -406,9 +408,9 @@
 
                             <p class="text-sm text-gray-500 mt-1">
 
-                                {{ $transactionCount }}
+                                <span id="transactionCountValue">{{ $transactionCount }}</span>
 
-                                {{ $transactionCount === 1 ? 'transaction' : 'transactions' }}
+                                <span id="transactionCountLabel">{{ $transactionCount === 1 ? 'transaction' : 'transactions' }}</span>
 
                             </p>
 
@@ -554,9 +556,9 @@
 
                                 $net = $transaction->net ?? 0;
 
-                                $created = \Carbon\Carbon::createFromTimestamp(
-                                    $transaction->created
-                                );
+                                $created = $transaction->occurred_at
+                                    ?? $transaction->available_at
+                                    ?? now();
 
                                 $badge = match($type) {
 
@@ -587,9 +589,10 @@
                                 };
 
                                 $searchText = strtolower(
-                                    ($transaction->id ?? '') . ' ' .
+                                    ($transaction->stripe_balance_transaction_id ?? '') . ' ' .
                                     ($transaction->description ?? '') . ' ' .
                                     ($transaction->customer_name ?? '') . ' ' .
+                                    ($transaction->customer_email ?? '') . ' ' .
                                     $type
                                 );
 
@@ -600,7 +603,10 @@
                                     class="transaction-row hover:bg-gray-50 dark:hover:bg-gray-700"
                                     data-search="{{ $searchText }}"
                                     data-type="{{ strtolower($type) }}"
-                                    data-app="{{ !empty($transaction->is_app_transaction) ? '1' : '0' }}"
+                                    data-app="{{ !empty($transaction->is_app_transaction_flag) ? '1' : '0' }}"
+                                    data-gross="{{ $amount }}"
+                                    data-fee="{{ $fee }}"
+                                    data-net="{{ $net }}"
                                 >
 
                                 <td class="px-6 py-5 whitespace-nowrap">
@@ -662,11 +668,39 @@
                                 </td>
                                 <td class="px-6 py-5 text-center whitespace-nowrap">
 
-                                    <div class="font-medium">
+                                    @if(!empty($transaction->customer_name))
 
-                                        {{ $transaction->customer_name ?? 'N/A' }}
+                                        <div class="font-medium">
 
-                                    </div>
+                                            {{ $transaction->customer_name }}
+
+                                        </div>
+
+                                        @if(!empty($transaction->customer_email))
+
+                                            <div class="text-xs text-gray-500">
+
+                                                {{ $transaction->customer_email }}
+
+                                            </div>
+
+                                        @endif
+
+                                        @if(!empty($transaction->customer_stripe_id))
+
+                                            <div class="mt-1 text-xs font-mono text-gray-400">
+
+                                                {{ $transaction->customer_stripe_id }}
+
+                                            </div>
+
+                                        @endif
+
+                                    @else
+
+                                        N/A
+
+                                    @endif
 
                                 </td>
 
@@ -682,7 +716,7 @@
 
                                     <div class="mt-1 text-xs font-mono text-gray-500">
 
-                                        {{ $transaction->id }}
+                                        {{ $transaction->stripe_balance_transaction_id }}
 
                                     </div>
 
@@ -714,7 +748,7 @@
                             <tr>
 
                                 <td
-                                    colspan="6"
+                                    colspan="7"
                                     class="px-6 py-12 text-center text-gray-500"
                                 >
 
@@ -737,7 +771,7 @@
                      PAGINATION
                 ================================================== --}}
 
-                @if($transactions && count($transactions->data))
+                @if($transactions->total() > 0)
 
                     <div class="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
 
@@ -748,7 +782,13 @@
                                 Showing
 
                                 <span class="font-medium text-gray-700 dark:text-gray-300">
-                                    {{ count($transactions->data) }}
+                                    {{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}
+                                </span>
+
+                                of
+
+                                <span class="font-medium text-gray-700 dark:text-gray-300">
+                                    {{ $transactions->total() }}
                                 </span>
 
                                 transactions
@@ -756,37 +796,8 @@
                             </div>
 
 
-                            <div class="flex gap-3">
-
-                                @if(request()->filled('starting_after'))
-
-                                    <a
-                                        href="{{ request()->fullUrlWithQuery([
-                                            'starting_after' => null,
-                                            'ending_before' => null,
-                                        ]) }}"
-                                        class="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                                    >
-                                        ← Previous
-                                    </a>
-
-                                @endif
-
-
-                                @if($transactions->has_more)
-
-                                    <a
-                                        href="{{ request()->fullUrlWithQuery([
-                                            'starting_after' => $transactions->data[count($transactions->data) - 1]->id,
-                                            'ending_before' => null,
-                                        ]) }}"
-                                        class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                                    >
-                                        Next →
-                                    </a>
-
-                                @endif
-
+                            <div>
+                                {{ $transactions->links() }}
                             </div>
 
                         </div>
@@ -814,8 +825,67 @@
         const typeFilter = document.getElementById('typeFilter');
         const scopeFilter = document.getElementById('transactionScope');
 
+        const currency = @json($currency);
+        const summaryCount = document.getElementById('summaryCount');
+        const summaryGross = document.getElementById('summaryGross');
+        const summaryFees = document.getElementById('summaryFees');
+        const summaryTotal = document.getElementById('summaryTotal');
+        const transactionCountValue = document.getElementById('transactionCountValue');
+        const transactionCountLabel = document.getElementById('transactionCountLabel');
+
         if (!search || !typeFilter || !scopeFilter) {
             return;
+        }
+
+        function money(cents) {
+            return currency + ' ' + (cents / 100).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+        }
+
+        function updateSummary() {
+
+            let count = 0;
+            let gross = 0;
+            let fees = 0;
+            let total = 0;
+
+            document.querySelectorAll('.transaction-row').forEach(row => {
+
+                if (row.style.display === 'none') {
+                    return;
+                }
+
+                count++;
+                gross += parseInt(row.dataset.gross || '0', 10);
+                fees += parseInt(row.dataset.fee || '0', 10);
+                total += parseInt(row.dataset.net || '0', 10);
+            });
+
+            if (summaryCount) {
+                summaryCount.textContent = count;
+            }
+
+            if (summaryGross) {
+                summaryGross.textContent = money(gross);
+            }
+
+            if (summaryFees) {
+                summaryFees.textContent = '-' + money(fees);
+            }
+
+            if (summaryTotal) {
+                summaryTotal.textContent = money(total);
+            }
+
+            if (transactionCountValue) {
+                transactionCountValue.textContent = count;
+            }
+
+            if (transactionCountLabel) {
+                transactionCountLabel.textContent = count === 1 ? 'transaction' : 'transactions';
+            }
         }
 
         function filterRows() {
@@ -852,6 +922,8 @@
                         ? ''
                         : 'none';
             });
+
+            updateSummary();
         }
 
         search.addEventListener('input', filterRows);

@@ -12,31 +12,30 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stripe_payouts', function (Blueprint $table) {
-    $table->id();
+            $table->id();
 
-    $table->string('stripe_payout_id')->unique();
+            $table->string('stripe_payout_id')->unique();
 
-    $table->string('status')->nullable()->index();
+            $table->string('status')->nullable()->index();
 
-    $table->string('type')->nullable();
+            $table->string('type')->nullable();
 
-    $table->string('method')->nullable();
+            $table->string('method')->nullable();
 
-    $table->string('currency', 3)->default('aud');
-    $table->unsignedBigInteger('amount');
-    $table->timestamp('arrival_at')->nullable()->index();
-    $table->timestamp('paid_at')->nullable();
-    $table->string('destination')->nullable();
-    $table->string('description')->nullable();
-    $table->json('stripe_data')->nullable();
+            $table->string('currency', 3)->default('aud');
+            $table->unsignedBigInteger('amount');
+            $table->timestamp('arrival_at')->nullable()->index();
+            $table->timestamp('paid_at')->nullable();
+            $table->string('destination')->nullable();
+            $table->text('description')->nullable();
+            $table->json('stripe_data')->nullable();
 
-    $table->timestamp('last_synced_at')->nullable();
+            $table->timestamp('last_synced_at')->nullable();
 
-    $table->timestamps();
+            $table->timestamps();
 
-    $table->index(['currency', 'status']);
-    $table->index('arrival_at');
-});
+            $table->index(['currency', 'status']);
+        });
 
     }
 
@@ -45,6 +44,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('stripe_payouts');
+        Schema::enableForeignKeyConstraints();
     }
 };

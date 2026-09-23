@@ -9,7 +9,9 @@ class StripePayout extends Model
 {
     protected $fillable = [
         'stripe_payout_id',
+        'stripe_created_at',
         'status',
+        'reconciliation_status',
         'type',
         'method',
         'currency',
@@ -17,7 +19,14 @@ class StripePayout extends Model
         'arrival_at',
         'paid_at',
         'destination',
+        'trace_id',
         'description',
+        'statement_descriptor',
+        'automatic',
+        'failure_code',
+        'failure_message',
+        'failure_balance_transaction_stripe_id',
+        'balance_transaction_stripe_id',
         'stripe_data',
         'last_synced_at',
     ];
@@ -26,6 +35,8 @@ class StripePayout extends Model
         'stripe_data' => 'array',
         'arrival_at' => 'datetime',
         'paid_at' => 'datetime',
+        'stripe_created_at' => 'datetime',
+        'automatic' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
 
