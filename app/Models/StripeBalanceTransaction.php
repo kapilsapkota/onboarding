@@ -70,4 +70,24 @@ class StripeBalanceTransaction extends Model
             'stripe_balance_transaction_id'
         );
     }
+
+    /** Invoice-backed payment matched by PaymentIntent id. */
+    public function directDebitPaymentByIntent(): HasOne
+    {
+        return $this->hasOne(
+            DirectDebitPayment::class,
+            'gateway_payment_id',
+            'payment_intent_stripe_id'
+        );
+    }
+
+    /** Invoice-backed payment matched by balance-transaction id. */
+    public function directDebitPaymentByBalanceTx(): HasOne
+    {
+        return $this->hasOne(
+            DirectDebitPayment::class,
+            'stripe_balance_transaction_id',
+            'stripe_balance_transaction_id'
+        );
+    }
 }

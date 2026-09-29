@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
 use App\Models\StripePayout;
 use Illuminate\Http\Request;
@@ -23,13 +24,32 @@ class StripePayoutController extends Controller
             ->withCount([
                 'balanceTransactions as app_count' => fn ($q) => $q->where('is_app_transaction', true),
                 'balanceTransactions as external_count' => fn ($q) => $q->where('is_app_transaction', false),
+                // Charge lines only — excludes Stripe's own `payout` debit row.
+                'balanceTransactions as charges_count' => fn ($q) => $q->where('type', '!=', 'payout'),
+                'items as items_count',
             ])
+            ->withSum([
+                'balanceTransactions as charges_gross' => fn ($q) => $q->where('type', '!=', 'payout'),
+            ], 'amount')
+            ->withSum([
+                'balanceTransactions as charges_fees' => fn ($q) => $q->where('type', '!=', 'payout'),
+            ], 'fee')
+            ->withSum([
+                'balanceTransactions as charges_net' => fn ($q) => $q->where('type', '!=', 'payout'),
+            ], 'net')
+            ->withSum('items as items_gross', 'gross_amount')
+            ->withSum('items as items_fees', 'fee_amount')
+            ->withSum('items as items_net', 'net_amount')
             ->orderByDesc('stripe_created_at')
             ->orderByDesc('id')
             ->paginate(25);
 
+        $payoutIds = $payouts->getCollection()->pluck('id')->all();
+        $itemsMap = $this->itemsMapForPayoutIds($payoutIds);
+
         return view('admin.payouts.index-db', [
             'payouts' => $payouts,
+            'itemsMap' => $itemsMap,
         ]);
     }
 
@@ -60,13 +80,33 @@ class StripePayoutController extends Controller
 
         $this->attachCustomerDetails($transactions);
 
+        // Full-payout totals over charge lines only (excludes Stripe's own
+        // `payout` debit row, which would otherwise zero-out the sums).
+        $chargesQuery = $local->balanceTransactions()->where('type', '!=', 'payout');
+
         $summary = [
             'count' => (clone $txQuery)->count(),
             'gross' => (clone $txQuery)->sum('amount'),
             'fees' => (clone $txQuery)->sum('fee'),
             'net' => (clone $txQuery)->sum('net'),
+            'charges_count' => (clone $chargesQuery)->count(),
+            'charges_gross' => (clone $chargesQuery)->sum('amount'),
+            'charges_fees' => (clone $chargesQuery)->sum('fee'),
+            'charges_net' => (clone $chargesQuery)->sum('net'),
             'app_count' => $local->balanceTransactions()->where('is_app_transaction', true)->count(),
             'external_count' => $local->balanceTransactions()->where('is_app_transaction', false)->count(),
+        ];
+
+        $batchItems = $local->items()
+            ->with(['batch', 'stripeCustomer', 'stripePaymentMethod', 'balanceTransaction'])
+            ->orderBy('id')
+            ->get();
+
+        $itemsSummary = [
+            'count' => $batchItems->count(),
+            'gross' => $batchItems->sum('gross_amount'),
+            'fees' => $batchItems->sum('fee_amount'),
+            'net' => $batchItems->sum('net_amount'),
         ];
 
         return view('admin.payouts.show-db', [
@@ -75,7 +115,38 @@ class StripePayoutController extends Controller
             'summary' => $summary,
             'scope' => $scope,
             'type' => $type,
+            'batchItems' => $batchItems,
+            'itemsSummary' => $itemsSummary,
         ]);
+    }
+
+    /**
+     * Maps local payout ids => collection of StripeChargeBatchItems (with
+     * batch + customer) belonging to the payout.
+     *
+     * @param  int[]  $payoutIds
+     * @return array<int, \Illuminate\Support\Collection>
+     */
+    private function itemsMapForPayoutIds(array $payoutIds): array
+    {
+        if (empty($payoutIds)) {
+            return [];
+        }
+
+        $grouped = StripeChargeBatchItem::query()
+            ->with(['batch:id,reference', 'stripeCustomer:id,name,email'])
+            ->whereIn('stripe_payout_id', $payoutIds)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('stripe_payout_id');
+
+        $map = [];
+
+        foreach ($payoutIds as $id) {
+            $map[$id] = $grouped->get($id, collect());
+        }
+
+        return $map;
     }
 
     /**

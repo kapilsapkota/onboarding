@@ -56,33 +56,40 @@
                     'bg' => 'bg-gray-50 border-gray-200',
                     'text' => 'text-gray-800',
                     'sub' => 'text-gray-600',
-                    'label' => ucfirst($payout->status),
+                    'label' => ucfirst($payout->status ?? 'unknown'),
                 ],
             ];
 
             $status = $statusConfig[$payout->status] ?? $statusConfig['default'];
 
             /*
-             * Transactions can be null when Stripe does not expose
-             * individual transactions for this payout.
+             * Full-payout charge totals come from the controller ($summary),
+             * which sums ALL balance transactions excl. Stripe's own
+             * `payout` debit row. The page-only sums below are just for the
+             * currently visible rows (JS live-filter updates them).
              */
             $transactionData = $transactions->items() ?? [];
 
             $transactionCount = count($transactionData);
 
-            $gross = collect($transactionData)->sum(function ($transaction) {
-                return $transaction->amount ?? 0;
-            });
+            $gross = $summary['charges_gross'] ?? collect($transactionData)->sum(fn ($t) => $t->amount ?? 0);
 
-            $fees = collect($transactionData)->sum(function ($transaction) {
-                return $transaction->fee ?? 0;
-            });
+            $fees = $summary['charges_fees'] ?? collect($transactionData)->sum(fn ($t) => $t->fee ?? 0);
 
-            $total = collect($transactionData)->sum(function ($transaction) {
-                return $transaction->net ?? 0;
-            });
+            $total = $summary['charges_net'] ?? collect($transactionData)->sum(fn ($t) => $t->net ?? 0);
 
-            $currency = strtoupper($payout->currency);
+            $fullCount = $summary['charges_count'] ?? $transactions->total();
+
+            $currency = strtoupper($payout->currency ?? 'aud');
+
+            $batchItems = $batchItems ?? collect();
+
+            $itemsSummary = $itemsSummary ?? [
+                'count' => $batchItems->count(),
+                'gross' => $batchItems->sum('gross_amount'),
+                'fees' => $batchItems->sum('fee_amount'),
+                'net' => $batchItems->sum('net_amount'),
+            ];
 
             $reconciliationStatus = $payout->reconciliation_status ?? null;
 
@@ -144,7 +151,7 @@
                     </div>
 
                     <div class="text-sm {{ $status['sub'] }}">
-                        {{ ucfirst($payout->method) }}
+                        {{ ucfirst($payout->method ?? '-') }}
                     </div>
 
                 </div>
@@ -191,7 +198,7 @@
                     </div>
 
                     <div class="mt-1 font-semibold">
-                        {{ ucfirst($payout->type) }}
+                        {{ ucfirst($payout->type ?? '-') }}
                     </div>
 
                 </div>
@@ -204,7 +211,7 @@
                     </div>
 
                     <div class="mt-1 font-semibold">
-                        {{ ucfirst($payout->method) }}
+                        {{ ucfirst($payout->method ?? '-') }}
                     </div>
 
                 </div>
@@ -259,7 +266,13 @@
 
                         <p class="mt-1 text-sm text-blue-700">
 
-                            @if($reconciliationStatus === 'in_progress')
+                            @if(($payout->method ?? null) === 'instant')
+
+                                Instant payouts settle immediately, so Stripe
+                                doesn't attach individual balance transactions
+                                to them. There is nothing to break down here.
+
+                            @elseif($reconciliationStatus === 'in_progress')
 
                                 Stripe is still reconciling this payout.
                                 The associated balance transactions may become
@@ -286,8 +299,10 @@
 
         @else
 
+
+
             {{-- =====================================================
-                 SUMMARY
+                 SUMMARY (charge lines only, excl. payout debit)
             ====================================================== --}}
 
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
@@ -341,7 +356,7 @@
                             <td class="px-6 py-5">
 
                                 <div class="font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ ucfirst($payout->type) }}
+                                    {{ ucfirst($payout->type ?? '-') }}
                                 </div>
 
                                 <div class="text-xs text-gray-500 mt-1">
@@ -352,15 +367,12 @@
 
 
                             <td id="summaryCount" class="px-6 py-5 text-right font-semibold">
-                                {{ $transactionCount }}
+                                {{ $fullCount }}
                             </td>
-
-
                             <td class="px-6 py-5 text-right">
-
                                 <span id="summaryGross">{{ $currency }}
                                 {{ number_format($gross / 100, 2) }}</span>
-
+                                <div class="text-xs text-gray-400 font-normal">excl. payout debit</div>
                             </td>
 
 
@@ -386,6 +398,103 @@
                     </table>
 
                 </div>
+
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                        Charge Items
+                        <span class="ml-2 text-xs font-normal text-gray-500">
+                            bulk-charge items reconciled into this payout
+                        </span>
+                    </h3>
+                    @if($batchItems->isNotEmpty())
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                            {{ $itemsSummary['count'] }} item{{ $itemsSummary['count'] === 1 ? '' : 's' }}
+                            · G {{ $currency }} {{ number_format(($itemsSummary['gross'] ?? 0) / 100, 2) }}
+                            · F {{ $currency }} {{ number_format(($itemsSummary['fees'] ?? 0) / 100, 2) }}
+                            · N {{ $currency }} {{ number_format(($itemsSummary['net'] ?? 0) / 100, 2) }}
+                        </span>
+                    @endif
+                </div>
+
+                @if($batchItems->isNotEmpty())
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch / Item</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Gross</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Fee</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Net</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach($batchItems as $item)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-6 py-4">
+                                        @if($item->batch)
+                                            <a href="{{ route('admin.stripe.batches.show', $item->batch) }}"
+                                               class="font-mono text-sm text-indigo-600 hover:text-indigo-800 hover:underline">
+                                                {{ $item->batch->reference }} #{{ $item->id }}
+                                            </a>
+                                        @else
+                                            <span class="font-mono text-sm text-gray-500">Item #{{ $item->id }}</span>
+                                        @endif
+                                        @if($item->stripe_payment_intent_id)
+                                            <div class="text-xs text-gray-400 font-mono mt-1">{{ $item->stripe_payment_intent_id }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        {{ $item->stripeCustomer?->name ?? $item->stripeCustomer?->email ?? '—' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right tabular-nums">
+                                        {{ $currency }} {{ number_format($item->amount / 100, 2) }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right tabular-nums">
+                                        @if($item->gross_amount !== null)
+                                            {{ $currency }} {{ number_format($item->gross_amount / 100, 2) }}
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-right tabular-nums">
+                                        @if($item->fee_amount !== null && $item->fee_amount > 0)
+                                            <span class="text-red-600">-{{ $currency }} {{ number_format($item->fee_amount / 100, 2) }}</span>
+                                        @elseif($item->fee_amount !== null)
+                                            {{ $currency }} {{ number_format($item->fee_amount / 100, 2) }}
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-semibold tabular-nums">
+                                        @if($item->net_amount !== null)
+                                            {{ $currency }} {{ number_format($item->net_amount / 100, 2) }}
+                                        @else
+                                            <span class="text-gray-400 font-normal">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        {{ ucfirst($item->status) }}
+                                        @if($item->isReconciled())
+                                            <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">reconciled</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="px-6 py-6 text-sm text-gray-500">
+                        No bulk-charge items reconciled into this payout — its lines are invoice direct debits or external (non-app) transactions.
+                    </div>
+                @endif
 
             </div>
 
@@ -524,6 +633,10 @@
 
                             <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                 Customer
+                            </th>
+
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Batch Item
                             </th>
 
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -705,7 +818,36 @@
                                 </td>
 
 
-                                {{-- DESCRIPTION --}}
+                                {{-- DESCRIPTION + INVOICE --}}
+
+                                {{-- BATCH ITEM (gross/fee/net from stripe_charge_batch_items) --}}
+
+                                <td class="px-6 py-5 whitespace-nowrap">
+                                    @if($transaction->batchItem)
+                                        @if($transaction->batchItem->batch)
+                                            <a href="{{ route('admin.stripe.batches.show', $transaction->batchItem->batch) }}"
+                                               class="font-mono text-xs text-indigo-600 hover:text-indigo-800 hover:underline">
+                                                {{ $transaction->batchItem->batch->reference }} #{{ $transaction->batchItem->id }}
+                                            </a>
+                                        @else
+                                            <span class="font-mono text-xs text-gray-500">Item #{{ $transaction->batchItem->id }}</span>
+                                        @endif
+                                        <div class="mt-1 text-xs tabular-nums text-gray-600">
+                                            @if($transaction->batchItem->gross_amount !== null)
+                                                G {{ $currency }} {{ number_format($transaction->batchItem->gross_amount / 100, 2) }}
+                                                · <span class="text-red-600">F {{ $currency }} {{ number_format($transaction->batchItem->fee_amount / 100, 2) }}</span>
+                                                · <span class="font-semibold">N {{ $currency }} {{ number_format($transaction->batchItem->net_amount / 100, 2) }}</span>
+                                            @else
+                                                <span class="text-gray-400">unreconciled</span>
+                                            @endif
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            {{ ucfirst($transaction->batchItem->status ?? '') }}
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400 text-xs">—</span>
+                                    @endif
+                                </td>
 
                                 <td class="px-6 py-5">
 
@@ -748,7 +890,7 @@
                             <tr>
 
                                 <td
-                                    colspan="7"
+                                    colspan="8"
                                     class="px-6 py-12 text-center text-gray-500"
                                 >
 

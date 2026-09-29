@@ -12,18 +12,7 @@ use Stripe\StripeClient;
 
 /**
  * Single place that knows how to turn Stripe API objects
- * (payouts + balance transactions) into local rows.
  *
- * Used by:
- *  - the one-time backfill command (stripe:sync-payouts)
- *  - the webhook handlers (payout.*, charge.succeeded)
- *
- * Reconciliation rule for "ours vs theirs":
- *  a balance transaction is_app_transaction = true when its
- *  charge / payment_intent / customer can be tied back to a
- *  local StripeChargeBatchItem, StripeCustomer or DirectDebitPayment.
- *  Everything else (other apps on the same Stripe account) stays
- *  stored but flagged false so the UI can filter it.
  */
 class StripePayoutSyncService
 {
@@ -59,11 +48,19 @@ class StripePayoutSyncService
             $page = $this->stripe->payouts->all($params);
 
             foreach ($page->data as $payout) {
-                $local = $this->upsertPayout($payout);
-                $payouts++;
+                try {
+                    $local = $this->upsertPayout($payout);
+                    $payouts++;
 
-                if ($withTransactions) {
-                    $transactions += $this->syncPayoutTransactions($local->stripe_payout_id);
+                    if ($withTransactions) {
+                        $transactions += $this->syncPayoutTransactions($local->stripe_payout_id);
+                    }
+                } catch (\Throwable $e) {
+                    // One bad payout (e.g. manual-payout edge case, transient
+                    // API error) must not abort the whole backfill.
+                    Log::warning('StripePayoutSync: skipping payout after error', [
+                        'payout' => $payout->id ?? null, 'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
@@ -79,10 +76,44 @@ class StripePayoutSyncService
      * Pull every balance transaction that Stripe attributes to one payout.
      * This is the ONLY reliable way to build the reconciled view —
      * the payout object itself does not embed its line items.
+     *
      */
     public function syncPayoutTransactions(string $payoutStripeId): int
     {
         $localPayout = StripePayout::where('stripe_payout_id', $payoutStripeId)->first();
+
+        // Fast path: we already know this is a manual payout — don't even
+        // hit the balance-transactions endpoint (Stripe would reject it).
+        if ($localPayout && $localPayout->automatic === false) {
+            Log::info('StripePayoutSync: skipping transaction sync for manual payout', [
+                'payout' => $payoutStripeId,
+            ]);
+
+            return 0;
+        }
+
+        // Slow path: no local row yet — ask Stripe whether it's manual so
+        // a single manual payout can't fatal the whole backfill.
+        if (! $localPayout) {
+            try {
+                $stripePayout = $this->stripe->payouts->retrieve($payoutStripeId);
+                $localPayout = $this->upsertPayout($stripePayout);
+
+                if ($localPayout->automatic === false) {
+                    Log::info('StripePayoutSync: skipping transaction sync for manual payout', [
+                        'payout' => $payoutStripeId,
+                    ]);
+
+                    return 0;
+                }
+            } catch (\Throwable $e) {
+                Log::debug('StripePayoutSync: payout lookup before BT sync failed', [
+                    'payout' => $payoutStripeId, 'error' => $e->getMessage(),
+                ]);
+                // Fall through and attempt the BT listing anyway.
+            }
+        }
+
         $count = 0;
         $params = [
             'payout' => $payoutStripeId,
@@ -90,18 +121,35 @@ class StripePayoutSyncService
             'expand' => ['data.source'],
         ];
 
-        do {
-            $page = $this->stripe->balanceTransactions->all($params);
+        try {
+            do {
+                $page = $this->stripe->balanceTransactions->all($params);
 
-            foreach ($page->data as $bt) {
-                $this->upsertBalanceTransaction($bt, $payoutStripeId);
-                $count++;
+                foreach ($page->data as $bt) {
+                    $this->upsertBalanceTransaction($bt, $payoutStripeId);
+                    $count++;
+                }
+
+                $params['starting_after'] = $page->has_more
+                    ? $page->data[count($page->data) - 1]->id
+                    : null;
+            } while (! empty($params['starting_after']));
+        } catch (\Throwable $e) {
+            if ($this->isManualPayoutError($e)) {
+                Log::info('StripePayoutSync: payout is manual, no filterable transactions', [
+                    'payout' => $payoutStripeId, 'error' => $e->getMessage(),
+                ]);
+
+                // Remember it's manual so future syncs/webhooks take the fast path.
+                if ($localPayout && $localPayout->automatic !== false) {
+                    $localPayout->update(['automatic' => false]);
+                }
+
+                return $count;
             }
 
-            $params['starting_after'] = $page->has_more
-                ? $page->data[count($page->data) - 1]->id
-                : null;
-        } while (! empty($params['starting_after']));
+            throw $e;
+        }
 
         // Refresh payout's reconciliation_status from Stripe after backfill,
         // so the UI stops showing "in_progress".
@@ -408,5 +456,18 @@ class StripePayoutSyncService
         }
 
         return null;
+    }
+
+    /**
+     * Detect Stripe's "only automatic payouts can be used to filter
+     * balance transactions" InvalidRequestException so we can skip
+     * manual payouts gracefully instead of fataling the backfill.
+     */
+    private function isManualPayoutError(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'automatic')
+            && str_contains($message, 'manual');
     }
 }

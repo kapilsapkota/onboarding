@@ -11,23 +11,29 @@
 
                 <thead class="bg-gray-100 dark:bg-gray-700 text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                        Date
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                        Payout
                     </th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                         Amount
                     </th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
+                        Gross
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
+                        Fees
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
+                        Net
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                        Batch Items
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                         Status
                     </th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                         Method
-                    </th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                        Destination
-                    </th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                        Reference
                     </th>
                     <th></th>
                 </tr>
@@ -63,7 +69,7 @@
                             default => [
                                 'bg'=>'bg-gray-100',
                                 'text'=>'text-gray-700',
-                                'label'=>ucfirst($payout->status)
+                                'label'=>ucfirst($payout->status ?? 'unknown')
                             ]
                         };
                     @endphp
@@ -71,21 +77,16 @@
 
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
 
-                        {{-- DATE --}}
-                        <td class="px-5 py-4">
+                        {{-- PAYOUT --}}
+                        <td class="px-4 py-4 whitespace-nowrap align-top">
 
                             <div class="font-medium">
                                 {{ optional($payout->stripe_created_at)->format('d M Y') ?? '—' }}
                             </div>
 
-                            <div class="text-xs text-gray-500">
-                                Created
-                            </div>
-
                             @if($payout->arrival_at)
                                 <div class="text-xs text-gray-500 mt-1">
-                                    Arrives:
-                                    {{ $payout->arrival_at->format('d M Y') }}
+                                    Arrives {{ $payout->arrival_at->format('d M Y') }}
                                 </div>
                             @endif
 
@@ -94,7 +95,7 @@
 
 
                         {{-- AMOUNT --}}
-                        <td class="px-5 py-4">
+                        <td class="px-4 py-4 align-top">
 
                             <div class="font-bold text-lg">
 
@@ -108,12 +109,90 @@
                                 {{ ucfirst($payout->type ?? 'standard') }} payout
                             </div>
 
+                            <div class="text-xs text-gray-500 mt-1">
+                                {{ $payout->charges_count ?? 0 }} charge{{ ($payout->charges_count ?? 0) === 1 ? '' : 's' }}
+                                @if(isset($payout->app_count) || isset($payout->external_count))
+                                    · {{ $payout->app_count ?? 0 }} app / {{ $payout->external_count ?? 0 }} ext
+                                @endif
+                            </div>
+
                         </td>
 
 
 
+                        {{-- GROSS / FEES / NET (charge lines only, excl. payout debit) --}}
+                        <td class="px-4 py-4 text-right whitespace-nowrap align-top">
+                            <div class="font-medium tabular-nums">
+                                {{ strtoupper($payout->currency) }}
+                                {{ number_format(($payout->charges_gross ?? 0) / 100, 2) }}
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-4 text-right whitespace-nowrap align-top">
+                            @if(($payout->charges_fees ?? 0) > 0)
+                                <span class="text-red-600 tabular-nums">
+                                    -{{ strtoupper($payout->currency) }}
+                                    {{ number_format($payout->charges_fees / 100, 2) }}
+                                </span>
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
+                        </td>
+
+                        <td class="px-4 py-4 text-right whitespace-nowrap align-top">
+                            <div class="font-semibold tabular-nums">
+                                {{ strtoupper($payout->currency) }}
+                                {{ number_format(($payout->charges_net ?? 0) / 100, 2) }}
+                            </div>
+                        </td>
+
+                        {{-- BATCH ITEMS (stripe_charge_batch_items with gross/fee/net) --}}
+                        <td class="px-4 py-4 align-top">
+                            @php
+                                $batchItems = ($itemsMap[$payout->id] ?? collect());
+                            @endphp
+                            @if($batchItems->isNotEmpty())
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                                    {{ $batchItems->count() }} item{{ $batchItems->count() === 1 ? '' : 's' }}
+                                </span>
+{{--                                <div class="mt-2 text-xs tabular-nums text-gray-600">--}}
+{{--                                    <div>G: {{ strtoupper($payout->currency) }} {{ number_format(($payout->items_gross ?? 0) / 100, 2) }}</div>--}}
+{{--                                    <div class="text-red-600">F: -{{ strtoupper($payout->currency) }} {{ number_format(($payout->items_fees ?? 0) / 100, 2) }}</div>--}}
+{{--                                    <div class="font-semibold text-gray-900">N: {{ strtoupper($payout->currency) }} {{ number_format(($payout->items_net ?? 0) / 100, 2) }}</div>--}}
+{{--                                </div>--}}
+{{--                                <div class="mt-2 space-y-1">--}}
+{{--                                    @foreach($batchItems->take(3) as $item)--}}
+{{--                                        <div class="text-xs">--}}
+{{--                                            @if($item->batch)--}}
+{{--                                                <a href="{{ route('admin.stripe.batches.show', $item->batch) }}"--}}
+{{--                                                   class="font-mono text-indigo-600 hover:text-indigo-800 hover:underline"--}}
+{{--                                                   title="Item #{{ $item->id }} · {{ $item->status }} · G {{ number_format(($item->gross_amount ?? 0) / 100, 2) }} / F {{ number_format(($item->fee_amount ?? 0) / 100, 2) }} / N {{ number_format(($item->net_amount ?? 0) / 100, 2) }}">--}}
+{{--                                                    {{ $item->batch->reference }} #{{ $item->id }}--}}
+{{--                                                </a>--}}
+{{--                                            @else--}}
+{{--                                                <span class="font-mono text-gray-500">Item #{{ $item->id }}</span>--}}
+{{--                                            @endif--}}
+{{--                                            <span class="text-gray-400">· {{ $item->status }}</span>--}}
+{{--                                        </div>--}}
+{{--                                    @endforeach--}}
+{{--                                    @if($batchItems->count() > 3)--}}
+{{--                                        <div class="text-xs text-gray-400">--}}
+{{--                                            +{{ $batchItems->count() - 3 }} more--}}
+{{--                                        </div>--}}
+{{--                                    @endif--}}
+{{--                                </div>--}}
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-500/20">
+                                    No items
+                                </span>
+                                <div class="mt-1 text-xs text-gray-400">
+                                    invoice / external
+                                </div>
+                            @endif
+                        </td>
+
                         {{-- STATUS --}}
-                        <td class="px-5 py-4">
+                        <td class="px-4 py-4 align-top">
 
                         <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $status['bg'] }} {{ $status['text'] }}">
                             {{ $status['label'] }}
@@ -132,8 +211,8 @@
 
 
 
-                        {{-- METHOD --}}
-                        <td class="px-5 py-4">
+                        {{-- METHOD (incl. destination + reference) --}}
+                        <td class="px-4 py-4 align-top">
 
                             <div class="font-medium">
                                 {{ ucfirst($payout->method ?? '-') }}
@@ -148,35 +227,15 @@
 
                             @endif
 
-                        </td>
-
-
-
-                        {{-- DESTINATION --}}
-                        <td class="px-5 py-4">
-
                             @if($payout->destination)
 
-                                <div class="font-mono text-xs">
-                                    {{ $payout->destination }}
+                                <div class="mt-1 font-mono text-xs text-gray-600 dark:text-gray-300" title="Destination">
+                                    → {{ $payout->destination }}
                                 </div>
-
-                            @else
-
-                                <span class="text-gray-400">
-                                -
-                            </span>
 
                             @endif
 
-                        </td>
-
-
-
-                        {{-- REFERENCE --}}
-                        <td class="px-5 py-4">
-
-                            <div class="font-mono text-xs text-gray-500">
+                            <div class="mt-1 font-mono text-xs text-gray-400" title="{{ $payout->stripe_payout_id }}">
                                 {{ $payout->stripe_payout_id }}
                             </div>
 
@@ -185,7 +244,7 @@
 
 
                         {{-- ACTION --}}
-                        <td class="px-5 py-4 text-right">
+                        <td class="px-4 py-4 text-right align-top">
 
                             <a href="{{ route('admin.payouts.show', $payout->stripe_payout_id) }}"
                                class="inline-flex items-center px-3 py-2 text-sm bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100">
@@ -202,7 +261,7 @@
                 @empty
 
                     <tr>
-                        <td colspan="7" class="py-10 text-center text-gray-500">
+                        <td colspan="9" class="py-10 text-center text-gray-500">
                             No payouts found.
                         </td>
                     </tr>
