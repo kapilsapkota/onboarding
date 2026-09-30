@@ -2,9 +2,13 @@
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DirectDebitPaymentController;
+use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\StripeBulkChargeController;
 use App\Http\Controllers\Admin\StripePayoutController;
+use App\Http\Controllers\Admin\StripeTransactionController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\XeroConnectionController;
 use App\Http\Controllers\Admin\XeroContactController;
 use App\Http\Controllers\Admin\XeroInvoiceController;
@@ -15,6 +19,7 @@ use App\Http\Controllers\AdminChargeController;
 use App\Http\Controllers\Api\ClientMigrationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicQuoteController;
@@ -22,8 +27,6 @@ use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\QuoteDeliveryController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\StripeTransactionController;
-
 
 Route::get('/', function () {
     return view('welcome');
@@ -44,7 +47,7 @@ Route::post('/onboarding/direct-debit', [OnboardingController::class, 'directDeb
 Route::post('/onboarding/setup-intent', [OnboardingController::class, 'createSetupIntent'])
     ->name('onboarding.setup-intent');
 
-Route::get('/dashboard', \App\Http\Controllers\DashboardController::class)
+Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
@@ -54,9 +57,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
-//Route::redirect('/onboarding', '/');
+// Route::redirect('/onboarding', '/');
 Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
 Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
 Route::get('/onboarding/thanks', [OnboardingController::class, 'thanks'])->name('onboarding.thanks');
@@ -138,12 +141,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
             Route::get('/', [
                 StripeTransactionController::class,
-                'index'
+                'index',
             ])->name('index');
 
             Route::get('/{transactionId}', [
                 StripeTransactionController::class,
-                'show'
+                'show',
             ])->name('show');
         });
 
@@ -154,7 +157,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('batches/{batch}', [StripeBulkChargeController::class, 'showBatch'])->name('batches.show');
         Route::get('batches', [StripeBulkChargeController::class, 'batches'])->name('batches.index');
     });
-
 
     // ── Quotes ────────────────────────────────────────────────────────────────
     Route::resource('quotes', QuoteController::class);
@@ -219,4 +221,8 @@ Route::get('/quotes/{quote}/signatures/{signature}', [
 Route::post('api/internal/migration/clients', [ClientMigrationController::class, 'store']
 )->middleware('migration.token');
 
-
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('users', UserController::class);
+    Route::resource('roles', RoleController::class)->except(['show', 'create', 'edit']);
+    Route::resource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
+});

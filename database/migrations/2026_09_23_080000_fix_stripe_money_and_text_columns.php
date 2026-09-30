@@ -18,20 +18,25 @@ use Illuminate\Support\Facades\Schema;
  * Uses raw MODIFY (no doctrine/dbal dependency) + hasColumn guards so it
  * runs cleanly on existing DBs and on fresh `migrate` runs.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // --- signed money columns (negative refunds/fees must fit) ---
-        DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `fee` BIGINT NOT NULL DEFAULT 0');
-        DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `amount` BIGINT NOT NULL');
-        DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `net` BIGINT NOT NULL');
-        DB::statement('ALTER TABLE `stripe_charge_batch_items` MODIFY `gross_amount` BIGINT NULL');
-        DB::statement('ALTER TABLE `stripe_charge_batch_items` MODIFY `fee_amount` BIGINT NOT NULL DEFAULT 0');
-        DB::statement('ALTER TABLE `stripe_charge_batch_items` MODIFY `net_amount` BIGINT NULL');
+        // Raw MODIFY is MySQL-only; skip on sqlite (testing) where the
+        // original column definitions already accept the test data.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `fee` BIGINT NOT NULL DEFAULT 0');
+            DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `amount` BIGINT NOT NULL');
+            DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `net` BIGINT NOT NULL');
+            DB::statement('ALTER TABLE `stripe_charge_batch_items` MODIFY `gross_amount` BIGINT NULL');
+            DB::statement('ALTER TABLE `stripe_charge_batch_items` MODIFY `fee_amount` BIGINT NOT NULL DEFAULT 0');
+            DB::statement('ALTER TABLE `stripe_charge_batch_items` MODIFY `net_amount` BIGINT NULL');
 
-        // --- long text columns ---
-        DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `description` TEXT NULL');
-        DB::statement('ALTER TABLE `stripe_payouts` MODIFY `description` TEXT NULL');
+            // --- long text columns ---
+            DB::statement('ALTER TABLE `stripe_balance_transactions` MODIFY `description` TEXT NULL');
+            DB::statement('ALTER TABLE `stripe_payouts` MODIFY `description` TEXT NULL');
+        }
 
         // --- missing Stripe fields ---
         Schema::table('stripe_balance_transactions', function (Blueprint $table) {
