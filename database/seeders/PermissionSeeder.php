@@ -51,22 +51,22 @@ class PermissionSeeder extends Seeder
             ],
             'Direct Debit' => [
                 'view-direct-debit',
-                'create-direct-debit',       // manually initiate a charge
-                'retry-direct-debit',        // retry a failed payment
-                'cancel-direct-debit',       // cancel a pending/processing payment
+                'create-direct-debit',
+                'retry-direct-debit',
+                'cancel-direct-debit',
             ],
             'Invoices' => [
                 'view-invoice',
-                'sync-invoice',              // trigger a manual Xero invoice sync
+                'sync-invoice',
             ],
             'Xero' => [
                 'view-xero',
-                'connect-xero',              // OAuth connect / reconnect
-                'disconnect-xero',           // remove a connection
-                'configure-xero',            // set DD bank account, tenant settings
-                'sync-xero',                 // manually push a payment to Xero
-                'sync-xero-contacts',        // trigger contact sync
-                'sync-xero-invoices',        // trigger invoice sync
+                'connect-xero',
+                'disconnect-xero',
+                'configure-xero',
+                'sync-xero',
+                'sync-xero-contacts',
+                'sync-xero-invoices',
             ],
             'Payments' => [
                 'view-payment',
@@ -84,7 +84,6 @@ class PermissionSeeder extends Seeder
 
         $permissions = collect($grouped)->flatten()->all();
 
-        // Create any missing permissions and backfill their module group
         foreach ($grouped as $group => $names) {
             foreach ($names as $name) {
                 $permission = Permission::firstOrCreate(['name' => $name]);
@@ -94,14 +93,9 @@ class PermissionSeeder extends Seeder
             }
         }
 
-        // ── Super Admin ───────────────────────────────────────────────────────
-        // Gets everything.
         $superAdmin = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdmin->syncPermissions($permissions);
 
-        // ── Admin ─────────────────────────────────────────────────────────────
-        // Full client/invoice/payment management but can't touch roles,
-        // permissions, or Xero OAuth credentials.
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->syncPermissions([
             'view-user', 'create-user', 'edit-user', 'delete-user',
@@ -124,9 +118,7 @@ class PermissionSeeder extends Seeder
             'view-settings',
         ]);
 
-        // ── Accounts / Billing Staff ──────────────────────────────────────────
-        // Can see and charge clients, view Xero data, but can't delete anything
-        // or touch system config.
+
         $accounts = Role::firstOrCreate(['name' => 'accounts']);
         $accounts->syncPermissions([
             'view-client', 'edit-client',
@@ -145,8 +137,6 @@ class PermissionSeeder extends Seeder
             'view-report', 'export-report',
         ]);
 
-        // ── Read-only ─────────────────────────────────────────────────────────
-        // View everything, change nothing. Useful for management/observers.
         $readOnly = Role::firstOrCreate(['name' => 'read-only']);
         $readOnly->syncPermissions([
             'view-client',
@@ -159,8 +149,6 @@ class PermissionSeeder extends Seeder
             'view-report',
         ]);
 
-        // ── Manager ─────────────────────────────────────────────────────────────
-        // Can manage users (no delete) + clients, for the Admin/Manager/User trio.
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $manager->syncPermissions([
             'view-user', 'create-user', 'edit-user',
@@ -181,8 +169,6 @@ class PermissionSeeder extends Seeder
             'view-report', 'export-report',
         ]);
 
-        // ── User ────────────────────────────────────────────────────────────────
-        // Standard staff role: view users/clients, manage own mandate.
         $plainUser = Role::firstOrCreate(['name' => 'user']);
         $plainUser->syncPermissions([
             'view-user',
@@ -197,15 +183,13 @@ class PermissionSeeder extends Seeder
             'view-report',
         ]);
 
-        // ── Customer ──────────────────────────────────────────────────────────
-        // Portal-facing role — can only manage their own mandate.
+
         $customer = Role::firstOrCreate(['name' => 'customer']);
         $customer->syncPermissions([
             'create-mandate',
             'view-mandate',
         ]);
 
-        // ── Friendly display names (backfilled on every run) ────────────────
         foreach ([
             'super-admin' => 'Super Admin',
             'admin' => 'Administrator',
@@ -221,7 +205,6 @@ class PermissionSeeder extends Seeder
             }
         }
 
-        // ── Assign super-admin to all existing users (dev/initial seed only) ──
         foreach (User::all() as $user) {
             if (! $user->hasRole('super-admin')) {
                 $user->assignRole('super-admin');
