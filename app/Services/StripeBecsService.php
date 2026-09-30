@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\DirectDebitPayment;
-use App\Models\XeroInvoice;
+use App\Models\StripeAccount;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiErrorException;
 use Stripe\StripeClient;
@@ -13,13 +13,18 @@ class StripeBecsService
 {
     private StripeClient $stripe;
 
-    public function __construct()
+    /**
+     * When an account is given, all API calls run against its own secret.
+     * Without one the legacy global secret is used (unchanged behaviour).
+     */
+    public function __construct(private ?StripeAccount $account = null)
     {
-        $this->stripe = new StripeClient(config('services.stripe.secret'));
+        $this->stripe = app(StripeAccountResolver::class)->clientFor($account);
     }
-    public function client(): \Stripe\StripeClient
+
+    public function client(): StripeClient
     {
-        return new \Stripe\StripeClient(config('services.stripe.secret'));
+        return $this->stripe;
     }
 
     /**
@@ -54,25 +59,25 @@ class StripeBecsService
         $amountCents = (int) round($ddPayment->amount * 100);
 
         $intent = $this->stripe->paymentIntents->create([
-            'amount'               => $amountCents,
-            'currency'             => strtolower($ddPayment->currency_code),
-            'customer'             => $client->stripe_customer_id,
-            'payment_method'       => $client->stripe_payment_method_id,
+            'amount' => $amountCents,
+            'currency' => strtolower($ddPayment->currency_code),
+            'customer' => $client->stripe_customer_id,
+            'payment_method' => $client->stripe_payment_method_id,
             'statement_descriptor' => 'Direct Debit App',
             'payment_method_types' => ['au_becs_debit'],
-            'confirm'              => true,
-            'off_session'          => true,
-            'metadata'             => [
-                'EmailAddress'        => $client->billing_email,
+            'confirm' => true,
+            'off_session' => true,
+            'metadata' => [
+                'EmailAddress' => $client->billing_email,
                 'Invoice number' => $ddPayment->xero_invoice_number,
                 'OrgName' => $ddPayment->tenant?->name,
-                'dd_payment_id'       => $ddPayment->id,
+                'dd_payment_id' => $ddPayment->id,
                 'xero_invoice_number' => $ddPayment->xero_invoice_number,
-                'our_reference'       => $ddPayment->our_reference,
+                'our_reference' => $ddPayment->our_reference,
             ],
             'description' => "Direct debit for {$ddPayment->xero_invoice_number}",
         ], [
-            'idempotency_key' => 'ddp-' . $ddPayment->id,
+            'idempotency_key' => 'ddp-'.$ddPayment->id,
         ]);
 
         if (! in_array($intent->status, ['processing', 'succeeded'])) {
@@ -96,14 +101,15 @@ class StripeBecsService
             Log::warning('StripeBecsService: no balance transaction on intent', [
                 'payment_intent_id' => $paymentIntentId,
             ]);
+
             return [];
         }
 
         return [
-            'gross'        => $bt->amount / 100,
-            'fee'          => $bt->fee / 100,
-            'net'          => $bt->net / 100,
-            'currency'     => strtoupper($bt->currency),
+            'gross' => $bt->amount / 100,
+            'fee' => $bt->fee / 100,
+            'net' => $bt->net / 100,
+            'currency' => strtoupper($bt->currency),
             'stripe_bt_id' => $bt->id,
         ];
     }

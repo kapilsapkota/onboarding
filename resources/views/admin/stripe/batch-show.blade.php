@@ -14,6 +14,10 @@
                 <div class="font-mono font-semibold">{{ $batch->reference }}</div>
             </div>
             <div>
+                <div class="text-gray-500">Stripe Account</div>
+                <div class="font-semibold">{{ $batch->stripeAccount?->display_name ?? 'Legacy pool' }}</div>
+            </div>
+            <div>
                 <div class="text-gray-500">Customers</div>
                 <div class="font-semibold">{{ $batch->customer_count }}</div>
             </div>

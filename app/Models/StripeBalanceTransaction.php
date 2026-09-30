@@ -10,6 +10,7 @@ class StripeBalanceTransaction extends Model
 {
     protected $fillable = [
         'stripe_balance_transaction_id',
+        'stripe_account_id',
         'source_id',
         'source_type',
         'type',
@@ -60,6 +61,11 @@ class StripeBalanceTransaction extends Model
             StripePayout::class,
             'stripe_payout_id'
         );
+    }
+
+    public function stripeAccount(): BelongsTo
+    {
+        return $this->belongsTo(StripeAccount::class);
     }
 
     public function batchItem(): HasOne

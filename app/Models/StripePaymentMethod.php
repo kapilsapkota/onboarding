@@ -9,6 +9,7 @@ class StripePaymentMethod extends Model
 {
     protected $fillable = [
         'stripe_customer_id',
+        'stripe_account_id',
         'stripe_payment_method_id',
         'type',
         'last4',
@@ -20,8 +21,8 @@ class StripePaymentMethod extends Model
     ];
 
     protected $casts = [
-        'stripe_data'    => 'array',
-        'is_default'     => 'boolean',
+        'stripe_data' => 'array',
+        'is_default' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
 
@@ -30,9 +31,14 @@ class StripePaymentMethod extends Model
         return $this->belongsTo(StripeCustomer::class, 'stripe_customer_id');
     }
 
+    public function stripeAccount(): BelongsTo
+    {
+        return $this->belongsTo(StripeAccount::class);
+    }
+
     /** Returns masked display string e.g. BECS ••••1234. */
     public function maskedLabel(): string
     {
-        return 'BECS ••••' . $this->last4;
+        return 'BECS ••••'.$this->last4;
     }
 }

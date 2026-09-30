@@ -5,17 +5,17 @@ namespace App\Http\Controllers;
 use App\Jobs\WriteXeroPayment;
 use App\Models\Client;
 use App\Models\ClientContact;
+use App\Models\Company;
+use App\Models\StripeCustomer;
+use App\Models\StripePaymentMethod;
 use App\Models\XeroContact;
 use App\Models\XeroInvoice;
-use App\Models\XeroTenant;
-use App\Services\XeroService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Stripe\StripeClient;
-use App\Models\StripeCustomer;
-use App\Models\StripePaymentMethod;
 
 class ClientController extends Controller
 {
@@ -24,8 +24,8 @@ class ClientController extends Controller
         $perPage = $request->input('per_page', 25);
 
         if ($perPage !== 'all') {
-            $perPage = in_array((int)$perPage, [25, 50, 100, 250], true)
-                ? (int)$perPage
+            $perPage = in_array((int) $perPage, [25, 50, 100, 250], true)
+                ? (int) $perPage
                 : 25;
         }
 
@@ -65,7 +65,7 @@ class ClientController extends Controller
             'stripe_desc' => ['stripe_connected', 'desc'],
         ];
 
-        if (!isset($sortMap[$sort])) {
+        if (! isset($sortMap[$sort])) {
             $sort = 'created_desc';
         }
 
@@ -80,6 +80,7 @@ class ClientController extends Controller
             ->with([
                 'contacts',
                 'xeroContacts',
+                'company',
             ])
             ->withCount([
                 'xeroContacts',
@@ -106,17 +107,27 @@ class ClientController extends Controller
             })
             ->when(
                 $request->filled('status'),
-                fn($query) => $query->where(
+                fn ($query) => $query->where(
                     'status',
                     $request->input('status')
                 )
             )
             ->when(
                 $request->filled('industry'),
-                fn($query) => $query->where(
+                fn ($query) => $query->where(
                     'industry',
                     $request->input('industry')
                 )
+            )
+            ->when(
+                $request->filled('company_id'),
+                function ($query) use ($request) {
+                    if ($request->input('company_id') === 'unassigned') {
+                        $query->whereNull('company_id');
+                    } else {
+                        $query->where('company_id', $request->input('company_id'));
+                    }
+                }
             );
 
         /*
@@ -268,6 +279,8 @@ class ClientController extends Controller
             ->orderBy('industry')
             ->pluck('industry');
 
+        $companies = Company::orderBy('name')->get(['id', 'name']);
+
         return view('clients.index', compact(
             'clients',
             'total',
@@ -275,6 +288,7 @@ class ClientController extends Controller
             'inactive',
             'contacts',
             'industries',
+            'companies',
             'perPage',
             'sort'
         ));
@@ -304,25 +318,31 @@ class ClientController extends Controller
         return view('clients.show', compact('client', 'invoices', 'xeroContacts', 'xeroContact'));
     }
 
-    function xeroDateToCarbon(?string $xeroDate): ?\Carbon\Carbon
+    public function xeroDateToCarbon(?string $xeroDate): ?Carbon
     {
-        if (!$xeroDate) return null;
+        if (! $xeroDate) {
+            return null;
+        }
 
         preg_match('/\d+/', $xeroDate, $matches);
 
-        if (!isset($matches[0])) return null;
+        if (! isset($matches[0])) {
+            return null;
+        }
 
         // Xero gives milliseconds
-        return \Carbon\Carbon::createFromTimestampMs((int)$matches[0]);
+        return Carbon::createFromTimestampMs((int) $matches[0]);
     }
 
     public function edit(Client $client)
     {
-        $client->load('contacts');
+        $client->load(['contacts', 'company']);
         $contacts = $client->contacts;
+        $companies = Company::orderBy('name')->get(['id', 'name']);
 
         return view('clients.edit', [
             'client' => $client,
+            'companies' => $companies,
             'mainContact' => $contacts->firstWhere('contact_type', 'Main Contact'),
             'financeContact' => $contacts->firstWhere('contact_type', 'Finance'),
             'techContact' => $contacts->firstWhere('contact_type', 'Technical'),
@@ -332,12 +352,17 @@ class ClientController extends Controller
 
     public function update(Request $request, Client $client)
     {
+        $request->validate([
+            'company_id' => ['nullable', 'integer', 'exists:companies,id'],
+        ]);
+
         $data = $request->all();
 
         DB::transaction(function () use ($data, $client) {
 
             $client->update([
                 'company_name' => $data['company_name'] ?? null,
+                'company_id' => $data['company_id'] ?? null,
                 'industry' => $data['industry'] ?? null,
                 'microsoft_tenant_url' => $data['microsoft_tenant_url'] ?? null,
                 'website' => $data['website'] ?? null,
@@ -371,9 +396,9 @@ class ClientController extends Controller
             // Contacts (Main, Finance, Tech)
             foreach ($data['contacts'] ?? [] as $contact) {
                 if (
-                    !empty($contact['full_name']) ||
-                    !empty($contact['email']) ||
-                    !empty($contact['phone'])
+                    ! empty($contact['full_name']) ||
+                    ! empty($contact['email']) ||
+                    ! empty($contact['phone'])
                 ) {
                     $client->contacts()->create([
                         'full_name' => $contact['full_name'] ?? null,
@@ -413,12 +438,14 @@ class ClientController extends Controller
     public function destroy(Client $client)
     {
         $client->delete();
+
         return redirect()->route('clients.index')->with('success', 'Client removed.');
     }
 
     public function updateStatus(Request $request, Client $client)
     {
         $client->update(['status' => $request->status]);
+
         return back()->with('success', 'Status updated.');
     }
 
@@ -430,7 +457,7 @@ class ClientController extends Controller
             ->latest()
             ->first();
 
-        if (!$dd) {
+        if (! $dd) {
             return back()->with('error', 'No settled payment found that needs Xero sync.');
         }
 
@@ -474,7 +501,7 @@ class ClientController extends Controller
             $stripeCustomer = $stripe->customers->create([
                 'name' => $data['customer_name'],
                 'email' => $data['customer_email'],
-                'metadata' => ['client_id' => (string)$client->id],
+                'metadata' => ['client_id' => (string) $client->id],
             ]);
 
             $client->update(['stripe_customer_id' => $stripeCustomer->id]);
@@ -494,7 +521,7 @@ class ClientController extends Controller
             'customer' => $stripeCustomer->id,
             'usage' => 'off_session',
             'payment_method_types' => ['card', 'au_becs_debit'],
-            'metadata' => ['client_id' => (string)$client->id],
+            'metadata' => ['client_id' => (string) $client->id],
         ]);
 
         return response()->json(['client_secret' => $setupIntent->client_secret]);
@@ -531,7 +558,7 @@ class ClientController extends Controller
 
         $paymentMethodId = $setupIntent->payment_method;
 
-        if (!$paymentMethodId) {
+        if (! $paymentMethodId) {
             return back()->with(
                 'error',
                 'Stripe did not return a payment method.'
@@ -626,11 +653,10 @@ class ClientController extends Controller
     }
 
     public function makeDefaultPaymentMethod(
-        Client              $client,
+        Client $client,
         StripePaymentMethod $paymentMethod
-    ): RedirectResponse
-    {
-        if (!$client->stripe_customer_id) {
+    ): RedirectResponse {
+        if (! $client->stripe_customer_id) {
             return back()->with('error', 'This client does not have a Stripe customer.');
         }
 
@@ -783,7 +809,7 @@ class ClientController extends Controller
 
         $clients = $query->get();
 
-        $filename = 'clients-' . now()->format('Y-m-d-His') . '.csv';
+        $filename = 'clients-'.now()->format('Y-m-d-His').'.csv';
 
         return response()->streamDownload(function () use ($clients) {
 
@@ -879,11 +905,11 @@ class ClientController extends Controller
             $headers = $clientColumns;
 
             foreach ($contactColumns as $column) {
-                $headers[] = 'contact_' . $column;
+                $headers[] = 'contact_'.$column;
             }
 
             foreach ($xeroColumns as $column) {
-                $headers[] = 'xero_' . $column;
+                $headers[] = 'xero_'.$column;
             }
 
             fputcsv($handle, $headers);
@@ -922,7 +948,7 @@ class ClientController extends Controller
 
                         $value = implode(', ', array_filter(
                             array_map(
-                                fn($item) => is_scalar($item) ? (string)$item : json_encode($item),
+                                fn ($item) => is_scalar($item) ? (string) $item : json_encode($item),
                                 $value
                             )
                         ));
@@ -940,7 +966,7 @@ class ClientController extends Controller
 
                             $value = implode(', ', array_filter(
                                 array_map(
-                                    fn($item) => is_scalar($item) ? (string)$item : json_encode($item),
+                                    fn ($item) => is_scalar($item) ? (string) $item : json_encode($item),
                                     $decoded
                                 )
                             ));
@@ -949,7 +975,6 @@ class ClientController extends Controller
 
                     $clientData[] = $value;
                 }
-
 
                 /*
                 | Primary contact
@@ -977,8 +1002,8 @@ class ClientController extends Controller
                 foreach ($xeroColumns as $column) {
 
                     $values = $client->xeroContacts
-                        ->map(fn($xeroContact) => $xeroContact->getAttribute($column))
-                        ->filter(fn($value) => $value !== null && $value !== '')
+                        ->map(fn ($xeroContact) => $xeroContact->getAttribute($column))
+                        ->filter(fn ($value) => $value !== null && $value !== '')
                         ->values()
                         ->all();
 

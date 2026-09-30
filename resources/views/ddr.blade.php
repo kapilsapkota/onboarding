@@ -4,7 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Direct Debit Request | All in IT Solutions</title>
+    @php
+        // Served two ways: legacy global form (no account) or per-company
+        // form where DdrController resolved the Stripe account server-side.
+        $account = $stripeAccount ?? null;
+        $brand = $account?->company?->name ?? 'All in IT Solutions';
+        $stripeKey = $account?->publishable_key ?: config('services.stripe.key');
+        $setupIntentUrl = $account
+            ? route('ddr.account.setup-intent', $account->public_id)
+            : route('onboarding.setup-intent');
+        $submitUrl = $account
+            ? route('ddr.account.store', $account->public_id)
+            : route('onboarding.store');
+    @endphp
+    <title>Direct Debit Request | {{ $brand }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://js.stripe.com/v3/"></script>
     <style>
@@ -180,11 +193,11 @@
 <div class="container">
     <div class="header">
         <h1>Direct Debit Request</h1>
-        <div class="via">with All in IT Solutions (Via Stripe)</div>
+        <div class="via">with {{ $brand }} (Via Stripe)</div>
     </div>
 
     <div class="form-body">
-        <form id="ddrForm" method="POST" action="{{ route('onboarding.store') }}">
+        <form id="ddrForm" method="POST" action="{{ $submitUrl }}">
             @csrf
 
             <!-- Name (Required) - maps to contacts[0][full_name] like your onboarding form -->
@@ -242,7 +255,7 @@
                 You agree to this Direct Debit Request and the Direct Debit Request service agreement, and authorise
                 <strong>Stripe Payments Australia Pty Ltd</strong> ACN 160 180 343 Direct Debit User ID number 507156 ("Stripe")
                 to debit your account through the Bulk Electronic Clearing System (BECS) on behalf of
-                <strong>All in IT Solutions</strong> (the "Merchant") for any amounts separately communicated to you by the Merchant.
+                <strong>{{ $brand }}</strong> (the "Merchant") for any amounts separately communicated to you by the Merchant.
                 <br><br>
                 You certify that you are either an account holder or an authorised signatory on the account listed above.
                 <br><br>
@@ -263,7 +276,7 @@
     let becsComplete = false;
 
     // Initialize Stripe (same as your onboarding form)
-    const stripe = Stripe('{{ config("services.stripe.key") }}');
+    const stripe = Stripe('{{ $stripeKey }}');
     const elements = stripe.elements();
 
     // Create auBankAccount Element (same as your onboarding form)
@@ -338,7 +351,7 @@
         submitBtn.textContent = 'Setting up mandate...';
 
         try {
-            const siRes = await fetch('{{ route("onboarding.setup-intent") }}', {
+            const siRes = await fetch('{{ $setupIntentUrl }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

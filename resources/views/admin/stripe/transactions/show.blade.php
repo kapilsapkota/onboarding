@@ -2,9 +2,17 @@
 
     <x-slot name="header">
 
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">
-            Stripe Transaction
-        </h2>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">
+                Stripe Transaction
+            </h2>
+
+            <span class="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                {{ $selectedAccount?->display_name ?? 'Global (legacy)' }}{{ $selectedAccount?->company ? ' — '.$selectedAccount->company->name : '' }}
+            </span>
+
+        </div>
 
     </x-slot>
 
@@ -14,7 +22,7 @@
         <div class="mb-5">
 
             <a
-                href="{{ route('admin.stripe.transactions.index') }}"
+                href="{{ route('admin.stripe.transactions.index', ['stripe_account_id' => $selectedAccount?->id]) }}"
                 class="text-sm text-gray-500 hover:text-gray-700"
             >
                 ← Back to transactions

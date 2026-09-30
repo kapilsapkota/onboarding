@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DirectDebitPaymentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\StripeAccountController;
 use App\Http\Controllers\Admin\StripeBulkChargeController;
 use App\Http\Controllers\Admin\StripePayoutController;
 use App\Http\Controllers\Admin\StripeTransactionController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\ClientMigrationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DdrController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicQuoteController;
@@ -35,7 +37,14 @@ Route::get('/', function () {
 Route::get('/ddr', function () {
     return view('ddr');
 });
+
+// Per-company DDR forms, resolved server-side by the account's public uuid.
+Route::get('/ddr/{publicId}', [DdrController::class, 'show'])->name('ddr.account');
+Route::post('/ddr/{publicId}/setup-intent', [DdrController::class, 'setupIntent'])->name('ddr.account.setup-intent');
+Route::post('/ddr/{publicId}', [DdrController::class, 'store'])->name('ddr.account.store');
+
 Route::post('/webhooks/stripe', StripeWebhookController::class)->name('webhooks.stripe');
+Route::post('/webhooks/stripe/{stripeAccount}', [StripeWebhookController::class, 'account'])->name('webhooks.stripe.account');
 Route::post('/webhooks/xero', XeroWebhookController::class)->name('webhooks.xero');
 
 Route::post('/onboarding/create-customer', [OnboardingController::class, 'createCustomer'])
@@ -157,6 +166,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('batches/{batch}', [StripeBulkChargeController::class, 'showBatch'])->name('batches.show');
         Route::get('batches', [StripeBulkChargeController::class, 'batches'])->name('batches.index');
     });
+
+    // ── Stripe Accounts (multi-tenant credentials, DDR links) ───────────────
+    Route::resource('stripe-accounts', StripeAccountController::class)->except(['show', 'create', 'edit']);
 
     // ── Quotes ────────────────────────────────────────────────────────────────
     Route::resource('quotes', QuoteController::class);

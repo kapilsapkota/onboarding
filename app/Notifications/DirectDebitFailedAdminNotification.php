@@ -3,11 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\DirectDebitPayment;
+use App\Notifications\Concerns\HasStripeAccountContext;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class DirectDebitFailedAdminNotification extends Notification
 {
+    use HasStripeAccountContext;
+
     public function __construct(private DirectDebitPayment $ddPayment) {}
 
     public function via(object $notifiable): array
@@ -17,19 +20,27 @@ class DirectDebitFailedAdminNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $this->ddPayment->loadMissing(['stripeAccount.company', 'company', 'invoice.client.company']);
+
         $invoice = $this->ddPayment->invoice;
-        $client  = $invoice->client;
+        $client = $invoice?->client;
+        $account = $this->ddPayment->stripeAccount;
+        $companyName = $this->ddPayment->company?->name
+            ?? $client?->company?->name
+            ?? $this->stripeAccountCompanyName($account);
 
         return (new MailMessage)
-            ->subject('Direct debit payment failed — ' . ($client->company_name ?? $client->name))
+            ->subject('Direct debit payment failed — '.($client?->company_name ?? 'Unknown client').' ['.$this->stripeAccountLabel($account).']')
             ->error()
             ->greeting('Payment failed')
-            ->line("A direct debit payment has failed and requires your attention.")
-            ->line("**Client:** " . ($client->company_name ?? $client->name))
-            ->line("**Invoice:** " . ($invoice->xero_invoice_number ?? $invoice->xero_invoice_id))
-            ->line("**Amount:** " . number_format($this->ddPayment->amount / 100, 2) . ' ' . ($invoice->currency_code ?? 'AUD'))
-            ->line("**Reason:** " . ($this->ddPayment->failure_reason ?? 'Unknown'))
-            ->line("A replacement invoice has been created in Xero for re-collection.")
-            ->action('View in dashboard', url('/admin/payments/' . $this->ddPayment->id));
+            ->line('A direct debit payment has failed and requires your attention.')
+            ->line('**Client:** '.($client?->company_name ?? 'Unknown'))
+            ->line('**Company:** '.($companyName ?? 'Unassigned'))
+            ->line('**Stripe account:** '.$this->stripeAccountLabel($account))
+            ->line('**Invoice:** '.($invoice?->xero_invoice_number ?? $invoice?->xero_invoice_id ?? 'Unknown'))
+            ->line('**Amount:** '.number_format($this->ddPayment->amount / 100, 2).' '.($invoice?->currency_code ?? 'AUD'))
+            ->line('**Reason:** '.($this->ddPayment->failure_reason ?? 'Unknown'))
+            ->line('A replacement invoice has been created in Xero for re-collection.')
+            ->action('View in dashboard', url('/admin/payments/'.$this->ddPayment->id));
     }
 }

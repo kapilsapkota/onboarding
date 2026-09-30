@@ -5,6 +5,24 @@
         </h2>
     </x-slot>
 
+    <form method="GET" action="{{ route('admin.payouts.index') }}" class="mb-4 flex flex-wrap items-center gap-3">
+        <select name="stripe_account" onchange="this.form.submit()"
+                class="py-2 pl-3 pr-8 border border-gray-200 rounded-lg text-sm bg-white dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option value="all" @selected($selectedAccount === 'all')>All accounts</option>
+            <option value="unassigned" @selected($selectedAccount === 'unassigned')>Unassigned (legacy)</option>
+            @foreach($stripeAccounts as $stripeAccount)
+                <option value="{{ $stripeAccount->id }}" @selected($selectedAccount instanceof \App\Models\StripeAccount && $selectedAccount->id === $stripeAccount->id)>
+                    {{ $stripeAccount->display_name }}{{ $stripeAccount->company ? ' — '.$stripeAccount->company->name : '' }}
+                </option>
+            @endforeach
+        </select>
+        @if($selectedAccount instanceof \App\Models\StripeAccount)
+            <span class="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                Showing {{ $selectedAccount->display_name }}{{ $selectedAccount->company ? ' — '.$selectedAccount->company->name : '' }}
+            </span>
+        @endif
+    </form>
+
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -16,6 +34,9 @@
                     </th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                         Amount
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                        Account
                     </th>
                     <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
                         Gross
@@ -116,6 +137,18 @@
                                 @endif
                             </div>
 
+                        </td>
+
+                        {{-- ACCOUNT --}}
+                        <td class="px-4 py-4 align-top">
+                            <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                {{ $payout->stripeAccount?->display_name ?? 'Legacy pool' }}
+                            </span>
+                            @if($payout->stripeAccount?->company)
+                                <div class="mt-1 text-[11px] text-gray-400">
+                                    {{ $payout->stripeAccount->company->name }}
+                                </div>
+                            @endif
                         </td>
 
 
@@ -261,7 +294,7 @@
                 @empty
 
                     <tr>
-                        <td colspan="9" class="py-10 text-center text-gray-500">
+                        <td colspan="10" class="py-10 text-center text-gray-500">
                             No payouts found.
                         </td>
                     </tr>

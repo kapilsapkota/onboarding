@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Client extends Model
@@ -45,7 +46,8 @@ class Client extends Model
         'mandate_id',
         'mandate_status',
         'user_id',
-        'microsoft_tenant_url'
+        'company_id',
+        'microsoft_tenant_url',
     ];
 
     protected $casts = [
@@ -74,6 +76,7 @@ class Client extends Model
         return $this->contacts->firstWhere('is_primary', true)?->full_name
             ?? $this->contacts->first()?->full_name;
     }
+
     public function charges()
     {
         return $this->hasMany(ClientCharge::class)->latest();
@@ -87,5 +90,10 @@ class Client extends Model
     public function stripeCustomer()
     {
         return $this->belongsTo(StripeCustomer::class, 'stripe_customer_id', 'stripe_customer_id');
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 }

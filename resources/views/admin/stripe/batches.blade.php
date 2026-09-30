@@ -255,8 +255,31 @@
                 </select>
             </div>
 
+            {{-- STRIPE ACCOUNT FILTER --}}
+            <div>
+                <select
+                    name="stripe_account"
+                    onchange="document.getElementById('chargeItemFilterForm').submit()"
+                    class="rounded-xl border-gray-200 dark:border-gray-600
+                           dark:bg-gray-700 dark:text-white text-sm shadow-sm
+                           focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                    <option value="all" @selected($selectedAccount === 'all')>
+                        All accounts
+                    </option>
+                    <option value="unassigned" @selected($selectedAccount === 'unassigned')>
+                        Unassigned (legacy)
+                    </option>
+                    @foreach($stripeAccounts as $stripeAccount)
+                        <option value="{{ $stripeAccount->id }}" @selected($selectedAccount instanceof \App\Models\StripeAccount && $selectedAccount->id === $stripeAccount->id)>
+                            {{ $stripeAccount->display_name }}{{ $stripeAccount->company ? ' — '.$stripeAccount->company->name : '' }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- CLEAR ALL FILTERS --}}
-            @if(request()->hasAny(['search', 'status', 'recon']))
+            @if(request()->hasAny(['search', 'status', 'recon', 'stripe_account']))
                 <a
                     href="{{ route('admin.stripe.batches.index', ['view' => 'items']) }}"
                     class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium
@@ -289,6 +312,11 @@
                 <th class="px-5 py-3.5 text-left text-[11px]
                            font-semibold text-gray-500 uppercase tracking-wider">
                     Batch
+                </th>
+
+                <th class="px-5 py-3.5 text-left text-[11px]
+                           font-semibold text-gray-500 uppercase tracking-wider">
+                    Account
                 </th>
 
                 <th class="px-5 py-3.5 text-left text-[11px]
@@ -408,6 +436,12 @@
 
                     <td class="px-5 py-4">
                         <span class="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 font-mono text-xs text-gray-600 dark:text-gray-300">
+                            {{ $item->stripeAccount?->display_name ?? 'Legacy pool' }}
+                        </span>
+                    </td>
+
+                    <td class="px-5 py-4">
+                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 font-mono text-xs text-gray-600 dark:text-gray-300">
                             {{ $item->stripePaymentMethod->maskedLabel() }}
                         </span>
                     </td>
@@ -510,7 +544,7 @@
 
                 <tr>
                     <td
-                        colspan="13"
+                        colspan="14"
                         class="py-14 text-center"
                     >
                         <svg class="w-10 h-10 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -544,6 +578,24 @@
 
 
 @else
+        <form method="GET" action="{{ route('admin.stripe.batches.index') }}" class="mb-4 flex flex-wrap items-center gap-3">
+            <input type="hidden" name="view" value="batches">
+            <select name="stripe_account" onchange="this.form.submit()"
+                    class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="all" @selected($selectedAccount === 'all')>All accounts</option>
+                <option value="unassigned" @selected($selectedAccount === 'unassigned')>Unassigned (legacy)</option>
+                @foreach($stripeAccounts as $stripeAccount)
+                    <option value="{{ $stripeAccount->id }}" @selected($selectedAccount instanceof \App\Models\StripeAccount && $selectedAccount->id === $stripeAccount->id)>
+                        {{ $stripeAccount->display_name }}{{ $stripeAccount->company ? ' — '.$stripeAccount->company->name : '' }}
+                    </option>
+                @endforeach
+            </select>
+            @if($selectedAccount instanceof \App\Models\StripeAccount)
+                <span class="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                    Showing {{ $selectedAccount->display_name }}{{ $selectedAccount->company ? ' — '.$selectedAccount->company->name : '' }}
+                </span>
+            @endif
+        </form>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -552,6 +604,7 @@
                     <tr>
                         <th class="px-5 py-3.5 w-8"></th>
                         <th class="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Reference</th>
+                        <th class="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Account</th>
                         <th class="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Created</th>
                         <th class="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Customers</th>
                         <th class="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total</th>
@@ -602,6 +655,16 @@
                             <td class="px-5 py-4">
                                 <div class="font-mono font-semibold text-sm text-gray-900 dark:text-gray-100">{{ $batch->reference }}</div>
                                 <div class="text-xs text-gray-400">{{ strtoupper($batch->currency) }}</div>
+                            </td>
+
+                            {{-- ACCOUNT --}}
+                            <td class="px-5 py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 font-mono text-xs text-gray-600 dark:text-gray-300">
+                                    {{ $batch->stripeAccount?->display_name ?? 'Legacy pool' }}
+                                </span>
+                                @if($batch->stripeAccount?->company)
+                                    <div class="mt-1 text-[11px] text-gray-400">{{ $batch->stripeAccount->company->name }}</div>
+                                @endif
                             </td>
 
                             {{-- CREATED --}}
@@ -692,7 +755,7 @@
 
                         {{-- Line items row (hidden by default) --}}
                         <tr id="items-{{ $batch->id }}" class="hidden">
-                            <td colspan="12" class="px-0 py-0 bg-gray-50/70 dark:bg-gray-900/40">
+                            <td colspan="13" class="px-0 py-0 bg-gray-50/70 dark:bg-gray-900/40">
 
                                 <table class="min-w-full text-sm">
                                     <thead>

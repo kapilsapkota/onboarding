@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\StripeChargeBatchItem;
+use App\Notifications\Concerns\HasStripeAccountContext;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class StripePaymentFailureNotification extends Notification implements ShouldQueue
 {
+    use HasStripeAccountContext;
     use Queueable;
 
     public function __construct(
@@ -22,32 +24,38 @@ class StripePaymentFailureNotification extends Notification implements ShouldQue
     }
 
     public function toMail(object $notifiable): MailMessage
-{
-    $item = StripeChargeBatchItem::with([
-        'batch',
-        'batch.createdBy',
-        'stripeCustomer',
-        'stripePaymentMethod',
-    ])->findOrFail($this->batchItemId);
+    {
+        $item = StripeChargeBatchItem::with([
+            'batch',
+            'batch.createdBy',
+            'batch.stripeAccount.company',
+            'stripeAccount.company',
+            'stripeCustomer',
+            'stripePaymentMethod',
+        ])->findOrFail($this->batchItemId);
 
-    $stripeData = $item->stripe_data ?? [];
+        $stripeData = $item->stripe_data ?? [];
+        $account = $item->stripeAccount ?? $item->batch?->stripeAccount;
 
-    return (new MailMessage)
-        ->cc([
-            'alit@allinit.com.au',
-            'kapils@allinit.com.au',
-            'accounts@allinit.com.au'
-        ])
-        ->subject(
-            'Stripe payment failed - '
-            . ($item->stripeCustomer?->name ?? 'Unknown customer')
-            . ' - '
-            . $item->formattedAmount()
-        )
-        ->view('emails.notifications.stripe-payment-failed', [
-            'item' => $item,
-            'stripeData' => $stripeData,
-            'notifiable' => $notifiable,
-        ]);
-}
+        return (new MailMessage)
+            ->cc([
+                'alit@allinit.com.au',
+                'kapils@allinit.com.au',
+                'accounts@allinit.com.au',
+            ])
+            ->subject(
+                'Stripe payment failed - '
+                .($item->stripeCustomer?->name ?? 'Unknown customer')
+                .' - '
+                .$item->formattedAmount()
+                .' ['.$this->stripeAccountLabel($account).']'
+            )
+            ->view('emails.notifications.stripe-payment-failed', [
+                'item' => $item,
+                'stripeData' => $stripeData,
+                'notifiable' => $notifiable,
+                'accountLabel' => $this->stripeAccountLabel($account),
+                'companyName' => $this->stripeAccountCompanyName($account),
+            ]);
+    }
 }

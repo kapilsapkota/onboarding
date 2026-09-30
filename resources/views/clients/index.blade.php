@@ -241,7 +241,7 @@
                           action="{{ route('clients.index') }}"
                           id="filter-form">
 
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
 
                             {{-- Search --}}
                             <div>
@@ -322,6 +322,29 @@
                                 </select>
                             </div>
 
+                            {{-- Company --}}
+                            <div>
+                                <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
+                                    Company
+                                </label>
+
+                                <select name="company_id"
+                                        onchange="document.getElementById('filter-form').submit()"
+                                        class="block w-full rounded-lg border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 shadow-sm transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:focus:border-yellow-500">
+                                    <option value="">All Companies</option>
+                                    <option value="unassigned" @selected(request('company_id') === 'unassigned')>
+                                        Unassigned
+                                    </option>
+
+                                    @foreach($companies as $company)
+                                        <option value="{{ $company->id }}"
+                                            @selected((string) request('company_id') === (string) $company->id)>
+                                            {{ $company->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
                             {{-- Sort --}}
                             <div>
                                 <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
@@ -357,7 +380,7 @@
                         </div>
 
                         {{-- Active filters --}}
-                        @if(request()->hasAny(['search', 'status', 'industry']))
+                        @if(request()->hasAny(['search', 'status', 'industry', 'company_id']))
                             <div
                                 class="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3 dark:border-gray-700">
 
@@ -403,6 +426,20 @@
                                 <a href="{{ request()->fullUrlWithoutQuery(['industry', 'page']) }}"
                                    class="ml-0.5 text-blue-500 hover:text-blue-800"
                                    aria-label="Remove industry filter">
+                                    ×
+                                </a>
+                            </span>
+                                @endif
+
+                                @if(request('company_id'))
+                                    <span
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-800 dark:border-purple-900/50 dark:bg-purple-900/20 dark:text-purple-300">
+                                <span>Company:</span>
+                                <strong>{{ request('company_id') === 'unassigned' ? 'Unassigned' : ($companies->firstWhere('id', (int) request('company_id'))?->name ?? request('company_id')) }}</strong>
+
+                                <a href="{{ request()->fullUrlWithoutQuery(['company_id', 'page']) }}"
+                                   class="ml-0.5 text-purple-500 hover:text-purple-800"
+                                   aria-label="Remove company filter">
                                     ×
                                 </a>
                             </span>
@@ -689,6 +726,12 @@
                                                        class="block truncate text-sm font-semibold text-gray-900 transition hover:text-yellow-600 dark:text-gray-100 dark:hover:text-yellow-400">
                                                         {{ $client->company_name ?: 'N/A' }}
                                                     </a>
+
+                                                    @if($client->company)
+                                                        <span class="mt-1 inline-flex max-w-[180px] truncate rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:bg-purple-900/20 dark:text-purple-300">
+                                                            {{ $client->company->name }}
+                                                        </span>
+                                                    @endif
 
                                                     @if($client->website)
                                                         @php

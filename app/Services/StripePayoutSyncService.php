@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\DirectDebitPayment;
+use App\Models\StripeAccount;
 use App\Models\StripeBalanceTransaction;
 use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
@@ -12,18 +14,25 @@ use Stripe\StripeClient;
 
 /**
  * Single place that knows how to turn Stripe API objects
- *
  */
 class StripePayoutSyncService
 {
-    public function __construct(private ?StripeClient $stripe = null)
-    {
+    public function __construct(
+        private ?StripeClient $stripe = null,
+        private ?StripeAccount $account = null,
+    ) {
         $this->stripe = $stripe ?? new StripeClient(config('services.stripe.secret'));
     }
 
     public function client(): StripeClient
     {
         return $this->stripe;
+    }
+
+    /** Internal id of the account being synced, if any (legacy mode otherwise). */
+    public function accountId(): ?int
+    {
+        return $this->account?->id;
     }
 
     // -----------------------------------------------------------------
@@ -76,7 +85,6 @@ class StripePayoutSyncService
      * Pull every balance transaction that Stripe attributes to one payout.
      * This is the ONLY reliable way to build the reconciled view —
      * the payout object itself does not embed its line items.
-     *
      */
     public function syncPayoutTransactions(string $payoutStripeId): int
     {
@@ -175,43 +183,49 @@ class StripePayoutSyncService
     {
         $arr = $this->normalize($payout);
 
+        $values = [
+            'status' => $this->strOrNull($arr['status'] ?? null),
+            'reconciliation_status' => $this->strOrNull($arr['reconciliation_status'] ?? null),
+            'type' => $this->strOrNull($arr['type'] ?? null),
+            'method' => $this->strOrNull($arr['method'] ?? null),
+            'currency' => strtolower($this->strOrNull($arr['currency'] ?? null) ?? 'aud'),
+            'amount' => $arr['amount'] ?? 0,
+            'arrival_at' => isset($arr['arrival_date']) ? Carbon::createFromTimestamp($arr['arrival_date']) : null,
+            'paid_at' => (! empty($arr['arrival_date']) && ($arr['status'] ?? null) === 'paid')
+                ? Carbon::createFromTimestamp($arr['arrival_date'])
+                : null,
+            'stripe_created_at' => isset($arr['created']) ? Carbon::createFromTimestamp($arr['created']) : null,
+            'destination' => $this->strOrNull($this->resolveId($arr['destination'] ?? null) ?? ($arr['destination'] ?? null)),
+            'description' => $this->strOrNull($arr['description'] ?? null),
+            'statement_descriptor' => $this->strOrNull($arr['statement_descriptor'] ?? null),
+            'automatic' => is_bool($arr['automatic'] ?? null) ? $arr['automatic'] : true,
+            'trace_id' => $this->strOrNull($arr['trace_id'] ?? null),
+            'failure_code' => $this->strOrNull($arr['failure_code'] ?? null),
+            'failure_message' => $this->strOrNull($arr['failure_message'] ?? null),
+            'failure_balance_transaction_stripe_id' => $this->strOrNull(
+                $this->resolveId($arr['failure_balance_transaction'] ?? null) ?? ($arr['failure_balance_transaction'] ?? null)
+            ),
+            'balance_transaction_stripe_id' => $this->strOrNull(
+                $this->resolveId($arr['balance_transaction'] ?? null) ?? ($arr['balance_transaction'] ?? null)
+            ),
+            'stripe_data' => $arr,
+            'last_synced_at' => now(),
+        ];
+
+        if ($this->account) {
+            $values['stripe_account_id'] = $this->account->id;
+        }
+
         return StripePayout::updateOrCreate(
             ['stripe_payout_id' => $arr['id']],
-            [
-                'status' => $this->strOrNull($arr['status'] ?? null),
-                'reconciliation_status' => $this->strOrNull($arr['reconciliation_status'] ?? null),
-                'type' => $this->strOrNull($arr['type'] ?? null),
-                'method' => $this->strOrNull($arr['method'] ?? null),
-                'currency' => strtolower($this->strOrNull($arr['currency'] ?? null) ?? 'aud'),
-                'amount' => $arr['amount'] ?? 0,
-                'arrival_at' => isset($arr['arrival_date']) ? Carbon::createFromTimestamp($arr['arrival_date']) : null,
-                'paid_at' => (! empty($arr['arrival_date']) && ($arr['status'] ?? null) === 'paid')
-                    ? Carbon::createFromTimestamp($arr['arrival_date'])
-                    : null,
-                'stripe_created_at' => isset($arr['created']) ? Carbon::createFromTimestamp($arr['created']) : null,
-                'destination' => $this->strOrNull($this->resolveId($arr['destination'] ?? null) ?? ($arr['destination'] ?? null)),
-                'description' => $this->strOrNull($arr['description'] ?? null),
-                'statement_descriptor' => $this->strOrNull($arr['statement_descriptor'] ?? null),
-                'automatic' => is_bool($arr['automatic'] ?? null) ? $arr['automatic'] : true,
-                'trace_id' => $this->strOrNull($arr['trace_id'] ?? null),
-                'failure_code' => $this->strOrNull($arr['failure_code'] ?? null),
-                'failure_message' => $this->strOrNull($arr['failure_message'] ?? null),
-                'failure_balance_transaction_stripe_id' => $this->strOrNull(
-                    $this->resolveId($arr['failure_balance_transaction'] ?? null) ?? ($arr['failure_balance_transaction'] ?? null)
-                ),
-                'balance_transaction_stripe_id' => $this->strOrNull(
-                    $this->resolveId($arr['balance_transaction'] ?? null) ?? ($arr['balance_transaction'] ?? null)
-                ),
-                'stripe_data' => $arr,
-                'last_synced_at' => now(),
-            ]
+            $values
         );
     }
 
     /**
      * @param  object  $bt  Stripe BalanceTransaction (expanded source if available)
      * @param  string|null  $payoutStripeId  The po_xxx we listed by (Stripe does not
-     *   always echo it back on the BT, so the caller passes it explicitly).
+     *                                       always echo it back on the BT, so the caller passes it explicitly).
      */
     public function upsertBalanceTransaction(object|array $bt, ?string $payoutStripeId = null): StripeBalanceTransaction
     {
@@ -263,38 +277,62 @@ class StripePayoutSyncService
 
         $record = StripeBalanceTransaction::updateOrCreate(
             ['stripe_balance_transaction_id' => $arr['id']],
-            [
-                'source_id' => $sourceId,
-                'source_type' => $sourceType,
-                'type' => $this->strOrNull($arr['type'] ?? null),
-                'reporting_category' => $this->strOrNull($arr['reporting_category'] ?? null),
-                'status' => $this->strOrNull($arr['status'] ?? null),
-                'balance_type' => $this->strOrNull($arr['balance_type'] ?? null),
-                'exchange_rate' => $this->strOrNull($arr['exchange_rate'] ?? null),
-                'description' => $this->strOrNull(
-                    (is_array($source) ? ($source['description'] ?? null) : null) ?? ($arr['description'] ?? null)
-                ),
-                'currency' => strtolower($this->strOrNull($arr['currency'] ?? null) ?? 'aud'),
-                'amount' => $arr['amount'] ?? 0,
-                'fee' => $arr['fee'] ?? 0,
-                'net' => $arr['net'] ?? 0,
-                'fee_details' => is_array($arr['fee_details'] ?? null) ? $arr['fee_details'] : null,
-                'available_at' => isset($arr['available_on']) ? Carbon::createFromTimestamp($arr['available_on']) : null,
-                'occurred_at' => isset($arr['created']) ? Carbon::createFromTimestamp($arr['created']) : null,
-                'stripe_payout_id' => $localPayoutId,
-                'payout_stripe_id' => $payoutStripeId,
-                'charge_stripe_id' => $chargeId,
-                'payment_intent_stripe_id' => $paymentIntentId,
-                'customer_stripe_id' => $customerId,
-                'is_app_transaction' => $isApp,
-                'stripe_data' => $arr,
-                'last_synced_at' => now(),
-            ]
+            $this->balanceTransactionValues($arr, $source ?? null, $sourceId, $sourceType, $chargeId, $paymentIntentId, $customerId, $localPayoutId, $payoutStripeId, $isApp)
         );
 
         $this->linkBatchItem($record);
 
         return $record->fresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $arr
+     */
+    private function balanceTransactionValues(
+        array $arr,
+        mixed $source,
+        ?string $sourceId,
+        ?string $sourceType,
+        ?string $chargeId,
+        ?string $paymentIntentId,
+        ?string $customerId,
+        ?int $localPayoutId,
+        ?string $payoutStripeId,
+        bool $isApp,
+    ): array {
+        $values = [
+            'source_id' => $sourceId,
+            'source_type' => $sourceType,
+            'type' => $this->strOrNull($arr['type'] ?? null),
+            'reporting_category' => $this->strOrNull($arr['reporting_category'] ?? null),
+            'status' => $this->strOrNull($arr['status'] ?? null),
+            'balance_type' => $this->strOrNull($arr['balance_type'] ?? null),
+            'exchange_rate' => $this->strOrNull($arr['exchange_rate'] ?? null),
+            'description' => $this->strOrNull(
+                (is_array($source) ? ($source['description'] ?? null) : null) ?? ($arr['description'] ?? null)
+            ),
+            'currency' => strtolower($this->strOrNull($arr['currency'] ?? null) ?? 'aud'),
+            'amount' => $arr['amount'] ?? 0,
+            'fee' => $arr['fee'] ?? 0,
+            'net' => $arr['net'] ?? 0,
+            'fee_details' => is_array($arr['fee_details'] ?? null) ? $arr['fee_details'] : null,
+            'available_at' => isset($arr['available_on']) ? Carbon::createFromTimestamp($arr['available_on']) : null,
+            'occurred_at' => isset($arr['created']) ? Carbon::createFromTimestamp($arr['created']) : null,
+            'stripe_payout_id' => $localPayoutId,
+            'payout_stripe_id' => $payoutStripeId,
+            'charge_stripe_id' => $chargeId,
+            'payment_intent_stripe_id' => $paymentIntentId,
+            'customer_stripe_id' => $customerId,
+            'is_app_transaction' => $isApp,
+            'stripe_data' => $arr,
+            'last_synced_at' => now(),
+        ];
+
+        if ($this->account) {
+            $values['stripe_account_id'] = $this->account->id;
+        }
+
+        return $values;
     }
 
     // -----------------------------------------------------------------
@@ -324,7 +362,7 @@ class StripePayoutSyncService
             return true;
         }
 
-        if ($paymentIntentId && \App\Models\DirectDebitPayment::where('gateway_payment_id', $paymentIntentId)->exists()) {
+        if ($paymentIntentId && DirectDebitPayment::where('gateway_payment_id', $paymentIntentId)->exists()) {
             return true;
         }
 

@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\StripeChargeBatchItem;
+use App\Notifications\Concerns\HasStripeAccountContext;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class StripePaymentDisputeNotification extends Notification implements ShouldQueue
 {
+    use HasStripeAccountContext;
     use Queueable;
 
     public function __construct(
@@ -25,6 +27,8 @@ class StripePaymentDisputeNotification extends Notification implements ShouldQue
     {
         $item = StripeChargeBatchItem::with([
             'batch',
+            'batch.stripeAccount.company',
+            'stripeAccount.company',
             'stripeCustomer',
             'stripePaymentMethod',
         ])->findOrFail($this->batchItemId);
@@ -40,7 +44,7 @@ class StripePaymentDisputeNotification extends Notification implements ShouldQue
         $disputeStatus = $dispute['status'] ?? 'needs_response';
 
         $disputeAmount = isset($dispute['amount'])
-            ? '$' . number_format($dispute['amount'] / 100, 2)
+            ? '$'.number_format($dispute['amount'] / 100, 2)
             : $item->formattedAmount();
 
         $createdAt = isset($dispute['created'])
@@ -51,17 +55,20 @@ class StripePaymentDisputeNotification extends Notification implements ShouldQue
 
         $humanReadableStatus = $this->humanReadableStatus($disputeStatus);
 
+        $account = $item->stripeAccount ?? $item->batch?->stripeAccount;
+
         return (new MailMessage)
             ->subject(
                 'Stripe payment disputed - '
-                . $customerName
-                . ' - '
-                . $disputeAmount
+                .$customerName
+                .' - '
+                .$disputeAmount
+                .' ['.$this->stripeAccountLabel($account).']'
             )
             ->cc([
                 'alit@allinit.com.au',
                 'kapils@allinit.com.au',
-                'accounts@allinit.com.au'
+                'accounts@allinit.com.au',
             ])
             ->view('emails.notifications.stripe-payment-dispute', [
                 'item' => $item,
@@ -73,6 +80,8 @@ class StripePaymentDisputeNotification extends Notification implements ShouldQue
                 'disputeAmount' => $disputeAmount,
                 'createdAt' => $createdAt,
                 'notifiable' => $notifiable,
+                'accountLabel' => $this->stripeAccountLabel($account),
+                'companyName' => $this->stripeAccountCompanyName($account),
             ]);
     }
 

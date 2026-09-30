@@ -30,6 +30,19 @@
                     </div>
 
                     <div>
+                        <label class="{{ $label }}">Linked Company (for per-company billing)</label>
+                        <select class="{{ $input }} dark:bg-gray-700 dark:text-gray-200" name="company_id">
+                            <option value="">— Unassigned —</option>
+                            @foreach($companies as $company)
+                                <option value="{{ $company->id }}"
+                                    @selected((string) old('company_id', $client->company_id) === (string) $company->id)>
+                                    {{ $company->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="{{ $label }}">Company Phone</label>
                         <input class="{{ $input }}" name="company_phone"
                                value="{{ old('company_phone', $client->company_phone) }}">

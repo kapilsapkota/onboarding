@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\StripeAccount;
 use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
 use App\Models\StripePayout;
+use App\Services\StripeAccountResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Reconciled (DB-backed) payout views.
@@ -18,9 +21,15 @@ use Illuminate\Http\Request;
  */
 class StripePayoutController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, StripeAccountResolver $accounts)
     {
+        $stripeAccounts = $accounts->visibleAccounts($request->user());
+        $selectedAccount = $this->resolveSelectedAccount($request, $accounts);
+
         $payouts = StripePayout::query()
+            ->with('stripeAccount.company')
+            ->when($selectedAccount === 'unassigned', fn ($q) => $q->whereNull('stripe_account_id'))
+            ->when($selectedAccount instanceof StripeAccount, fn ($q) => $q->where('stripe_account_id', $selectedAccount->id))
             ->withCount([
                 'balanceTransactions as app_count' => fn ($q) => $q->where('is_app_transaction', true),
                 'balanceTransactions as external_count' => fn ($q) => $q->where('is_app_transaction', false),
@@ -50,12 +59,36 @@ class StripePayoutController extends Controller
         return view('admin.payouts.index-db', [
             'payouts' => $payouts,
             'itemsMap' => $itemsMap,
+            'stripeAccounts' => $stripeAccounts,
+            'selectedAccount' => $selectedAccount,
         ]);
+    }
+
+    /**
+     * Returns 'all', 'unassigned', or the resolved account for the filter.
+     */
+    private function resolveSelectedAccount(Request $request, StripeAccountResolver $accounts): string|StripeAccount
+    {
+        $filter = $request->input('stripe_account', 'all');
+
+        if ($filter === 'unassigned' || $filter === 'all') {
+            return $filter;
+        }
+
+        if (! is_numeric($filter)) {
+            return 'all';
+        }
+
+        $account = $accounts->forAccount((int) $filter);
+        $accounts->assertAccountVisible($request->user(), $account);
+
+        return $account;
     }
 
     public function show(Request $request, string $payout)
     {
-        $local = StripePayout::where('stripe_payout_id', $payout)
+        $local = StripePayout::with('stripeAccount.company')
+            ->where('stripe_payout_id', $payout)
             ->orWhere('id', $payout)
             ->firstOrFail();
 
@@ -125,7 +158,7 @@ class StripePayoutController extends Controller
      * batch + customer) belonging to the payout.
      *
      * @param  int[]  $payoutIds
-     * @return array<int, \Illuminate\Support\Collection>
+     * @return array<int, Collection>
      */
     private function itemsMapForPayoutIds(array $payoutIds): array
     {

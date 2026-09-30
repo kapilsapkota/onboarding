@@ -377,6 +377,32 @@
 
                 </a>
 
+                {{-- Stripe Accounts --}}
+                @can('view-stripe-account')
+                <a href="{{ route('admin.stripe-accounts.index') }}"
+                   class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/stripe-accounts*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                   :title="collapsed ? '{{ __('Stripe Accounts') }}' : ''">
+
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe-accounts*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.75">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+
+                    <span x-show="!collapsed"
+                          x-transition
+                          class="ml-3 whitespace-nowrap">
+                    {{ __('Stripe Accounts') }}
+                </span>
+
+                </a>
+                @endcan
+
             </div>
         </div>
 

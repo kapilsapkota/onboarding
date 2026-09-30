@@ -1,10 +1,13 @@
 <x-app-layout>
 
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">
                 Stripe Payout - {{ $payout->stripe_payout_id }}
             </h2>
+            <span class="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                {{ $payout->stripeAccount?->display_name ?? 'Legacy pool' }}{{ $payout->stripeAccount?->company ? ' — '.$payout->stripeAccount->company->name : '' }}
+            </span>
         </div>
     </x-slot>
 

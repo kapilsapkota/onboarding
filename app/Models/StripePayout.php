@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class StripePayout extends Model
 {
     protected $fillable = [
         'stripe_payout_id',
+        'stripe_account_id',
         'stripe_created_at',
         'status',
         'reconciliation_status',
@@ -48,6 +51,11 @@ class StripePayout extends Model
         );
     }
 
+    public function stripeAccount(): BelongsTo
+    {
+        return $this->belongsTo(StripeAccount::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(
@@ -60,9 +68,9 @@ class StripePayout extends Model
      * Invoice-backed direct-debit payments in this payout, matched via
      * the payout's balance transactions (PaymentIntent id or BT id).
      *
-     * @return \Illuminate\Support\Collection<int, \App\Models\DirectDebitPayment>
+     * @return Collection<int, DirectDebitPayment>
      */
-    public function invoicePayments(): \Illuminate\Support\Collection
+    public function invoicePayments(): Collection
     {
         $bts = $this->balanceTransactions()
             ->get(['payment_intent_stripe_id', 'stripe_balance_transaction_id']);

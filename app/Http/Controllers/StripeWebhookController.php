@@ -6,6 +6,7 @@ use App\Jobs\HandleFailedDirectDebitPayment;
 use App\Jobs\WriteXeroPayment;
 use App\Models\Client;
 use App\Models\DirectDebitPayment;
+use App\Models\StripeAccount;
 use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
@@ -13,6 +14,7 @@ use App\Notifications\StripePaymentDisputeNotification;
 use App\Notifications\StripePaymentFailureNotification;
 use App\Notifications\StripePaymentSuccessNotification;
 use App\Notifications\StripePayoutSuccessNotification;
+use App\Services\StripeAccountResolver;
 use App\Services\StripeBecsService;
 use App\Services\StripePayoutSyncService;
 use Illuminate\Http\Request;
@@ -24,20 +26,61 @@ use Stripe\Webhook;
 
 class StripeWebhookController extends Controller
 {
-    public function __construct(private StripeBecsService $stripe)
+    /**
+     * Set when the event arrives on a per-account endpoint. All customer /
+     * payment-method / mandate lookups are then scoped to that account and
+     * new mirror rows are stamped with it.
+     */
+    private ?StripeAccount $webhookAccount = null;
+
+    public function __construct(
+        private StripeBecsService $stripe,
+        private StripeAccountResolver $accounts,
+    ) {}
+
+    /** BECS service bound to the webhook account (or the legacy global one). */
+    protected function becs(): StripeBecsService
     {
+        return $this->webhookAccount
+            ? new StripeBecsService($this->webhookAccount)
+            : $this->stripe;
     }
 
     public function __invoke(Request $request): Response
     {
+        $this->webhookAccount = null;
+
+        return $this->handle($request, (string) config('services.stripe.webhook_secret'));
+    }
+
+    /**
+     * Per-account endpoint: POST /webhooks/stripe/{stripeAccount}.
+     * Verifies with the account's own webhook secret; all customer and
+     * payment-method handling below is then scoped to that account.
+     */
+    public function account(Request $request, StripeAccount $stripeAccount): Response
+    {
+        if (! $stripeAccount->webhook_secret) {
+            Log::warning('StripeWebhook: account has no webhook secret', ['account_id' => $stripeAccount->id]);
+
+            return response('Webhook secret not configured', 400);
+        }
+
+        $this->webhookAccount = $stripeAccount;
+
+        return $this->handle($request, $stripeAccount->webhook_secret);
+    }
+
+    private function handle(Request $request, string $secret): Response
+    {
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        $secret = config('services.stripe.webhook_secret');
 
         try {
             $event = Webhook::constructEvent($payload, $sigHeader, $secret);
         } catch (SignatureVerificationException $e) {
             Log::warning('StripeWebhook: invalid signature', ['error' => $e->getMessage()]);
+
             return response('Invalid signature', 400);
         }
 
@@ -78,7 +121,6 @@ class StripeWebhookController extends Controller
                 // Balance-transaction feed: charge carries the BT we reconcile against.
                 'charge.succeeded' => $this->handleChargeSucceeded($event->data->object),
 
-
                 default => null,
             };
         } catch (\Throwable $e) {
@@ -100,20 +142,28 @@ class StripeWebhookController extends Controller
     {
         $defaultPmId = $this->resolveDefaultPmId($customer);
 
-        $existing = StripeCustomer::where('stripe_customer_id', $customer->id)->first();
+        $existing = StripeCustomer::where('stripe_customer_id', $customer->id)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
+            ->first();
 
-        if (!$existing && !$defaultPmId) {
+        if (! $existing && ! $defaultPmId) {
             return;
         }
 
         if ($existing) {
-            $existing->update([
+            $data = [
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'default_payment_method_id' => $defaultPmId,
                 'stripe_data' => $customer->toArray(),
                 'last_synced_at' => now(),
-            ]);
+            ];
+
+            if ($this->webhookAccount) {
+                $data['stripe_account_id'] = $this->webhookAccount->id;
+            }
+
+            $existing->update($data);
 
             Log::info('StripeWebhook: customer updated in local DB', ['stripe_id' => $customer->id]);
         }
@@ -122,7 +172,9 @@ class StripeWebhookController extends Controller
     /** Removes the local StripeCustomer record when deleted in Stripe. */
     private function handleCustomerDeleted(object $customer): void
     {
-        $deleted = StripeCustomer::where('stripe_customer_id', $customer->id)->delete();
+        $deleted = StripeCustomer::where('stripe_customer_id', $customer->id)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
+            ->delete();
 
         if ($deleted) {
             Log::info('StripeWebhook: customer deleted from local DB', ['stripe_id' => $customer->id]);
@@ -142,14 +194,15 @@ class StripeWebhookController extends Controller
 
         $stripeCustomerId = $this->resolveId($pm->customer);
 
-        if (!$stripeCustomerId) {
+        if (! $stripeCustomerId) {
             Log::warning('StripeWebhook: payment_method.attached has no customer', ['pm_id' => $pm->id]);
+
             return;
         }
 
         $localCustomer = $this->upsertCustomerFromStripe($stripeCustomerId);
 
-        if (!$localCustomer) {
+        if (! $localCustomer) {
             return;
         }
 
@@ -168,10 +221,13 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        $local = StripePaymentMethod::where('stripe_payment_method_id', $pm->id)->first();
+        $local = StripePaymentMethod::where('stripe_payment_method_id', $pm->id)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
+            ->first();
 
-        if (!$local) {
+        if (! $local) {
             $this->handlePaymentMethodAttached($pm);
+
             return;
         }
 
@@ -189,6 +245,7 @@ class StripeWebhookController extends Controller
     private function handlePaymentMethodDetached(object $pm): void
     {
         $updated = StripePaymentMethod::where('stripe_payment_method_id', $pm->id)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
             ->update([
                 'status' => 'inactive',
                 'is_default' => false,
@@ -215,10 +272,10 @@ class StripeWebhookController extends Controller
                     'id' => $ddPayment->id,
                 ]);
             } else {
-                $balanceTx = $this->stripe->getBalanceTransaction($intent['id']);
+                $balanceTx = $this->becs()->getBalanceTransaction($intent['id']);
 
                 $ddPayment->markSettled($balanceTx);
-                $ddPayment->invoice->markPaymentSettled();
+                $ddPayment->invoice?->markPaymentSettled();
 
                 Log::info('StripeWebhook: payment_intent.succeeded — DD payment marked settled', [
                     'id' => $ddPayment->id,
@@ -274,7 +331,7 @@ class StripeWebhookController extends Controller
                 ]);
             } else {
                 $ddPayment->markFailed($reason, $code);
-                $ddPayment->invoice->markPaymentFailed($reason);
+                $ddPayment->invoice?->markPaymentFailed($reason);
 
                 Log::warning('StripeWebhook: payment_intent.payment_failed — DD payment marked failed', [
                     'id' => $ddPayment->id,
@@ -324,11 +381,17 @@ class StripeWebhookController extends Controller
     {
         $batchItem = $this->findBatchItem($intent);
 
-        if (!$batchItem) {
+        if (! $batchItem) {
             return;
         }
 
-        $status = $intent->status === 'processing' ? 'processing' : $intent->status;
+        // Normalise Stripe's 'canceled' to our 'cancelled' spelling so status
+        // stays consistent with manual cancellations.
+        $status = match ($intent->status) {
+            'processing' => 'processing',
+            'canceled' => 'cancelled',
+            default => $intent->status,
+        };
 
         $batchItem->update([
             'status' => $status,
@@ -352,7 +415,7 @@ class StripeWebhookController extends Controller
 
         $paymentMethodId = $this->resolveId($mandate->payment_method);
 
-        if (!$paymentMethodId) {
+        if (! $paymentMethodId) {
             return;
         }
 
@@ -363,6 +426,7 @@ class StripeWebhookController extends Controller
             ]);
 
         StripePaymentMethod::where('stripe_payment_method_id', $paymentMethodId)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
             ->update(['status' => 'inactive', 'is_default' => false]);
 
         Log::warning('StripeWebhook: mandate.updated — inactive, cleared from client and local PM', [
@@ -378,7 +442,7 @@ class StripeWebhookController extends Controller
     private function upsertCustomerFromStripe(string $stripeCustomerId): ?StripeCustomer
     {
         try {
-            $stripeCustomer = $this->stripe->client()->customers->retrieve($stripeCustomerId);
+            $stripeCustomer = $this->becs()->client()->customers->retrieve($stripeCustomerId);
 
             if ($stripeCustomer->deleted ?? false) {
                 return null;
@@ -386,15 +450,21 @@ class StripeWebhookController extends Controller
 
             $defaultPmId = $this->resolveDefaultPmId($stripeCustomer);
 
+            $values = [
+                'name' => $stripeCustomer->name,
+                'email' => $stripeCustomer->email,
+                'default_payment_method_id' => $defaultPmId,
+                'stripe_data' => $stripeCustomer->toArray(),
+                'last_synced_at' => now(),
+            ];
+
+            if ($this->webhookAccount) {
+                $values['stripe_account_id'] = $this->webhookAccount->id;
+            }
+
             return StripeCustomer::updateOrCreate(
                 ['stripe_customer_id' => $stripeCustomerId],
-                [
-                    'name' => $stripeCustomer->name,
-                    'email' => $stripeCustomer->email,
-                    'default_payment_method_id' => $defaultPmId,
-                    'stripe_data' => $stripeCustomer->toArray(),
-                    'last_synced_at' => now(),
-                ]
+                $values
             );
         } catch (\Throwable $e) {
             Log::error('StripeWebhook: failed to retrieve customer from Stripe', [
@@ -411,18 +481,24 @@ class StripeWebhookController extends Controller
     {
         $defaultPmId = $localCustomer->default_payment_method_id;
 
+        $values = [
+            'stripe_customer_id' => $localCustomer->id,
+            'type' => $pm->type,
+            'last4' => $pm->au_becs_debit->last4 ?? null,
+            'account_holder_name' => $pm->billing_details->name ?? null,
+            'is_default' => $pm->id === $defaultPmId,
+            'status' => 'active',
+            'stripe_data' => $pm->toArray(),
+            'last_synced_at' => now(),
+        ];
+
+        if ($this->webhookAccount) {
+            $values['stripe_account_id'] = $this->webhookAccount->id;
+        }
+
         StripePaymentMethod::updateOrCreate(
             ['stripe_payment_method_id' => $pm->id],
-            [
-                'stripe_customer_id' => $localCustomer->id,
-                'type' => $pm->type,
-                'last4' => $pm->au_becs_debit->last4 ?? null,
-                'account_holder_name' => $pm->billing_details->name ?? null,
-                'is_default' => $pm->id === $defaultPmId,
-                'status' => 'active',
-                'stripe_data' => $pm->toArray(),
-                'last_synced_at' => now(),
-            ]
+            $values
         );
     }
 
@@ -441,10 +517,14 @@ class StripeWebhookController extends Controller
                 'invoice.client',
                 'invoice.tenant',
                 'invoice.tenant.connection',
-            ])->find((int)$ddPaymentId);
+            ])->find((int) $ddPaymentId);
+
+            if ($ddPayment && $this->belongsToWebhookAccount($ddPayment->stripe_account_id)) {
+                return $ddPayment;
+            }
 
             if ($ddPayment) {
-                return $ddPayment;
+                return null;
             }
         }
 
@@ -455,19 +535,35 @@ class StripeWebhookController extends Controller
             'invoice.tenant.connection',
         ])
             ->where('gateway_payment_id', $intent->id)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
             ->first();
     }
 
     /** Finds a StripeChargeBatchItem by stripe_payment_intent_id. */
     private function findBatchItem(object $intent): ?StripeChargeBatchItem
     {
-        return StripeChargeBatchItem::where('stripe_payment_intent_id', $intent->id)->first();
+        return StripeChargeBatchItem::where('stripe_payment_intent_id', $intent->id)
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
+            ->first();
+    }
+
+    /**
+     * In per-account mode only records already stamped to that account may
+     * be touched; unscoped (legacy) rows belong to the global endpoint.
+     */
+    private function belongsToWebhookAccount(?int $rowAccountId): bool
+    {
+        if (! $this->webhookAccount) {
+            return true;
+        }
+
+        return $rowAccountId === $this->webhookAccount->id;
     }
 
     /** Resolves a Stripe object or string ID to a string ID. */
     private function resolveId(mixed $value): ?string
     {
-        if (is_string($value) && !empty($value)) {
+        if (is_string($value) && ! empty($value)) {
             return $value;
         }
 
@@ -489,7 +585,7 @@ class StripeWebhookController extends Controller
     {
         $batchItem = $this->findBatchItemFromDispute($dispute);
 
-        if (!$batchItem) {
+        if (! $batchItem) {
             return;
         }
 
@@ -553,7 +649,7 @@ class StripeWebhookController extends Controller
     {
         $batchItem = $this->findBatchItemFromDispute($dispute);
 
-        if (!$batchItem) {
+        if (! $batchItem) {
             return;
         }
 
@@ -588,7 +684,7 @@ class StripeWebhookController extends Controller
     {
         $batchItem = $this->findBatchItemFromDispute($dispute);
 
-        if (!$batchItem) {
+        if (! $batchItem) {
             return;
         }
 
@@ -623,7 +719,7 @@ class StripeWebhookController extends Controller
             $dispute->payment_intent ?? null
         );
 
-        if (!$paymentIntentId) {
+        if (! $paymentIntentId) {
             Log::warning('StripeWebhook: dispute has no payment intent', [
                 'dispute_id' => $dispute->id ?? null,
             ]);
@@ -634,7 +730,9 @@ class StripeWebhookController extends Controller
         return StripeChargeBatchItem::where(
             'stripe_payment_intent_id',
             $paymentIntentId
-        )->first();
+        )
+            ->when($this->webhookAccount, fn ($q) => $q->where('stripe_account_id', $this->webhookAccount->id))
+            ->first();
     }
 
     /**
@@ -642,9 +740,8 @@ class StripeWebhookController extends Controller
      */
     private function saveDisputeData(
         StripeChargeBatchItem $batchItem,
-        object                $dispute
-    ): void
-    {
+        object $dispute
+    ): void {
         $stripeData = $batchItem->stripe_data ?? [];
 
         $stripeData['dispute'] = $dispute->toArray();
@@ -667,6 +764,7 @@ class StripeWebhookController extends Controller
                         amount: $payout->amount,
                         currency: $payout->currency,
                         arrivalDate: $payout->arrival_date ?? null,
+                        stripeAccountId: $this->webhookAccount?->id,
                     )
                 );
 
@@ -676,7 +774,7 @@ class StripeWebhookController extends Controller
                 'currency' => $payout->currency,
                 'arrival_date' => $payout->arrival_date ?? null,
             ]);
-        }catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::error('PayoutPaidNotification: failed to send email', [$e->getMessage()]);
         }
 
@@ -689,7 +787,7 @@ class StripeWebhookController extends Controller
     /** Upserts the payout row; backfills its lines once reconciliation completes. */
     private function handlePayoutUpsert(object $payout): void
     {
-        $sync = app(StripePayoutSyncService::class);
+        $sync = $this->payoutSync();
         $local = $sync->upsertPayout($payout);
 
         Log::info('StripeWebhook: payout upserted', [
@@ -735,7 +833,7 @@ class StripeWebhookController extends Controller
                 return;
             }
 
-            $sync = app(StripePayoutSyncService::class);
+            $sync = $this->payoutSync();
             $bt = $sync->client()->balanceTransactions->retrieve($btId, [
                 'expand' => ['source'],
             ]);
@@ -753,5 +851,19 @@ class StripeWebhookController extends Controller
         }
     }
 
+    /**
+     * Payout sync bound to the webhook account (or the legacy global keys).
+     * The service stamps every payout/BT row it writes with that account.
+     */
+    protected function payoutSync(): StripePayoutSyncService
+    {
+        if ($this->webhookAccount) {
+            return new StripePayoutSyncService(
+                $this->accounts->clientFor($this->webhookAccount),
+                $this->webhookAccount
+            );
+        }
 
+        return app(StripePayoutSyncService::class);
+    }
 }

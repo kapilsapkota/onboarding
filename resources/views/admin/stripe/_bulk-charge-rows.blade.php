@@ -1,11 +1,15 @@
 @forelse ($customers as $index => $customer)
-    @php $pm = $customer->paymentMethods->first(); @endphp
+    @php
+        $pm = $customer->paymentMethods->first();
+        $accountLabel = $customer->stripeAccount?->display_name ?? 'Legacy pool';
+    @endphp
 
     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         data-customer-id="{{ $customer->id }}"
         data-pm-id="{{ $pm->id }}"
         data-name="{{ $customer->name ?? $customer->email ?? 'Unknown' }}"
         data-pm="{{ $pm->maskedLabel() }}"
+        data-account="{{ $accountLabel }}"
     >
         <td class="px-5 py-4">
             <input
@@ -15,6 +19,11 @@
         </td>
         <td class="px-5 py-4 font-medium">{{ $customer->name ?? '-' }}</td>
         <td class="px-5 py-4 text-sm text-gray-500">{{ $customer->email ?? '-' }}</td>
+        <td class="px-5 py-4">
+            <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                {{ $accountLabel }}
+            </span>
+        </td>
         <td class="px-5 py-4 font-mono text-sm">{{ $pm->maskedLabel() }}</td>
         <td class="px-5 py-4">
             <input
@@ -35,7 +44,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="6" class="py-10 text-center text-gray-500">
+        <td colspan="7" class="py-10 text-center text-gray-500">
             No eligible BECS customers found.
         </td>
     </tr>

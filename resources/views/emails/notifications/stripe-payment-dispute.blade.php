@@ -192,6 +192,24 @@
                                     #{{ $item->batch_id }}
                                 </td>
                             </tr>
+
+                            <tr>
+                                <td style="padding: 7px 0; color: #6b7280;">
+                                    Stripe Account
+                                </td>
+                                <td style="padding: 7px 0; font-weight: 600;">
+                                    {{ $accountLabel }}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="padding: 7px 0; color: #6b7280;">
+                                    Company
+                                </td>
+                                <td style="padding: 7px 0;">
+                                    {{ $companyName ?? 'N/A' }}
+                                </td>
+                            </tr>
                         </table>
                     </td>
                 </tr>

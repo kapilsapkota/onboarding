@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StripeCustomer extends Model
 {
     protected $fillable = [
         'stripe_customer_id',
+        'stripe_account_id',
         'name',
         'email',
         'default_payment_method_id',
@@ -17,13 +19,18 @@ class StripeCustomer extends Model
     ];
 
     protected $casts = [
-        'stripe_data'    => 'array',
+        'stripe_data' => 'array',
         'last_synced_at' => 'datetime',
     ];
 
     public function paymentMethods(): HasMany
     {
         return $this->hasMany(StripePaymentMethod::class, 'stripe_customer_id');
+    }
+
+    public function stripeAccount(): BelongsTo
+    {
+        return $this->belongsTo(StripeAccount::class);
     }
 
     public function batchItems(): HasMany

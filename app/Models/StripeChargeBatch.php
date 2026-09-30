@@ -10,6 +10,7 @@ class StripeChargeBatch extends Model
 {
     protected $fillable = [
         'reference',
+        'stripe_account_id',
         'customer_count',
         'total_amount',
         'currency',
@@ -27,6 +28,11 @@ class StripeChargeBatch extends Model
     public function items(): HasMany
     {
         return $this->hasMany(StripeChargeBatchItem::class, 'batch_id');
+    }
+
+    public function stripeAccount(): BelongsTo
+    {
+        return $this->belongsTo(StripeAccount::class);
     }
 
     /** Recalculates and saves batch status based on item statuses. */
@@ -56,11 +62,10 @@ class StripeChargeBatch extends Model
         ]);
     }
 
-
     /** Formats total_amount cents as a dollar string. */
     public function formattedTotal(): string
     {
-        return '$' . number_format($this->total_amount / 100, 2);
+        return '$'.number_format($this->total_amount / 100, 2);
     }
 
     public function createdBy(): BelongsTo

@@ -13,8 +13,8 @@
 
     <div class="max-w-7xl mx-auto">
 
-        {{-- Search --}}
-        <div class="mb-4 flex items-center gap-3">
+        {{-- Search + account filter --}}
+        <div class="mb-4 flex flex-wrap items-center gap-3">
             <div class="relative w-full max-w-sm">
                 <input
                     type="text"
@@ -28,6 +28,21 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                 </svg>
             </div>
+            <form method="GET" action="{{ route('admin.stripe.bulk-charge') }}" class="flex items-center gap-2">
+                @if($search)
+                    <input type="hidden" name="search" value="{{ $search }}">
+                @endif
+                <select name="stripe_account" onchange="this.form.submit()"
+                        class="py-2 pl-3 pr-8 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                    <option value="all" @selected($selectedAccount === 'all')>All accounts</option>
+                    <option value="unassigned" @selected($selectedAccount === 'unassigned')>Unassigned (legacy)</option>
+                    @foreach($stripeAccounts as $stripeAccount)
+                        <option value="{{ $stripeAccount->id }}" @selected($selectedAccount instanceof \App\Models\StripeAccount && $selectedAccount->id === $stripeAccount->id)>
+                            {{ $stripeAccount->display_name }}{{ $stripeAccount->company ? ' — '.$stripeAccount->company->name : '' }}
+                        </option>
+                    @endforeach
+                </select>
+            </form>
             <span id="searchSpinner" class="hidden text-xs text-gray-400 animate-pulse">Searching...</span>
         </div>
 
@@ -41,6 +56,9 @@
 
         <form method="POST" action="{{ route('admin.stripe.bulk-charge.confirm') }}" id="bulkChargeForm">
             @csrf
+            @if($selectedAccount instanceof \App\Models\StripeAccount)
+                <input type="hidden" name="stripe_account_id" value="{{ $selectedAccount->id }}">
+            @endif
 
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <div class="overflow-x-auto">
@@ -53,6 +71,7 @@
                             </th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Customer</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Account</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Payment Method</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Amount ($)</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Description / Reference</th>
@@ -105,6 +124,7 @@
                     <tr class="text-left text-xs font-semibold text-gray-500 uppercase border-b border-gray-200 dark:border-gray-700">
                         <th class="pb-2 pr-4">Customer</th>
                         <th class="pb-2 pr-4">Payment Method</th>
+                        <th class="pb-2 pr-4">Account</th>
                         <th class="pb-2 pr-4">Description / Reference</th>
                         <th class="pb-2 text-right">Amount</th>
                     </tr>
@@ -113,11 +133,12 @@
                     <tfoot>
                     <tr class="border-t-2 border-gray-300 dark:border-gray-600 font-semibold">
                         <td class="pt-3 pr-4" id="reviewFooterCount"></td>
-                        <td class="pt-3 pr-4" colspan="2"></td>
+                        <td class="pt-3 pr-4" colspan="3"></td>
                         <td class="pt-3 text-right" id="reviewFooterTotal"></td>
                     </tr>
                     </tfoot>
                 </table>
+                <p id="reviewBatchNote" class="hidden mt-3 text-xs text-amber-600 dark:text-amber-400"></p>
             </div>
             <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                 <button type="button" onclick="closeReviewModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Back</button>
@@ -219,6 +240,7 @@
                     pmId:        tr.dataset.pmId,
                     name:        tr.dataset.name,
                     pm:          tr.dataset.pm,
+                    account:     tr.dataset.account || 'Legacy pool',
                     amount:      amountInput.value,
                     description: descInput?.value.trim() ?? '',
                 });
@@ -263,9 +285,11 @@
         function openReviewModal() {
             let total = 0;
             const rows = [];
+            const accounts = new Set();
 
             selections.forEach((s, id) => {
                 total += parseFloat(s.amount) || 0;
+                accounts.add(s.account);
                 rows.push(s);
             });
 
@@ -273,6 +297,7 @@
                 <tr>
                     <td class="py-2 pr-4 font-medium">${escHtml(r.name)}</td>
                     <td class="py-2 pr-4 font-mono text-xs text-gray-500">${escHtml(r.pm)}</td>
+                    <td class="py-2 pr-4 text-xs text-gray-500">${escHtml(r.account)}</td>
                     <td class="py-2 pr-4 text-gray-500 text-xs">${r.description ? escHtml(r.description) : '<span class="italic text-gray-300">-</span>'}</td>
                     <td class="py-2 text-right">$${parseFloat(r.amount).toFixed(2)}</td>
                 </tr>
@@ -280,6 +305,14 @@
 
             document.getElementById('reviewFooterCount').textContent = rows.length + ' customer(s)';
             document.getElementById('reviewFooterTotal').textContent  = '$' + total.toFixed(2);
+
+            const note = document.getElementById('reviewBatchNote');
+            if (accounts.size > 1) {
+                note.textContent = `Selection spans ${accounts.size} Stripe accounts — ${accounts.size} separate batches will be created (one per account).`;
+                note.classList.remove('hidden');
+            } else {
+                note.classList.add('hidden');
+            }
 
             document.getElementById('reviewModal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';

@@ -72,6 +72,12 @@ class PermissionSeeder extends Seeder
                 'view-payment',
                 'refund-payment',
             ],
+            'Stripe Accounts' => [
+                'view-stripe-account',
+                'create-stripe-account',
+                'edit-stripe-account',
+                'delete-stripe-account',
+            ],
             'Reports' => [
                 'view-report',
                 'export-report',
@@ -113,11 +119,12 @@ class PermissionSeeder extends Seeder
 
             'view-payment', 'refund-payment',
 
+            'view-stripe-account',
+
             'view-report', 'export-report',
 
             'view-settings',
         ]);
-
 
         $accounts = Role::firstOrCreate(['name' => 'accounts']);
         $accounts->syncPermissions([
@@ -182,7 +189,6 @@ class PermissionSeeder extends Seeder
             'view-payment',
             'view-report',
         ]);
-
 
         $customer = Role::firstOrCreate(['name' => 'customer']);
         $customer->syncPermissions([

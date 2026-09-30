@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\StripeAccount;
+use App\Services\StripeAccountResolver;
 use App\Services\StripePayoutSyncService;
 use Illuminate\Console\Command;
 
@@ -13,18 +15,32 @@ use Illuminate\Console\Command;
  *  php artisan stripe:sync-payouts --payout=po_xxx   (re-sync one payout + its lines)
  *  php artisan stripe:sync-payouts --no-transactions (payouts only, faster)
  *  php artisan stripe:sync-payouts --days=30         (only payouts created in last 30d)
+ *  php artisan stripe:sync-payouts --account=3       (sync through + stamp one Stripe account)
  */
 class SyncStripePayouts extends Command
 {
     protected $signature = 'stripe:sync-payouts
         {--payout= : Re-sync a single payout by its Stripe id (po_xxx)}
         {--no-transactions : Skip balance-transaction backfill}
-        {--days= : Only sync payouts created in the last N days}';
+        {--days= : Only sync payouts created in the last N days}
+        {--account= : Stripe account id to sync through (stamps rows with it)}';
 
     protected $description = 'One-time backfill of Stripe payouts + balance transactions into local tables.';
 
-    public function handle(StripePayoutSyncService $sync): int
+    public function handle(StripePayoutSyncService $sync, StripeAccountResolver $accounts): int
     {
+        if ($accountId = $this->option('account')) {
+            $account = StripeAccount::find($accountId);
+
+            if (! $account) {
+                $this->error("Stripe account [{$accountId}] not found.");
+
+                return self::FAILURE;
+            }
+
+            $sync = new StripePayoutSyncService($accounts->clientFor($account), $account);
+            $this->info("Syncing through {$account->display_name}.");
+        }
         if ($payoutId = $this->option('payout')) {
             $this->info("Syncing payout {$payoutId}…");
 

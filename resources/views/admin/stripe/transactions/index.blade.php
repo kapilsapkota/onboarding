@@ -39,7 +39,7 @@
                 class="p-6"
             >
 
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
 
 
                     {{-- SEARCH --}}
@@ -155,6 +155,37 @@
                             value="{{ $createdTo }}"
                             class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-700"
                         >
+
+                    </div>
+
+
+                    {{-- STRIPE ACCOUNT --}}
+
+                    <div>
+
+                        <label class="text-sm text-gray-500">
+                            Stripe Account
+                        </label>
+
+                        <select
+                            name="stripe_account_id"
+                            class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-700"
+                        >
+
+                            <option value="">
+                                Global (legacy)
+                            </option>
+
+                            @foreach($stripeAccounts as $stripeAccount)
+                                <option
+                                    value="{{ $stripeAccount->id }}"
+                                    @selected($selectedAccount?->id === $stripeAccount->id)
+                                >
+                                    {{ $stripeAccount->display_name }}{{ $stripeAccount->company ? ' — '.$stripeAccount->company->name : '' }}
+                                </option>
+                            @endforeach
+
+                        </select>
 
                     </div>
 
@@ -282,11 +313,15 @@
 
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
 
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
 
                 <h3 class="font-semibold text-gray-900 dark:text-gray-100">
                     Transactions
                 </h3>
+
+                <span class="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                    {{ $selectedAccount?->display_name ?? 'Global (legacy)' }}{{ $selectedAccount?->company ? ' — '.$selectedAccount->company->name : '' }}
+                </span>
 
             </div>
 
@@ -391,7 +426,7 @@
                             <td class="px-6 py-5 whitespace-nowrap">
 
                                 <a
-                                    href="{{ route('admin.stripe.transactions.show', $transaction->id) }}"
+                                    href="{{ route('admin.stripe.transactions.show', ['transactionId' => $transaction->id, 'stripe_account_id' => $selectedAccount?->id]) }}"
                                     class="font-mono text-sm text-indigo-600 hover:text-indigo-800"
                                 >
                                     {{ $transaction->id }}

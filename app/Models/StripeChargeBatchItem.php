@@ -9,6 +9,7 @@ class StripeChargeBatchItem extends Model
 {
     protected $fillable = [
         'batch_id',
+        'stripe_account_id',
         'stripe_customer_id',
         'stripe_payment_method_id',
         'amount',
@@ -30,7 +31,7 @@ class StripeChargeBatchItem extends Model
         'charged_at',
         'reconciled_at',
 
-        'reconciliation_status'
+        'reconciliation_status',
     ];
 
     protected $casts = [
@@ -45,6 +46,11 @@ class StripeChargeBatchItem extends Model
         return $this->belongsTo(StripeChargeBatch::class, 'batch_id');
     }
 
+    public function stripeAccount(): BelongsTo
+    {
+        return $this->belongsTo(StripeAccount::class);
+    }
+
     public function stripeCustomer(): BelongsTo
     {
         return $this->belongsTo(StripeCustomer::class, 'stripe_customer_id');
@@ -55,7 +61,7 @@ class StripeChargeBatchItem extends Model
         return $this->belongsTo(StripePaymentMethod::class, 'stripe_payment_method_id');
     }
 
-    public function payout() : BelongsTo
+    public function payout(): BelongsTo
     {
         return $this->belongsTo(
             StripePayout::class,
@@ -63,7 +69,7 @@ class StripeChargeBatchItem extends Model
         );
     }
 
-    public function balanceTransaction() : BelongsTo
+    public function balanceTransaction(): BelongsTo
     {
         return $this->belongsTo(
             StripeBalanceTransaction::class,
@@ -72,17 +78,16 @@ class StripeChargeBatchItem extends Model
         );
     }
 
-
     /** Returns the Stripe idempotency key for this item's PaymentIntent. */
     public function idempotencyKey(): string
     {
-        return 'bulk-charge-item-' . $this->id;
+        return 'bulk-charge-item-'.$this->id;
     }
 
     /** Formats amount cents as a dollar string. */
     public function formattedAmount(): string
     {
-        return '$' . number_format($this->amount / 100, 2);
+        return '$'.number_format($this->amount / 100, 2);
     }
 
     /** Gross as settled by Stripe (null until reconciled). */
@@ -90,7 +95,7 @@ class StripeChargeBatchItem extends Model
     {
         return $this->gross_amount === null
             ? null
-            : '$' . number_format($this->gross_amount / 100, 2);
+            : '$'.number_format($this->gross_amount / 100, 2);
     }
 
     /** Stripe fee (null until reconciled). */
@@ -98,7 +103,7 @@ class StripeChargeBatchItem extends Model
     {
         return $this->fee_amount === null
             ? null
-            : '$' . number_format($this->fee_amount / 100, 2);
+            : '$'.number_format($this->fee_amount / 100, 2);
     }
 
     /** Net payout amount (null until reconciled). */
@@ -106,7 +111,7 @@ class StripeChargeBatchItem extends Model
     {
         return $this->net_amount === null
             ? null
-            : '$' . number_format($this->net_amount / 100, 2);
+            : '$'.number_format($this->net_amount / 100, 2);
     }
 
     public function isReconciled(): bool
