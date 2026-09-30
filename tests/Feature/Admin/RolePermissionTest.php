@@ -114,7 +114,10 @@ test('permissions index renders groups and permission crud works', function () {
     $this->actingAs($admin)->get('/admin/permissions')
         ->assertOk()
         ->assertSee('Clients', false)
-        ->assertSee('Module group', false);
+        ->assertSee('Module group', false)
+        ->assertSee('Quick search permissions', false)
+        ->assertSee('bulk-bar', false)
+        ->assertSee('bulk-group-form', false);
 
     $this->actingAs($admin)->post('/admin/permissions', [
         'name' => 'archive-client',
@@ -152,4 +155,74 @@ test('guests and unauthorized users are blocked from role and permission routes'
     $this->actingAs($plain)->post('/admin/permissions', ['name' => 'x', 'group' => 'Y'])->assertForbidden();
     $this->actingAs($plain)->put("/admin/permissions/{$permission->id}", ['name' => 'x', 'group' => 'Y'])->assertForbidden();
     $this->actingAs($plain)->delete("/admin/permissions/{$permission->id}")->assertForbidden();
+});
+
+test('bulk group move reassigns selected permissions', function () {
+    $admin = makeRoleAdmin();
+    $p1 = Permission::firstOrCreate(['name' => 'bulk-one', 'guard_name' => 'web', 'group' => 'Clients']);
+    $p2 = Permission::firstOrCreate(['name' => 'bulk-two', 'guard_name' => 'web', 'group' => 'Clients']);
+    $untouched = Permission::firstOrCreate(['name' => 'bulk-three', 'guard_name' => 'web', 'group' => 'Clients']);
+
+    $this->actingAs($admin)->post('/admin/permissions/bulk-group', [
+        'ids' => [$p1->id, $p2->id],
+        'group' => 'Reports',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect($p1->refresh()->group)->toBe('Reports')
+        ->and($p2->refresh()->group)->toBe('Reports')
+        ->and($untouched->refresh()->group)->toBe('Clients');
+});
+
+test('bulk delete removes selected permissions only', function () {
+    $admin = makeRoleAdmin();
+    $p1 = Permission::firstOrCreate(['name' => 'gone-one', 'guard_name' => 'web', 'group' => 'Clients']);
+    $p2 = Permission::firstOrCreate(['name' => 'gone-two', 'guard_name' => 'web', 'group' => 'Clients']);
+    $kept = Permission::firstOrCreate(['name' => 'kept-one', 'guard_name' => 'web', 'group' => 'Clients']);
+
+    $this->actingAs($admin)->delete('/admin/permissions/bulk', [
+        'ids' => [$p1->id, $p2->id],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect(Permission::whereIn('name', ['gone-one', 'gone-two'])->exists())->toBeFalse()
+        ->and(Permission::where('name', 'kept-one')->exists())->toBeTrue();
+});
+
+test('bulk actions validate input and block unauthorized users', function () {
+    $this->post('/admin/permissions/bulk-group', ['ids' => [1], 'group' => 'X'])->assertRedirect('/login');
+    $this->delete('/admin/permissions/bulk', ['ids' => [1]])->assertRedirect('/login');
+
+    $admin = makeRoleAdmin();
+
+    $this->actingAs($admin)->post('/admin/permissions/bulk-group', [
+        'ids' => [999999],
+        'group' => 'Reports',
+    ])->assertSessionHasErrors('ids.0');
+
+    $this->actingAs($admin)->post('/admin/permissions/bulk-group', [
+        'ids' => [],
+    ])->assertSessionHasErrors(['ids', 'group']);
+
+    $this->actingAs($admin)->delete('/admin/permissions/bulk', [
+        'ids' => [],
+    ])->assertSessionHasErrors('ids');
+
+    $viewer = User::factory()->create();
+    $viewerRole = Role::firstOrCreate(['name' => 'perm-viewer', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'view-permission', 'guard_name' => 'web']);
+    $viewerRole->syncPermissions(['view-permission']);
+    $viewer->assignRole($viewerRole);
+
+    $target = Permission::firstOrCreate(['name' => 'bulk-target', 'guard_name' => 'web', 'group' => 'Clients']);
+
+    $this->actingAs($viewer)->post('/admin/permissions/bulk-group', [
+        'ids' => [$target->id],
+        'group' => 'Reports',
+    ])->assertForbidden();
+
+    $this->actingAs($viewer)->delete('/admin/permissions/bulk', [
+        'ids' => [$target->id],
+    ])->assertForbidden();
+
+    expect($target->refresh()->group)->toBe('Clients')
+        ->and(Permission::where('name', 'bulk-target')->exists())->toBeTrue();
 });

@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StorePermissionRequest;
 use App\Http\Requests\Admin\UpdatePermissionRequest;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionController extends Controller
 {
@@ -53,6 +54,42 @@ class PermissionController extends Controller
         $permission->delete();
 
         return back()->with('success', 'Permission deleted');
+    }
+
+    public function bulkUpdateGroup(Request $request)
+    {
+        $this->authorizeAction('edit-permission');
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:permissions,id'],
+            'group' => ['required', 'string', 'max:50'],
+        ]);
+
+        Permission::whereIn('id', $validated['ids'])->update(['group' => $validated['group']]);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $count = count($validated['ids']);
+
+        return back()->with('success', "{$count} ".str('permission')->plural($count)." moved to {$validated['group']}");
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $this->authorizeAction('delete-permission');
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:permissions,id'],
+        ]);
+
+        $count = Permission::whereIn('id', $validated['ids'])->count();
+        Permission::whereIn('id', $validated['ids'])->delete();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return back()->with('success', "{$count} ".str('permission')->plural($count).' deleted');
     }
 
     private function authorizeAction(string $permission): void

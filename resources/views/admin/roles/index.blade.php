@@ -201,8 +201,8 @@
     <div x-data="roleModal()" x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-[2px]" @click="open = false"></div>
 
-        <div class="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
-            <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5 dark:border-gray-700">
+        <div class="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
+            <div class="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-6 py-5 dark:border-gray-700">
                 <div>
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white"
                         x-text="edit ? 'Edit role' : 'Add role'"></h2>
@@ -216,7 +216,7 @@
                 </button>
             </div>
 
-            <form :action="edit ? '/admin/roles/' + role.id : '/admin/roles'" method="POST" class="flex min-h-0 flex-col">
+            <form :action="edit ? '/admin/roles/' + role.id : '/admin/roles'" method="POST" class="flex min-h-0 flex-1 flex-col">
                 @csrf
                 <template x-if="edit">
                     <input type="hidden" name="_method" value="PUT">
@@ -260,7 +260,7 @@
                                     <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">{{ $group ?: 'Other' }}</span>
                                     <span class="ml-auto text-xs text-gray-400" data-module-count="{{ $gid }}"></span>
                                 </label>
-                                <div class="grid grid-cols-1 gap-0.5 p-2 sm:grid-cols-2">
+                                <div class="grid grid-cols-1 gap-0.5 p-2 sm:grid-cols-2 xl:grid-cols-3">
                                     @foreach($permissions as $permission)
                                         <label class="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">
                                             <input type="checkbox" name="permissions[]" value="{{ $permission->id }}"
@@ -277,7 +277,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-700/30">
+                <div class="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-700/30">
                     <button type="button" @click="open = false"
                             class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                         Cancel

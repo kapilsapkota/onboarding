@@ -165,10 +165,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::patch('quotes/{quote}/status', [QuoteController::class, 'updateStatus'])->name('quotes.status');
     Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])->name('quotes.duplicate');
 
-    // ── Quote delivery retry + status polling ─────────────────────────────────
-    //
-    // POST   /admin/quotes/{quote}/deliveries/{delivery}/attempts/{attempt}/retry
-    // GET    /admin/quotes/{quote}/deliveries/{delivery}/status
     Route::prefix('quotes/{quote}/deliveries')->name('quotes.deliveries.')->group(function () {
         Route::get('{delivery}/status', [QuoteDeliveryController::class, 'status'])
             ->name('status');
@@ -177,7 +173,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
             ->name('attempts.retry');
     });
 
-    // ── Categories / Products / Companies ─────────────────────────────────────
     Route::resource('categories', CategoryController::class);
     Route::post('/categories/{category}/duplicate', [CategoryController::class, 'duplicate'])->name('categories.duplicate');
     Route::resource('products', ProductController::class);
@@ -195,11 +190,9 @@ Route::prefix('settings/xero/tenants/{tenant}')
 Route::get('/xero/auth/callback', [XeroConnectionController::class, 'callback'])
     ->name('xero.auth.callback');
 
-// ── Quote signing (authenticated customer link, signed URL) ───────────────────
 Route::get('quotes/{quote}/sign', [PublicQuoteController::class, 'showSignForm'])->name('quotes.sign');
 Route::post('quotes/{quote}/save-signature', [PublicQuoteController::class, 'saveSignature'])->name('quotes.save-signature');
 
-// ── Public customer quote view (no auth, opaque token) ────────────────────────
 Route::get('/q/{token}', [PublicQuoteController::class, 'show'])
     ->name('quotes.public.view')
     ->where('token', '[A-Za-z0-9]{12}');
@@ -208,7 +201,6 @@ Route::get('/q/{token}', [PublicQuoteController::class, 'show'])
     ->name('quotes.public.view')
     ->where('token', '[A-Za-z0-9]{12}');
 
-// ── Public PDF stream (served from stored delivery file) ──────────────────────
 Route::get('/q/{token}/pdf', [PublicQuoteController::class, 'pdf'])
     ->name('quotes.public.pdf')
     ->where('token', '[A-Za-z0-9]{12}');
@@ -224,5 +216,7 @@ Route::post('api/internal/migration/clients', [ClientMigrationController::class,
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class)->except(['show', 'create', 'edit']);
+    Route::post('permissions/bulk-group', [PermissionController::class, 'bulkUpdateGroup'])->name('permissions.bulk-group');
+    Route::delete('permissions/bulk', [PermissionController::class, 'bulkDestroy'])->name('permissions.bulk-destroy');
     Route::resource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
 });

@@ -108,11 +108,72 @@
             </div>
         @endif
 
+        <div class="mx-auto max-w-full px-4 sm:px-6 lg:px-10">
+            <div class="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm
+             dark:border-gray-700 dark:bg-gray-800">
+                <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input id="perm-search" type="text" placeholder="Quick search permissions..."
+                       oninput="filterPermissions(this.value)"
+                       class="block w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm
+                                    shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1
+                                    focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                <span id="perm-search-count" class="shrink-0 text-xs text-gray-400"></span>
+            </div>
+        </div>
+
+        {{-- Bulk action bar --}}
+        <div id="bulk-bar" class="sticky top-20 z-20 mx-auto hidden max-w-full px-4 sm:px-6 lg:px-10">
+            <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur dark:border-gray-600 dark:bg-gray-800/95">
+                <span id="bulk-count" class="text-sm font-semibold text-gray-800 dark:text-gray-100">0 selected</span>
+
+                @can('edit-permission')
+                <form id="bulk-group-form" action="{{ route('admin.permissions.bulk-group') }}" method="POST"
+                      onsubmit="return attachBulkIds(this)"
+                      class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    @csrf
+                    <input type="text" name="group" list="bulk-group-list" placeholder="Move to module..." required
+                           class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <datalist id="bulk-group-list">
+                        @foreach($groups as $existingGroup)
+                            <option value="{{ $existingGroup }}"></option>
+                        @endforeach
+                    </datalist>
+                    <button class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+                        Move
+                    </button>
+                </form>
+                @endcan
+
+                @can('delete-permission')
+                <form id="bulk-delete-form" action="{{ route('admin.permissions.bulk-destroy') }}" method="POST"
+                      onsubmit="return confirmBulkDelete(this)">
+                    @csrf
+                    @method('DELETE')
+                    <button class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500">
+                        Delete
+                    </button>
+                </form>
+                @endcan
+
+                <button type="button" onclick="clearBulkSelection()"
+                        class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                    Clear
+                </button>
+            </div>
+        </div>
+
         <section>
             <div class="mx-auto max-w-full space-y-4 px-4 sm:px-6 lg:px-10">
                 @forelse($groupedPermissions as $group => $permissions)
-                    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    @php $gid = \Illuminate\Support\Str::slug($group ?: 'other', '_'); @endphp
+                    <div data-module-card="{{ $gid }}" class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div class="flex items-center gap-3 border-b border-gray-100 bg-gray-50 px-5 py-3 dark:border-gray-700 dark:bg-gray-700/40">
+                            <input type="checkbox" data-bulk-module="{{ $gid }}"
+                                   onchange="toggleBulkModule('{{ $gid }}', this.checked)"
+                                   title="Select all in {{ $group ?: 'Other' }}"
+                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900">
                             <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">{{ $group ?: 'Other' }}</h3>
                             <span class="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-600 dark:text-gray-200">
                                 {{ $permissions->count() }}
@@ -120,7 +181,11 @@
                         </div>
                         <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                             @foreach($permissions as $permission)
-                                <li class="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <li data-perm-name="{{ strtolower($permission->name) }}" class="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <input type="checkbox" value="{{ $permission->id }}"
+                                           data-bulk-item="{{ $gid }}" onchange="refreshBulkBar()"
+                                           title="Select {{ $permission->name }}"
+                                           class="h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-900">
                                     <div class="min-w-0 flex-1">
                                         <span class="font-mono text-sm text-gray-900 dark:text-gray-100">{{ $permission->name }}</span>
                                         @if($permission->roles->isNotEmpty())
@@ -175,6 +240,10 @@
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Create your first permission to get started.</p>
                     </div>
                 @endforelse
+                <div id="perm-no-results" class="hidden rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center dark:border-gray-600 dark:bg-gray-800">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No permissions match your search</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Try a different keyword.</p>
+                </div>
             </div>
         </section>
     </div>
@@ -257,6 +326,76 @@
                     };
                 }
             }
+        }
+
+        function selectedBulkIds() {
+            return Array.from(document.querySelectorAll('input[data-bulk-item]:checked')).map((box) => box.value);
+        }
+
+        function refreshBulkBar() {
+            const ids = selectedBulkIds();
+            document.getElementById('bulk-bar').classList.toggle('hidden', ids.length === 0);
+            document.getElementById('bulk-count').textContent = ids.length + ' selected';
+
+            document.querySelectorAll('input[data-bulk-module]').forEach((toggle) => {
+                const gid = toggle.getAttribute('data-bulk-module');
+                const boxes = Array.from(document.querySelectorAll('input[data-bulk-item="' + gid + '"]'));
+                const checked = boxes.filter((box) => box.checked).length;
+                toggle.checked = boxes.length > 0 && checked === boxes.length;
+                toggle.indeterminate = checked > 0 && checked < boxes.length;
+            });
+        }
+
+        function toggleBulkModule(gid, checked) {
+            document.querySelectorAll('input[data-bulk-item="' + gid + '"]').forEach((box) => {
+                box.checked = checked;
+            });
+            refreshBulkBar();
+        }
+
+        function clearBulkSelection() {
+            document.querySelectorAll('input[data-bulk-item]:checked').forEach((box) => {
+                box.checked = false;
+            });
+            refreshBulkBar();
+        }
+
+        function attachBulkIds(form) {
+            form.querySelectorAll('input[name="ids[]"]').forEach((node) => node.remove());
+            selectedBulkIds().forEach((id) => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'ids[]';
+                hidden.value = id;
+                form.appendChild(hidden);
+            });
+            return true;
+        }
+
+        function confirmBulkDelete(form) {
+            const count = selectedBulkIds().length;
+            if (count === 0) return false;
+            if (!confirm('Delete ' + count + ' selected permission(s)? They will be removed from all roles.')) return false;
+            return attachBulkIds(form);
+        }
+
+        function filterPermissions(query) {
+            query = query.trim().toLowerCase();
+            let totalVisible = 0;
+            let total = 0;
+            document.querySelectorAll('[data-module-card]').forEach((card) => {
+                let visible = 0;
+                card.querySelectorAll('[data-perm-name]').forEach((row) => {
+                    total++;
+                    const match = row.getAttribute('data-perm-name').includes(query);
+                    row.classList.toggle('hidden', !match);
+                    if (match) visible++;
+                });
+                card.classList.toggle('hidden', visible === 0);
+                totalVisible += visible;
+            });
+            document.getElementById('perm-no-results').classList.toggle('hidden', totalVisible > 0);
+            document.getElementById('perm-search-count').textContent = query === '' ? '' : totalVisible + ' of ' + total;
         }
     </script>
 

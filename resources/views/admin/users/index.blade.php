@@ -230,7 +230,7 @@
     <div x-data="userModal()" x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-[2px]" @click="open = false"></div>
 
-        <div class="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
+        <div class="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
             <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5 dark:border-gray-700">
                 <div>
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white"
@@ -303,7 +303,9 @@
                         </div>
                         <div class="relative">
                             <input type="text" placeholder="Search companies..." x-model="companySearch"
-                                   class="block w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                                   class="block w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm
+                                    shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1
+                                    focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
                             <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
