@@ -129,7 +129,7 @@
                                     Stripe Account
                                 </td>
                                 <td style="padding: 7px 0; font-weight: 600;">
-                                    {{ $accountLabel }}
+                                    {{ $accountLabel ?? 'Legacy pool' }}
                                 </td>
                             </tr>
 

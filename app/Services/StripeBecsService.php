@@ -45,7 +45,7 @@ class StripeBecsService
         $client = Client::with('xeroContacts.tenant')->find($ddPayment->client_id);
         if (! $client) {
             throw new \RuntimeException(
-                "Client [{$client->id}] not found."
+                "Client [{$ddPayment->client_id}] not found."
             );
         }
 
@@ -89,6 +89,9 @@ class StripeBecsService
         return $intent->id;
     }
 
+    /**
+     * @return array{gross: float, fee: float, net: float, currency: string, stripe_bt_id: string}|array{}
+     */
     public function getBalanceTransaction(string $paymentIntentId): array
     {
         $intent = $this->stripe->paymentIntents->retrieve($paymentIntentId, [

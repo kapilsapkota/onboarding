@@ -9,6 +9,7 @@ use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class StripeBulkChargeService
 {
@@ -62,16 +63,10 @@ class StripeBulkChargeService
             $customer = StripeCustomer::find($item['stripe_customer_id']);
 
             if (! $customer) {
-                throw new \InvalidArgumentException(
-                    "Customer ID {$item['stripe_customer_id']} not found."
-                );
+                $this->fail("Customer ID {$item['stripe_customer_id']} not found.");
             }
 
-            if ($stripeAccountId !== null && $customer->stripe_account_id !== $stripeAccountId) {
-                throw new \InvalidArgumentException(
-                    "Customer ID {$item['stripe_customer_id']} does not belong to this Stripe account."
-                );
-            }
+            $this->assertCustomerBelongs($customer, $item['stripe_customer_id'], $stripeAccountId);
 
             $pm = StripePaymentMethod::where('id', $item['stripe_payment_method_id'])
                 ->where('stripe_customer_id', $customer->id)
@@ -79,24 +74,35 @@ class StripeBulkChargeService
                 ->where('status', 'active')
                 ->first();
 
-            if (! $pm) {
-                throw new \InvalidArgumentException(
-                    "Payment method ID {$item['stripe_payment_method_id']} is not eligible."
-                );
-            }
-
-            if ($stripeAccountId !== null && $pm->stripe_account_id !== null && $pm->stripe_account_id !== $stripeAccountId) {
-                throw new \InvalidArgumentException(
-                    "Payment method ID {$item['stripe_payment_method_id']} does not belong to this Stripe account."
-                );
-            }
+            $this->assertPaymentMethodEligible($pm, $item['stripe_payment_method_id'], $stripeAccountId);
 
             if (! isset($item['amount']) || $item['amount'] < 1) {
-                throw new \InvalidArgumentException(
-                    "Amount must be at least 1 cent for customer {$customer->stripe_customer_id}."
-                );
+                $this->fail("Amount must be at least 1 cent for customer {$customer->stripe_customer_id}.");
             }
         }
+    }
+
+    private function assertCustomerBelongs(StripeCustomer $customer, int|string $customerInputId, ?int $stripeAccountId): void
+    {
+        if ($stripeAccountId !== null && $customer->stripe_account_id !== $stripeAccountId) {
+            $this->fail("Customer ID {$customerInputId} does not belong to this Stripe account.");
+        }
+    }
+
+    private function assertPaymentMethodEligible(?StripePaymentMethod $pm, int|string $paymentMethodId, ?int $stripeAccountId): void
+    {
+        if (! $pm) {
+            $this->fail("Payment method ID {$paymentMethodId} is not eligible.");
+        }
+
+        if ($stripeAccountId !== null && $pm->stripe_account_id !== null && $pm->stripe_account_id !== $stripeAccountId) {
+            $this->fail("Payment method ID {$paymentMethodId} does not belong to this Stripe account.");
+        }
+    }
+
+    private function fail(string $message): never
+    {
+        throw new InvalidArgumentException($message);
     }
 
     /** Generates a unique batch reference. */

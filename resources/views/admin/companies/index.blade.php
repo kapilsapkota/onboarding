@@ -20,20 +20,6 @@
 
     <x-message></x-message>
 
-    {{-- Stats row --}}
-    <div class="py-6">
-        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-10">
-            <div class="grid grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4 mb-6 max-w-sm">
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5 border-l-4 border-yellow-400 flex items-center gap-4">
-                    <div>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 leading-tight">Total Companies</p>
-                        <h3 class="text-2xl sm:text-3xl font-bold mt-0.5 text-gray-800 dark:text-gray-100">{{ number_format($total) }}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Filters --}}
     <div class="pb-4">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-10">

@@ -73,9 +73,7 @@ class StripePayoutSyncService
                 }
             }
 
-            $params['starting_after'] = $page->has_more
-                ? $page->data[count($page->data) - 1]->id
-                : null;
+            $params['starting_after'] = $this->nextCursor($page);
         } while (! empty($params['starting_after']));
 
         return [$payouts, $transactions];
@@ -93,9 +91,7 @@ class StripePayoutSyncService
         // Fast path: we already know this is a manual payout — don't even
         // hit the balance-transactions endpoint (Stripe would reject it).
         if ($localPayout && $localPayout->automatic === false) {
-            Log::info('StripePayoutSync: skipping transaction sync for manual payout', [
-                'payout' => $payoutStripeId,
-            ]);
+            $this->logManualSkip($payoutStripeId);
 
             return 0;
         }
@@ -108,9 +104,7 @@ class StripePayoutSyncService
                 $localPayout = $this->upsertPayout($stripePayout);
 
                 if ($localPayout->automatic === false) {
-                    Log::info('StripePayoutSync: skipping transaction sync for manual payout', [
-                        'payout' => $payoutStripeId,
-                    ]);
+                    $this->logManualSkip($payoutStripeId);
 
                     return 0;
                 }
@@ -138,15 +132,11 @@ class StripePayoutSyncService
                     $count++;
                 }
 
-                $params['starting_after'] = $page->has_more
-                    ? $page->data[count($page->data) - 1]->id
-                    : null;
+                $params['starting_after'] = $this->nextCursor($page);
             } while (! empty($params['starting_after']));
         } catch (\Throwable $e) {
             if ($this->isManualPayoutError($e)) {
-                Log::info('StripePayoutSync: payout is manual, no filterable transactions', [
-                    'payout' => $payoutStripeId, 'error' => $e->getMessage(),
-                ]);
+                $this->logManualSkip($payoutStripeId, $e->getMessage());
 
                 // Remember it's manual so future syncs/webhooks take the fast path.
                 if ($localPayout && $localPayout->automatic !== false) {
@@ -212,9 +202,7 @@ class StripePayoutSyncService
             'last_synced_at' => now(),
         ];
 
-        if ($this->account) {
-            $values['stripe_account_id'] = $this->account->id;
-        }
+        $values = $this->withAccountContext($values);
 
         return StripePayout::updateOrCreate(
             ['stripe_payout_id' => $arr['id']],
@@ -328,11 +316,7 @@ class StripePayoutSyncService
             'last_synced_at' => now(),
         ];
 
-        if ($this->account) {
-            $values['stripe_account_id'] = $this->account->id;
-        }
-
-        return $values;
+        return $this->withAccountContext($values);
     }
 
     // -----------------------------------------------------------------
@@ -346,27 +330,11 @@ class StripePayoutSyncService
      */
     public function isAppTransaction(?string $chargeId, ?string $paymentIntentId, ?string $customerId, ?string $sourceId): bool
     {
-        if ($chargeId && StripeChargeBatchItem::where('stripe_charge_id', $chargeId)->exists()) {
-            return true;
-        }
-
-        if ($paymentIntentId && StripeChargeBatchItem::where('stripe_payment_intent_id', $paymentIntentId)->exists()) {
-            return true;
-        }
-
-        if ($sourceId && StripeChargeBatchItem::where('stripe_balance_transaction_id', $sourceId)->exists()) {
-            return true;
-        }
-
-        if ($customerId && StripeCustomer::where('stripe_customer_id', $customerId)->exists()) {
-            return true;
-        }
-
-        if ($paymentIntentId && DirectDebitPayment::where('gateway_payment_id', $paymentIntentId)->exists()) {
-            return true;
-        }
-
-        return false;
+        return ($chargeId && StripeChargeBatchItem::where('stripe_charge_id', $chargeId)->exists())
+            || ($paymentIntentId && StripeChargeBatchItem::where('stripe_payment_intent_id', $paymentIntentId)->exists())
+            || ($sourceId && StripeChargeBatchItem::where('stripe_balance_transaction_id', $sourceId)->exists())
+            || ($customerId && StripeCustomer::where('stripe_customer_id', $customerId)->exists())
+            || ($paymentIntentId && DirectDebitPayment::where('gateway_payment_id', $paymentIntentId)->exists());
     }
 
     /**
@@ -507,5 +475,46 @@ class StripePayoutSyncService
 
         return str_contains($message, 'automatic')
             && str_contains($message, 'manual');
+    }
+
+    private function logManualSkip(string $payoutStripeId, ?string $error = null): void
+    {
+        if ($error !== null) {
+            Log::info('StripePayoutSync: payout is manual, no filterable transactions', [
+                'payout' => $payoutStripeId, 'error' => $error,
+            ]);
+
+            return;
+        }
+
+        Log::info('StripePayoutSync: skipping transaction sync for manual payout', [
+            'payout' => $payoutStripeId,
+        ]);
+    }
+
+    private function nextCursor(object $page): ?string
+    {
+        $data = $page->data ?? [];
+
+        if (empty($page->has_more) || empty($data)) {
+            return null;
+        }
+
+        $last = end($data);
+
+        return $last->id ?? null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function withAccountContext(array $values): array
+    {
+        if ($this->account) {
+            $values['stripe_account_id'] = $this->account->id;
+        }
+
+        return $values;
     }
 }

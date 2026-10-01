@@ -7,11 +7,13 @@ use App\Http\Requests\Admin\StoreStripeAccountRequest;
 use App\Http\Requests\Admin\UpdateStripeAccountRequest;
 use App\Models\Company;
 use App\Models\StripeAccount;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class StripeAccountController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $this->authorizeAction('view-stripe-account');
 
@@ -21,7 +23,7 @@ class StripeAccountController extends Controller
         return view('admin.stripe-accounts.index', compact('accounts', 'companies'));
     }
 
-    public function store(StoreStripeAccountRequest $request)
+    public function store(StoreStripeAccountRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -41,7 +43,7 @@ class StripeAccountController extends Controller
         return back()->with('success', 'Stripe account created');
     }
 
-    public function update(UpdateStripeAccountRequest $request, StripeAccount $stripeAccount)
+    public function update(UpdateStripeAccountRequest $request, StripeAccount $stripeAccount): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -52,9 +54,9 @@ class StripeAccountController extends Controller
             'status' => $validated['status'],
         ];
 
-        foreach (['publishable_key', 'secret_key', 'webhook_secret'] as $keyField) {
-            if ($request->filled($keyField)) {
-                $data[$keyField] = $validated[$keyField];
+        foreach (['publishable_key', 'secret_key', 'webhook_secret'] as $field) {
+            if ($request->filled($field)) {
+                $data[$field] = $validated[$field];
             }
         }
 
@@ -70,7 +72,7 @@ class StripeAccountController extends Controller
         return back()->with('success', 'Stripe account updated');
     }
 
-    public function destroy(Request $request, StripeAccount $stripeAccount)
+    public function destroy(Request $request, StripeAccount $stripeAccount): RedirectResponse
     {
         $this->authorizeAction('delete-stripe-account');
 

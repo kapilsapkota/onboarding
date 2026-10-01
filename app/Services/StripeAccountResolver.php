@@ -45,13 +45,7 @@ class StripeAccountResolver
      */
     public function forAccount(int $accountId): StripeAccount
     {
-        $account = StripeAccount::find($accountId);
-
-        if (! $account) {
-            throw new ModelNotFoundException("Stripe account [{$accountId}] not found.");
-        }
-
-        return $account;
+        return StripeAccount::find($accountId) ?? throw new ModelNotFoundException("Stripe account [{$accountId}] not found.");
     }
 
     /**
@@ -59,15 +53,9 @@ class StripeAccountResolver
      */
     public function forPublicId(string $publicId): StripeAccount
     {
-        $account = StripeAccount::where('public_id', $publicId)
+        return StripeAccount::where('public_id', $publicId)
             ->where('status', 'active')
-            ->first();
-
-        if (! $account) {
-            throw new ModelNotFoundException('Stripe account link is invalid or disabled.');
-        }
-
-        return $account;
+            ->first() ?? throw new ModelNotFoundException('Stripe account link is invalid or disabled.');
     }
 
     /**
@@ -129,11 +117,9 @@ class StripeAccountResolver
      */
     public function clientFor(?StripeAccount $account): StripeClient
     {
-        if ($account && $account->secret_key) {
-            return new StripeClient($account->secret_key);
-        }
+        $secret = $account?->secret_key ?: (string) config('services.stripe.secret');
 
-        return new StripeClient((string) config('services.stripe.secret'));
+        return new StripeClient($secret);
     }
 
     /**
@@ -141,10 +127,6 @@ class StripeAccountResolver
      */
     public function publishableKeyFor(?StripeAccount $account): string
     {
-        if ($account && $account->publishable_key) {
-            return $account->publishable_key;
-        }
-
-        return (string) config('services.stripe.key');
+        return $account?->publishable_key ?: (string) config('services.stripe.key');
     }
 }
