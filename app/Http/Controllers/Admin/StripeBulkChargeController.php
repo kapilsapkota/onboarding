@@ -10,6 +10,7 @@ use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
 use App\Services\StripeAccountResolver;
 use App\Services\StripeBulkChargeService;
+use App\Support\Activity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -212,6 +213,14 @@ class StripeBulkChargeController extends Controller
             return back()->withErrors(['items' => $e->getMessage()]);
         }
 
+        Activity::record(
+            description: "Created bulk charge batch {$batch->reference} on {$account->display_name} ({$batch->customer_count} customers, {$batch->total_amount}c)",
+            subject: $batch,
+            event: 'bulk-charge-confirm',
+            properties: ['reference' => $batch->reference, 'stripe_account_id' => $account->id],
+            logName: 'stripe',
+        );
+
         return redirect()
             ->route('admin.stripe.batches.show', $batch)
             ->with('success', "Batch {$batch->reference} created and queued on {$account->display_name}.");
@@ -243,6 +252,15 @@ class StripeBulkChargeController extends Controller
             return back()->withErrors(['items' => $e->getMessage()]);
         }
 
+        $refs = collect($batches)->map->reference->join(', ');
+
+        Activity::record(
+            description: 'Created '.count($batches)." bulk charge batches (one per Stripe account): {$refs}.",
+            event: 'bulk-charge-confirm',
+            properties: ['references' => collect($batches)->map->reference->all()],
+            logName: 'stripe',
+        );
+
         if (count($batches) === 1) {
             $batch = $batches[0];
 
@@ -250,8 +268,6 @@ class StripeBulkChargeController extends Controller
                 ->route('admin.stripe.batches.show', $batch)
                 ->with('success', "Batch {$batch->reference} created and queued.");
         }
-
-        $refs = collect($batches)->map->reference->join(', ');
 
         return redirect()
             ->route('admin.stripe.batches.index')
@@ -374,6 +390,13 @@ class StripeBulkChargeController extends Controller
             }
 
             $item->batch->recalculateStatus();
+
+            Activity::record(
+                description: "Cancelled bulk charge item #{$item->id} ({$item->amount}c)",
+                subject: $item,
+                event: 'cancel',
+                logName: 'stripe',
+            );
 
             return back()->with(
                 'success',

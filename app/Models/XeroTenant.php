@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class XeroTenant extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'xero_connection_id',
         'tenant_id',
@@ -17,7 +20,7 @@ class XeroTenant extends Model
         'last_contact_synced_at',
         'last_invoice_synced_at',
         'last_payment_synced_at',
-        'last_repeating_invoice_synced_at'
+        'last_repeating_invoice_synced_at',
     ];
 
     protected $casts = [
@@ -27,14 +30,17 @@ class XeroTenant extends Model
         'last_repeating_invoice_synced_at' => 'datetime',
         'last_payment_synced_at' => 'datetime',
     ];
+
     public function connection()
     {
         return $this->belongsTo(XeroConnection::class, 'xero_connection_id');
     }
+
     public function getRouteKeyName()
     {
         return 'id'; // or tenant_id if needed
     }
+
     public function hasDdBankAccount(): bool
     {
         return ! empty($this->dd_bank_account_id);

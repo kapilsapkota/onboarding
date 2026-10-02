@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Data\SmsResult;
+use App\Support\Activity;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Twilio\Exceptions\RestException;
@@ -11,16 +12,16 @@ use Twilio\Rest\Client as TwilioClient;
 
 /**
  * Generic SMS service backed by Twilio.
- *
  */
 class SmsService
 {
     private TwilioClient $client;
-    private string       $from;
 
-    public function __construct()
+    private string $from;
+
+    public function __construct(?TwilioClient $client = null)
     {
-        $this->client = new TwilioClient(
+        $this->client = $client ?? new TwilioClient(
             config('services.twilio.sid'),
             config('services.twilio.token'),
         );
@@ -47,52 +48,88 @@ class SmsService
             ]);
 
             Log::info('sms.sent', [
-                'to'     => $normalisedTo,
-                'sid'    => $response->sid,
+                'to' => $normalisedTo,
+                'sid' => $response->sid,
                 'status' => (string) $response->status,
             ]);
 
+            Activity::record(
+                description: 'SMS sent to '.$normalisedTo,
+                event: 'sent',
+                properties: [
+                    'to' => $normalisedTo,
+                    'provider_sid' => $response->sid,
+                    'provider_status' => (string) $response->status,
+                ],
+                logName: 'sms',
+            );
+
             return SmsResult::success(
-                providerSid:    $response->sid,
+                providerSid: $response->sid,
                 providerStatus: (string) $response->status,
             );
 
         } catch (RestException $e) {
             Log::error('sms.provider_failed', [
-                'to'          => $normalisedTo,
+                'to' => $normalisedTo,
                 'twilio_code' => $e->getCode(),
                 'http_status' => $e->getStatusCode(),
-                'error'       => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
+
+            Activity::record(
+                description: 'SMS to '.$normalisedTo.' failed',
+                event: 'failed',
+                properties: [
+                    'to' => $normalisedTo,
+                    'twilio_code' => $e->getCode(),
+                    'error' => $e->getMessage(),
+                ],
+                logName: 'sms',
+            );
 
             return SmsResult::failure(
                 errorMessage: $this->humaniseTwilioError($e),
-                errorCode:    'twilio_' . $e->getCode(),
-                exception:    $e,
+                errorCode: 'twilio_'.$e->getCode(),
+                exception: $e,
             );
 
         } catch (TwilioException $e) {
             Log::error('sms.twilio_exception', [
-                'to'    => $normalisedTo,
+                'to' => $normalisedTo,
                 'error' => $e->getMessage(),
             ]);
 
+            Activity::record(
+                description: 'SMS to '.$normalisedTo.' failed',
+                event: 'failed',
+                properties: ['to' => $normalisedTo, 'error' => $e->getMessage()],
+                logName: 'sms',
+            );
+
             return SmsResult::failure(
                 errorMessage: 'The SMS provider returned an unexpected error. Please try again.',
-                errorCode:    'twilio_exception',
-                exception:    $e,
+                errorCode: 'twilio_exception',
+                exception: $e,
             );
 
         } catch (Throwable $e) {
             Log::error('sms.failed', [
-                'to'    => $normalisedTo,
+                'to' => $normalisedTo,
                 'error' => $e->getMessage(),
                 'class' => $e::class,
             ]);
 
+            Activity::record(
+                description: 'SMS to '.$normalisedTo.' failed',
+                event: 'failed',
+                properties: ['to' => $normalisedTo, 'error' => $e->getMessage()],
+                logName: 'sms',
+            );
+
             return SmsResult::failure(
                 errorMessage: 'The SMS could not be sent. Please try again.',
-                exception:    $e,
+                exception: $e,
             );
         }
     }
@@ -117,17 +154,17 @@ class SmsService
 
         // Australian mobile: 04XXXXXXXX
         if (preg_match('/^04\d{8}$/', $cleaned)) {
-            return '+61' . substr($cleaned, 1);
+            return '+61'.substr($cleaned, 1);
         }
 
         // Australian mobile without leading zero: 4XXXXXXXX
         if (preg_match('/^4\d{8}$/', $cleaned)) {
-            return '+61' . $cleaned;
+            return '+61'.$cleaned;
         }
 
         // Australian with country code but no +: 614XXXXXXXX
         if (preg_match('/^614\d{8}$/', $cleaned)) {
-            return '+' . $cleaned;
+            return '+'.$cleaned;
         }
 
         // Already E.164.

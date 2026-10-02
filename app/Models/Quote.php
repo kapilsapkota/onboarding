@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use LogicException;
 
 class Quote extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'quote_number',
@@ -37,13 +38,13 @@ class Quote extends Model
     ];
 
     protected $casts = [
-        'subtotal'    => 'decimal:2',
-        'gst_amount'  => 'decimal:2',
-        'total'       => 'decimal:2',
-        'sent_at'     => 'datetime',
+        'subtotal' => 'decimal:2',
+        'gst_amount' => 'decimal:2',
+        'total' => 'decimal:2',
+        'sent_at' => 'datetime',
         'accepted_at' => 'datetime',
         'rejected_at' => 'datetime',
-        'expires_at'  => 'datetime',
+        'expires_at' => 'datetime',
     ];
 
     protected $appends = ['email_subject'];
@@ -87,6 +88,7 @@ class Quote extends Model
             ? $this->parentQuote->rootQuote()
             : $this;
     }
+
     /**
      * The most recent delivery — used by the show page to display
      * current delivery status without loading all history.
@@ -108,48 +110,46 @@ class Quote extends Model
             }
         });
 
-//        static::updating(function (Quote $quote) {
-//            /*
-//             * Once a quote has been sent or accepted, it becomes immutable.
-//             *
-//             * We still allow the system to transition:
-//             *
-//             * sent -> accepted
-//             *
-//             * and to update the relevant timestamp fields.
-//             */
-//            if ($quote->getOriginal('status') === 'sent') {
-//                $allowed = [
-//                    'status',
-//                    'accepted_at',
-//                ];
-//
-//                $changed = array_keys($quote->getDirty());
-//
-//                $unauthorisedChanges = array_diff($changed, $allowed);
-//
-//                if (! empty($unauthorisedChanges)) {
-//                    throw new LogicException(
-//                        'This quote has already been sent and can no longer be edited.'
-//                    );
-//                }
-//            }
-//
-//            /*
-//             * Accepted quotes are completely locked.
-//             */
-//            if ($quote->getOriginal('status') === 'accepted') {
-//                throw new LogicException(
-//                    'This quote has been accepted and can no longer be edited.'
-//                );
-//            }
-//        });
-
+        //        static::updating(function (Quote $quote) {
+        //            /*
+        //             * Once a quote has been sent or accepted, it becomes immutable.
+        //             *
+        //             * We still allow the system to transition:
+        //             *
+        //             * sent -> accepted
+        //             *
+        //             * and to update the relevant timestamp fields.
+        //             */
+        //            if ($quote->getOriginal('status') === 'sent') {
+        //                $allowed = [
+        //                    'status',
+        //                    'accepted_at',
+        //                ];
+        //
+        //                $changed = array_keys($quote->getDirty());
+        //
+        //                $unauthorisedChanges = array_diff($changed, $allowed);
+        //
+        //                if (! empty($unauthorisedChanges)) {
+        //                    throw new LogicException(
+        //                        'This quote has already been sent and can no longer be edited.'
+        //                    );
+        //                }
+        //            }
+        //
+        //            /*
+        //             * Accepted quotes are completely locked.
+        //             */
+        //            if ($quote->getOriginal('status') === 'accepted') {
+        //                throw new LogicException(
+        //                    'This quote has been accepted and can no longer be edited.'
+        //                );
+        //            }
+        //        });
 
         static::saved(function (Quote $quote) {
             $quote->recalculateTotals();
         });
-
 
     }
 
@@ -169,6 +169,7 @@ class Quote extends Model
     {
         return ! $this->isLocked();
     }
+
     public function canEdit(): bool
     {
         return $this->status === 'draft';
@@ -206,7 +207,7 @@ class Quote extends Model
 
         $next = $last ? (intval(substr($last, -4)) + 1) : 1;
 
-        return 'Q-' . $year . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+        return 'Q-'.$year.'-'.str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
     // -------------------------------------------------------------------------
@@ -228,9 +229,9 @@ class Quote extends Model
 
         $this->withoutEvents(function () use ($subtotal, $gst) {
             $this->update([
-                'subtotal'   => $subtotal,
+                'subtotal' => $subtotal,
                 'gst_amount' => $gst,
-                'total'      => $subtotal + $gst,
+                'total' => $subtotal + $gst,
             ]);
         });
     }
@@ -238,10 +239,10 @@ class Quote extends Model
     public function getStatusBadgeAttribute(): array
     {
         return match ($this->status) {
-            'sent'     => ['label' => 'Sent',     'class' => 'bg-blue-100 text-blue-800'],
+            'sent' => ['label' => 'Sent',     'class' => 'bg-blue-100 text-blue-800'],
             'accepted' => ['label' => 'Accepted', 'class' => 'bg-green-100 text-green-800'],
             'rejected' => ['label' => 'Rejected', 'class' => 'bg-red-100 text-red-800'],
-            default    => ['label' => 'Draft',    'class' => 'bg-gray-100 text-gray-600'],
+            default => ['label' => 'Draft',    'class' => 'bg-gray-100 text-gray-600'],
         };
     }
 
@@ -256,7 +257,7 @@ class Quote extends Model
     {
         if (is_null($this->sent_at)) {
             $this->update([
-                'status'  => 'sent',
+                'status' => 'sent',
                 'sent_at' => now(),
             ]);
         }
@@ -280,7 +281,7 @@ class Quote extends Model
             ->implode(' - ');
 
         $client = $this->sanitizeFilenamePart($this->client_name ?: '');
-        $date   = now()->format('d-m-y');
+        $date = now()->format('d-m-y');
 
         return "AIIT - Proposal To {$client} - {$categories} - By AT-{$date}.pdf";
     }
@@ -303,9 +304,10 @@ class Quote extends Model
             ? "{$client} - {$quote_number} - {$categories}"
             : $client;
     }
+
     private function sanitizeFilenamePart(?string $value): string
     {
-        if (!$value) {
+        if (! $value) {
             return '';
         }
 
@@ -315,28 +317,28 @@ class Quote extends Model
         // Replace multiple spaces with a single space.
         $value = preg_replace('/\s+/', ' ', $value);
 
-        return trim($value, " .-");
+        return trim($value, ' .-');
     }
 
     public function sendModalData(): array
     {
         return [
-            'id'           => $this->id,
+            'id' => $this->id,
             'quote_number' => $this->quote_number,
             'email_subject' => $this->email_subject,
-            'client_name'  => $this->client_name,
+            'client_name' => $this->client_name,
             'contact_name' => $this->contact_name,
-            'email'        => $this->email,
-            'mobile'       => $this->mobile,
-            'total'        => $this->total,
-            'created_at'   => $this->created_at?->toISOString(),
-            'expires_at'   => $this->expires_at?->toISOString(),
-            'items'        => $this->items->map(function ($item) {
+            'email' => $this->email,
+            'mobile' => $this->mobile,
+            'total' => $this->total,
+            'created_at' => $this->created_at?->toISOString(),
+            'expires_at' => $this->expires_at?->toISOString(),
+            'items' => $this->items->map(function ($item) {
                 return [
                     'product_name' => $item->product_name,
-                    'quantity'     => $item->quantity,
-                    'unit_price'   => $item->unit_price,
-                    'total_price'  => $item->total_price,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_price' => $item->total_price,
                 ];
             })->values()->all(),
         ];

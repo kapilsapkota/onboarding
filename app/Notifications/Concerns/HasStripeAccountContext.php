@@ -14,12 +14,12 @@ trait HasStripeAccountContext
     protected function stripeAccountLabel(?StripeAccount $account): string
     {
         if (! $account) {
-            return 'Legacy pool';
+            return 'Legacy';
         }
 
         $company = $account->company?->name;
 
-        return $company ? "{$account->display_name} — {$company}" : $account->display_name;
+        return $company ? "{$account->display_name} - {$company}" : $account->display_name;
     }
 
     protected function stripeAccountCompanyName(?StripeAccount $account): ?string

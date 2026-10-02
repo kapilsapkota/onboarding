@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class XeroInvoice extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'xero_tenant_id',
@@ -63,37 +64,37 @@ class XeroInvoice extends Model
         // Reconciliation
         'client_id',              // FK to local clients table (if matched)
         'is_reconciled',          // has this invoice been reconciled against a local record?
-        'xero_repeating_invoice_id'
+        'xero_repeating_invoice_id',
     ];
 
     protected $casts = [
         // Booleans
-        'sent_to_contact'  => 'boolean',
-        'has_attachments'  => 'boolean',
-        'is_reconciled'    => 'boolean',
+        'sent_to_contact' => 'boolean',
+        'has_attachments' => 'boolean',
+        'is_reconciled' => 'boolean',
 
         // Decimals
-        'currency_rate'    => 'decimal:6',
-        'sub_total'        => 'decimal:2',
-        'total_tax'        => 'decimal:2',
-        'total'            => 'decimal:2',
-        'total_discount'   => 'decimal:2',
-        'amount_due'       => 'decimal:2',
-        'amount_paid'      => 'decimal:2',
-        'amount_credited'  => 'decimal:2',
+        'currency_rate' => 'decimal:6',
+        'sub_total' => 'decimal:2',
+        'total_tax' => 'decimal:2',
+        'total' => 'decimal:2',
+        'total_discount' => 'decimal:2',
+        'amount_due' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'amount_credited' => 'decimal:2',
 
         // JSON
         'line_items' => 'array',
 
         // Dates
-        'invoice_date'          => 'date',
-        'due_date'              => 'date',
-        'fully_paid_on_date'    => 'date',
-        'xero_updated_at'       => 'datetime',
-        'last_synced_at'        => 'datetime',
-        'payment_initiated_at'  => 'datetime',
-        'payment_failed_at'     => 'datetime',
-        'payment_settled_at'    => 'datetime',
+        'invoice_date' => 'date',
+        'due_date' => 'date',
+        'fully_paid_on_date' => 'date',
+        'xero_updated_at' => 'datetime',
+        'last_synced_at' => 'datetime',
+        'payment_initiated_at' => 'datetime',
+        'payment_failed_at' => 'datetime',
+        'payment_settled_at' => 'datetime',
     ];
 
     /*
@@ -148,9 +149,9 @@ class XeroInvoice extends Model
     public function markPaymentInitiated(string $method, ?string $reference = null): void
     {
         $this->update([
-            'payment_method'       => $method,
-            'payment_reference'    => $reference,
-            'payment_status'       => 'pending',
+            'payment_method' => $method,
+            'payment_reference' => $reference,
+            'payment_status' => 'pending',
             'payment_initiated_at' => now(),
         ]);
     }
@@ -158,7 +159,7 @@ class XeroInvoice extends Model
     public function markPaymentSettled(): void
     {
         $this->update([
-            'payment_status'     => 'settled',
+            'payment_status' => 'settled',
             'payment_settled_at' => now(),
         ]);
     }
@@ -166,8 +167,8 @@ class XeroInvoice extends Model
     public function markPaymentFailed(string $reason): void
     {
         $this->update([
-            'payment_status'         => 'failed',
-            'payment_failed_at'      => now(),
+            'payment_status' => 'failed',
+            'payment_failed_at' => now(),
             'payment_failure_reason' => $reason,
         ]);
     }
@@ -259,12 +260,12 @@ class XeroInvoice extends Model
         return (int) now()->startOfDay()->diffInDays($this->due_date->startOfDay(), false) * -1;
     }
 
-    public function directDebitPayments() : HasMany
+    public function directDebitPayments(): HasMany
     {
         return $this->hasMany(DirectDebitPayment::class);
     }
 
-    public function repeatingInvoice() : BelongsTo
+    public function repeatingInvoice(): BelongsTo
     {
         return $this->belongsTo(XeroRepeatingInvoice::class, 'xero_repeating_invoice_id');
     }

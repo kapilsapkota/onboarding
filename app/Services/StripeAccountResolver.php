@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Client;
+use App\Models\DirectDebitPayment;
 use App\Models\StripeAccount;
 use App\Models\StripeCustomer;
 use App\Models\User;
@@ -69,6 +71,46 @@ class StripeAccountResolver
             ->first();
 
         return $customer?->stripeAccount;
+    }
+
+    /**
+     * Account for a client: its mirrored Stripe customer's account first,
+     * then its company's default account, then null (legacy global keys).
+     */
+    public function forClient(?Client $client): ?StripeAccount
+    {
+        if ($client?->stripe_customer_id) {
+            $account = $this->forStripeCustomer($client->stripe_customer_id);
+
+            if ($account?->status === 'active') {
+                return $account;
+            }
+        }
+
+        return $this->forCompany($client?->company_id);
+    }
+
+    /**
+     * Account for a direct-debit payment: its stamped account first, then
+     * its client's account, then its company's default, then null (legacy).
+     */
+    public function forDirectDebitPayment(?DirectDebitPayment $payment): ?StripeAccount
+    {
+        if ($payment?->stripe_account_id) {
+            $account = StripeAccount::find($payment->stripe_account_id);
+
+            if ($account?->status === 'active') {
+                return $account;
+            }
+        }
+
+        $viaClient = $this->forClient($payment?->client);
+
+        if ($viaClient) {
+            return $viaClient;
+        }
+
+        return $this->forCompany($payment?->company_id);
     }
 
     /**

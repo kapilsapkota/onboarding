@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClientContact extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'client_id',
         'full_name',
@@ -23,10 +26,10 @@ class ClientContact extends Model
     ];
 
     protected $casts = [
-        'is_primary'    => 'boolean',
-        'email_opt_in'  => 'boolean',
-        'sms_opt_in'    => 'boolean',
-        'birthday'      => 'date',
+        'is_primary' => 'boolean',
+        'email_opt_in' => 'boolean',
+        'sms_opt_in' => 'boolean',
+        'birthday' => 'date',
     ];
 
     public function client(): BelongsTo

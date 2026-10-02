@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 class XeroConnection extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'user_id',
         'tenant_type',
@@ -20,14 +23,14 @@ class XeroConnection extends Model
         'xero_user_name',
         'json',
         'needs_reauth',
-        'reauth_reason'
+        'reauth_reason',
     ];
 
     protected $hidden = ['access_token', 'refresh_token'];
 
     protected $casts = [
         'token_expires_at' => 'datetime',
-        'is_active'        => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function user(): BelongsTo
@@ -44,6 +47,7 @@ class XeroConnection extends Model
     {
         return $query->where('is_active', true);
     }
+
     public function tenants()
     {
         return $this->hasMany(XeroTenant::class);

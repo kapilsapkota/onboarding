@@ -994,7 +994,7 @@
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-    const stripe = Stripe('{{ config('services.stripe.key') }}');
+    const stripe = Stripe('{{ $stripePublishableKey ?? config('services.stripe.key') }}');
 
     let elements = null;
     let paymentElement = null;

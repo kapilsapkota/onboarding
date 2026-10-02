@@ -4,20 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewClientCreated;
 use App\Models\Client;
-use App\Models\User;
-use App\Services\StripeService;
+use App\Services\StripeAccountResolver;
+use App\Support\Activity;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
-use Stripe\Customer;
-use Stripe\SetupIntent;
-use Stripe\Stripe;
 
 class OnboardingController extends Controller
 {
-    public function __construct(protected StripeService $stripe) {}
+    public function __construct(private StripeAccountResolver $accounts) {}
+
     public function show()
     {
         return view('welcome');
@@ -39,119 +34,125 @@ class OnboardingController extends Controller
         $serviceProviders = collect($data['service_providers'] ?? [])->filter()->values()->toArray();
 
         $client = Client::create([
-            'company_name'   => $data['company_name']   ?? null,
-            'company_phone'   => $data['company_phone']   ?? null,
-            'industry'       => $data['industry']       ?? null,
-            'microsoft_tenant_url'       => $data['microsoft_tenant_url']       ?? null,
-            'website'        =>  !empty($websites) ? json_encode($websites) : null,
-            'address'        => $data['address']        ?? null,
-            'address_second'        => $data['address_second']        ?? null,
-            'city'           => $data['city']           ?? null,
-            'state'           => $data['state']           ?? null,
-            'post_code'           => $data['post_code']           ?? null,
-            'country'        => $data['country']        ?? null,
-            'abn'            => $data['abn']            ?? null,
-            'bank_name'            => $data['bank_name']            ?? null,
-            'bank_branch'            => $data['bank_branch']            ?? null,
-            'account_number'            => $data['account_number']            ?? null,
-            'account_name'            => $data['account_name']            ?? null,
-            'bsb'            => $data['bsb']            ?? null,
-            'instagram'      => $data['instagram']      ?? null,
-            'facebook'       => $data['facebook']       ?? null,
-            'tiktok'         => $data['tiktok']         ?? null,
-            'linkedin'       => $data['linkedin']       ?? null,
-            'twitter'        => $data['twitter']        ?? null,
+            'company_name' => $data['company_name'] ?? null,
+            'company_phone' => $data['company_phone'] ?? null,
+            'industry' => $data['industry'] ?? null,
+            'microsoft_tenant_url' => $data['microsoft_tenant_url'] ?? null,
+            'website' => ! empty($websites) ? json_encode($websites) : null,
+            'address' => $data['address'] ?? null,
+            'address_second' => $data['address_second'] ?? null,
+            'city' => $data['city'] ?? null,
+            'state' => $data['state'] ?? null,
+            'post_code' => $data['post_code'] ?? null,
+            'country' => $data['country'] ?? null,
+            'abn' => $data['abn'] ?? null,
+            'bank_name' => $data['bank_name'] ?? null,
+            'bank_branch' => $data['bank_branch'] ?? null,
+            'account_number' => $data['account_number'] ?? null,
+            'account_name' => $data['account_name'] ?? null,
+            'bsb' => $data['bsb'] ?? null,
+            'instagram' => $data['instagram'] ?? null,
+            'facebook' => $data['facebook'] ?? null,
+            'tiktok' => $data['tiktok'] ?? null,
+            'linkedin' => $data['linkedin'] ?? null,
+            'twitter' => $data['twitter'] ?? null,
             'whatsapp_group' => $data['whatsapp_group'] ?? null,
-            'logo_path'      => $data['logo_path']      ?? null,
+            'logo_path' => $data['logo_path'] ?? null,
             'contacts_file_path' => $staffFilePath,
-            'pasted_employees'   => $data['pasted_employees'] ?? null,
-            'notes'          => $data['notes']          ?? null,
-            'services'          => $data['services']          ?? null,
-            'service_providers'          => isset($serviceProviders) ? json_encode($serviceProviders)   : null,
-            'status'         => 'active',
-            'mandate_status'      => 'pending',
+            'pasted_employees' => $data['pasted_employees'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'services' => $data['services'] ?? null,
+            'service_providers' => isset($serviceProviders) ? json_encode($serviceProviders) : null,
+            'status' => 'active',
+            'mandate_status' => 'pending',
             'stripe_payment_method_id' => $data['stripe_payment_method_id'] ?? null,
         ]);
 
-        if (!empty($data['contacts'])) {
+        if (! empty($data['contacts'])) {
             foreach ($data['contacts'] as $index => $contact) {
                 $filled = array_filter(array_diff_key($contact, ['contact_type' => true, 'is_primary' => true]));
-                if (!empty($filled)) {
+                if (! empty($filled)) {
                     $client->contacts()->create([
-                        'full_name'    => $contact['full_name']    ?? null,
-                        'role'         => $contact['role']         ?? null,
+                        'full_name' => $contact['full_name'] ?? null,
+                        'role' => $contact['role'] ?? null,
                         'contact_type' => $contact['contact_type'] ?? null,
-                        'email'        => $contact['email']        ?? null,
-                        'phone'        => $contact['phone']        ?? null,
-                        'whatsapp'     => $contact['whatsapp']     ?? null,
+                        'email' => $contact['email'] ?? null,
+                        'phone' => $contact['phone'] ?? null,
+                        'whatsapp' => $contact['whatsapp'] ?? null,
                         'linkedin_url' => $contact['linkedin_url'] ?? null,
                         'email_opt_in' => $contact['email_opt_in'] ?? 0,
-                        'sms_opt_in'   => $contact['sms_opt_in']   ?? 0,
-                        'is_primary'   => $index === 0,
+                        'sms_opt_in' => $contact['sms_opt_in'] ?? 0,
+                        'is_primary' => $index === 0,
                     ]);
                 }
             }
         }
 
-        if (!empty($data['employees'])) {
+        if (! empty($data['employees'])) {
             foreach ($data['employees'] as $employee) {
                 if (array_filter($employee)) {
                     $client->contacts()->create([
-                        'full_name'    => $employee['name']  ?? null,
-                        'email'        => $employee['email'] ?? null,
-                        'phone'        => $employee['phone'] ?? null,
+                        'full_name' => $employee['name'] ?? null,
+                        'email' => $employee['email'] ?? null,
+                        'phone' => $employee['phone'] ?? null,
                         'contact_type' => 'Employee',
-                        'is_primary'   => false,
+                        'is_primary' => false,
                     ]);
                 }
             }
         }
 
-        if (!empty($data['pasted_employees'])) {
+        if (! empty($data['pasted_employees'])) {
 
             $lines = preg_split('/\r\n|\r|\n/', $data['pasted_employees']);
 
             foreach ($lines as $line) {
                 $line = trim($line);
-                if (empty($line)) continue;
+                if (empty($line)) {
+                    continue;
+                }
 
                 // Split by space or comma
                 $parts = preg_split('/[\s,|]+/', $line);
 
                 $firstName = $parts[0] ?? null;
-                $lastName  = $parts[1] ?? null;
-                $email     = filter_var($parts[2] ?? null, FILTER_VALIDATE_EMAIL) ? $parts[2] : null;
-                $phone     = $parts[3] ?? null;
+                $lastName = $parts[1] ?? null;
+                $email = filter_var($parts[2] ?? null, FILTER_VALIDATE_EMAIL) ? $parts[2] : null;
+                $phone = $parts[3] ?? null;
 
                 if ($email || $phone) {
                     $client->contacts()->create([
-                        'full_name'    => trim("$firstName $lastName"),
-                        'email'        => $email,
-                        'phone'        => $phone,
+                        'full_name' => trim("$firstName $lastName"),
+                        'email' => $email,
+                        'phone' => $phone,
                         'contact_type' => 'Employee',
-                        'is_primary'   => false,
+                        'is_primary' => false,
                     ]);
                 }
             }
         }
 
-
         if ($request->filled('stripe_payment_method_id')) {
             try {
-                $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
-
                 $paymentMethodId = $request->input('stripe_payment_method_id');
-                $customerId      = $request->input('stripe_customer_id');
+                $customerId = $request->input('stripe_customer_id');
 
-                if (!$customerId) {
+                if (! $customerId) {
                     throw new \Exception('Missing Stripe customer_id');
                 }
+
+                // Verify against the account that owns this customer id —
+                // never trust browser ids to pick credentials. Unknown ids
+                // fall back to the legacy keys (public onboarding form).
+                $stripe = $this->accounts->clientFor(
+                    $this->accounts->forStripeCustomer($customerId)
+                );
 
                 $customer = $stripe->customers->retrieve($customerId);
 
                 $paymentMethod = $stripe->paymentMethods->retrieve($paymentMethodId);
 
-                if (!$paymentMethod->customer) {
+                if (! $paymentMethod->customer) {
                     $stripe->paymentMethods->attach(
                         $paymentMethodId,
                         ['customer' => $customerId]
@@ -161,24 +162,31 @@ class OnboardingController extends Controller
                 }
 
                 $client->update([
-                    'stripe_customer_id'       => $customerId,
+                    'stripe_customer_id' => $customerId,
                     'stripe_payment_method_id' => $paymentMethodId,
-                    'mandate_status'           => 'active',
+                    'mandate_status' => 'active',
                 ]);
 
             } catch (\Exception $e) {
-                \Log::error('Stripe error: ' . $e->getMessage());
+                \Log::error('Stripe error: '.$e->getMessage());
 
                 $client->update([
-                    'mandate_status' => 'failed'
+                    'mandate_status' => 'failed',
                 ]);
             }
         }
 
+        Activity::record(
+            description: 'New onboarding submission for '.($client->company_name ?? 'unknown company'),
+            subject: $client,
+            event: 'submitted',
+            properties: ['company_name' => $client->company_name, 'billing_email' => $client->billing_email],
+            logName: 'onboarding',
+        );
+
         Mail::to('alit@allinit.com.au')
             ->cc('kapils@allinit.com.au')
             ->queue(new NewClientCreated($client));
-
 
         return redirect()->route('onboarding.thanks');
     }
@@ -187,32 +195,36 @@ class OnboardingController extends Controller
     {
         return view('clients.thanks');
     }
+
     public function createSetupIntent(Request $request)
     {
         try {
-            Stripe::setApiKey(config('services.stripe.secret'));
+            // Brand-new customer from the public form: no account context yet,
+            // so the legacy keys apply (per-account links use DdrController).
+            $stripe = $this->accounts->clientFor(null);
 
-            $customer = Customer::create([
-                'name'  => $request->company_name ?? 'Unknown',
+            $customer = $stripe->customers->create([
+                'name' => $request->company_name ?? 'Unknown',
                 'email' => $request->billing_email ?? null,
             ]);
 
-            $setupIntent = SetupIntent::create([
-                'customer'             => $customer->id,
+            $setupIntent = $stripe->setupIntents->create([
+                'customer' => $customer->id,
                 'payment_method_types' => ['au_becs_debit'],
             ]);
 
             return response()->json([
                 'client_secret' => $setupIntent->client_secret,
-                'customer_id'   => $customer->id,
+                'customer_id' => $customer->id,
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Stripe SetupIntent error: ' . $e->getMessage());
+            \Log::error('Stripe SetupIntent error: '.$e->getMessage());
 
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
     public function directDebitStore(Request $request)
     {
         $request->validate([
@@ -229,12 +241,12 @@ class OnboardingController extends Controller
 
         // Create client
         $client = Client::create([
-            'company_name'   => $data['company_name'] ?? null,
-            'billing_email'   => $data['email'] ?? null,
+            'company_name' => $data['company_name'] ?? null,
+            'billing_email' => $data['email'] ?? null,
             'account_number' => preg_replace('/\D/', '', $data['account_number']),
-            'account_name'   => $data['account_name'] ?? null,
-            'bsb'            => preg_replace('/\D/', '', $data['bsb']),
-            'status'         => 'active',
+            'account_name' => $data['account_name'] ?? null,
+            'bsb' => preg_replace('/\D/', '', $data['bsb']),
+            'status' => 'active',
             'mandate_status' => $request->stripe_payment_method_id ? 'active' : 'pending',
             'stripe_payment_method_id' => $data['stripe_payment_method_id'] ?? null,
             'stripe_customer_id' => $data['stripe_customer_id'] ?? null,
@@ -242,24 +254,28 @@ class OnboardingController extends Controller
 
         // Create contact (main contact from the form)
         $client->contacts()->create([
-            'full_name'    => $data['full_name'],
-            'email'        => $data['email'],
-            'phone'        => $data['mobile'],
+            'full_name' => $data['full_name'],
+            'email' => $data['email'],
+            'phone' => $data['mobile'],
             'contact_type' => 'Main Contact',
-            'is_primary'   => true,
+            'is_primary' => true,
         ]);
 
         if ($request->filled('stripe_payment_method_id')) {
             try {
-                $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
-
                 $paymentMethodId = $request->input('stripe_payment_method_id');
-                $customerId      = $request->input('stripe_customer_id');
+                $customerId = $request->input('stripe_customer_id');
 
                 if ($customerId) {
+                    // Same ownership check as store(): resolve credentials from
+                    // the customer id, falling back to the legacy keys.
+                    $stripe = $this->accounts->clientFor(
+                        $this->accounts->forStripeCustomer($customerId)
+                    );
+
                     $paymentMethod = $stripe->paymentMethods->retrieve($paymentMethodId);
 
-                    if (!$paymentMethod->customer) {
+                    if (! $paymentMethod->customer) {
                         $stripe->paymentMethods->attach(
                             $paymentMethodId,
                             ['customer' => $customerId]
@@ -267,16 +283,24 @@ class OnboardingController extends Controller
                     }
 
                     $client->update([
-                        'stripe_customer_id'       => $customerId,
+                        'stripe_customer_id' => $customerId,
                         'stripe_payment_method_id' => $paymentMethodId,
-                        'mandate_status'           => 'active',
+                        'mandate_status' => 'active',
                     ]);
                 }
             } catch (\Exception $e) {
-                \Log::error('Stripe error: ' . $e->getMessage());
+                \Log::error('Stripe error: '.$e->getMessage());
                 $client->update(['mandate_status' => 'failed']);
             }
         }
+
+        Activity::record(
+            description: 'New direct-debit onboarding submission for '.($client->company_name ?? 'unknown company'),
+            subject: $client,
+            event: 'submitted',
+            properties: ['company_name' => $client->company_name, 'billing_email' => $client->billing_email],
+            logName: 'onboarding',
+        );
 
         // Send email notification
         Mail::to('alit@allinit.com.au')
@@ -291,19 +315,20 @@ class OnboardingController extends Controller
         $request->validate([
             'company_name' => 'required|string',
             'email' => 'required|email',
-            'payment_method_id' => 'required|string'
+            'payment_method_id' => 'required|string',
         ]);
 
         try {
-            $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+            // Brand-new customer from the public form: legacy keys apply.
+            $stripe = $this->accounts->clientFor(null);
 
             $customer = $stripe->customers->create([
                 'name' => $request->company_name,
                 'email' => $request->email,
                 'payment_method' => $request->payment_method_id,
                 'invoice_settings' => [
-                    'default_payment_method' => $request->payment_method_id
-                ]
+                    'default_payment_method' => $request->payment_method_id,
+                ],
             ]);
 
             return response()->json(['customer_id' => $customer->id]);

@@ -20,6 +20,8 @@ use App\Services\StripeAccountResolver;
 use App\Services\StripeBecsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Tests\Support\Stripe\StubBecsService;
+use Tests\Support\Stripe\StubWebhookController;
 
 uses(RefreshDatabase::class);
 
@@ -31,39 +33,12 @@ afterEach(function () {
  * Proves webhooks actually settle: signed event in, correct local state out.
  * Stripe reads are stubbed (no network); signature verification is real.
  */
-class StubBecsService extends StripeBecsService
-{
-    public function __construct(?StripeAccount $account = null) {}
-
-    public function getBalanceTransaction(string $paymentIntentId): array
-    {
-        return [
-            'gross' => 100.0, 'fee' => 1.75, 'net' => 98.25,
-            'currency' => 'AUD', 'stripe_bt_id' => 'txn_test123',
-        ];
-    }
-}
-
 function bindFakeBecs(): StubBecsService
 {
     $fake = new StubBecsService;
     app()->instance(StripeBecsService::class, $fake);
 
     return $fake;
-}
-
-/**
- * Test-only controller that serves the stub through the protected seam,
- * including the per-account path (which production builds with `new`).
- */
-class StubWebhookController extends StripeWebhookController
-{
-    public static ?StripeBecsService $stub = null;
-
-    protected function becs(): StripeBecsService
-    {
-        return static::$stub ?? parent::becs();
-    }
 }
 
 function makeSettlementChain(?Company $company = null): array

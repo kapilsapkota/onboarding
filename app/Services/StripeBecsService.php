@@ -30,12 +30,6 @@ class StripeBecsService
     /**
      * Create and confirm an off-session PaymentIntent for a BECS direct debit.
      *
-     * The client must already have a saved au_becs_debit PaymentMethod ID
-     * stored on their record (pm_xxxxxxxxxxxx).
-     *
-     * BECS is a delayed-notification method: Stripe immediately returns status
-     * "processing" — success/failure arrives 1-2 business days later via webhook.
-     *
      * Returns the Stripe PaymentIntent ID (pi_xxxx).
      *
      * @throws ApiErrorException|\RuntimeException

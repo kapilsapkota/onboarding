@@ -78,6 +78,10 @@ class PermissionSeeder extends Seeder
                 'edit-stripe-account',
                 'delete-stripe-account',
             ],
+            'Activity Logs' => [
+                'view-activity-log',
+                'delete-activity-log',
+            ],
             'Reports' => [
                 'view-report',
                 'export-report',
@@ -120,6 +124,8 @@ class PermissionSeeder extends Seeder
             'view-payment', 'refund-payment',
 
             'view-stripe-account',
+
+            'view-activity-log',
 
             'view-report', 'export-report',
 

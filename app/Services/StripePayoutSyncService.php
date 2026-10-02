@@ -274,6 +274,54 @@ class StripePayoutSyncService
     }
 
     /**
+     * Fetch a PaymentIntent's balance transaction from Stripe and persist it.
+     *
+     * This is the safety net behind automatic reconciliation: even when the
+     * `charge.succeeded` webhook never arrives (missed event, failed BT
+     * fetch, endpoint not subscribed), a `payment_intent.succeeded` webhook
+     * or the nightly `stripe:reconcile-items` command can still reconcile by
+     * PaymentIntent id. Returns null when the BT is not available yet or the
+     * API call fails — callers must treat null as "try again later", never
+     * as an error that should fail the webhook/job.
+     */
+    public function reconcilePaymentIntent(string $paymentIntentId): ?StripeBalanceTransaction
+    {
+        try {
+            $intent = $this->stripe->paymentIntents->retrieve($paymentIntentId, [
+                'expand' => ['latest_charge.balance_transaction'],
+            ]);
+
+            $charge = $intent->latest_charge ?? null;
+
+            if (is_string($charge)) {
+                $charge = $this->stripe->charges->retrieve($charge, [
+                    'expand' => ['balance_transaction'],
+                ]);
+            }
+
+            $bt = is_object($charge) ? ($charge->balance_transaction ?? null) : null;
+
+            if (is_string($bt)) {
+                $bt = $this->stripe->balanceTransactions->retrieve($bt, [
+                    'expand' => ['source'],
+                ]);
+            }
+
+            if (! is_object($bt) && ! is_array($bt)) {
+                return null;
+            }
+
+            return $this->upsertBalanceTransaction($bt);
+        } catch (\Throwable $e) {
+            Log::warning('StripePayoutSync: reconcile by PaymentIntent failed', [
+                'payment_intent' => $paymentIntentId, 'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $arr
      */
     private function balanceTransactionValues(

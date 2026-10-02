@@ -6,17 +6,14 @@ use App\Http\Requests\Admin\Quote\QuoteRequest;
 use App\Http\Requests\Admin\Quote\SendQuoteRequest;
 use App\Models\Category;
 use App\Models\Quote;
-use App\Models\QuoteItem;
-use App\Models\QuoteSignature;
 use App\Services\Quotes\QuoteDeliveryService;
+use App\Support\Activity;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -98,34 +95,34 @@ class QuoteController extends Controller
 
             $quote = DB::transaction(function () use ($validated, $itemsPayload, $logoPath) {
                 $quote = Quote::create([
-                    'client_name'           => $validated['client_name'],
-                    'contact_name'          => $validated['contact_name'] ?? null,
-                    'email'                 => $validated['email'] ?? null,
-                    'mobile'                => $validated['mobile'] ?? null,
-                    'website'               => $validated['website'] ?? null,
-                    'logo_url'              => $logoPath,
-                    'sharepoint_file_url'   => $validated['sharepoint_file_url'] ?? null,
+                    'client_name' => $validated['client_name'],
+                    'contact_name' => $validated['contact_name'] ?? null,
+                    'email' => $validated['email'] ?? null,
+                    'mobile' => $validated['mobile'] ?? null,
+                    'website' => $validated['website'] ?? null,
+                    'logo_url' => $logoPath,
+                    'sharepoint_file_url' => $validated['sharepoint_file_url'] ?? null,
                     'sharepoint_source_url' => $validated['sharepoint_source_url'] ?? null,
-                    'notes'                 => $validated['notes'] ?? null,
-                    'status'                => 'draft',
-                    'expires_at'            => $validated['expires_at'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                    'status' => 'draft',
+                    'expires_at' => $validated['expires_at'] ?? null,
                 ]);
 
                 foreach ($itemsPayload as $index => $item) {
                     $quote->items()->create([
-                        'product_id'        => $item['product_id'] ?? null,
-                        'quantity'          => $item['quantity'] ?? 1,
-                        'category_name'     => $item['category_name'] ?? '',
-                        'product_name'      => $item['product_name'] ?? '',
-                        'scope_of_works'    => $item['scope_of_works'] ?? null,
+                        'product_id' => $item['product_id'] ?? null,
+                        'quantity' => $item['quantity'] ?? 1,
+                        'category_name' => $item['category_name'] ?? '',
+                        'product_name' => $item['product_name'] ?? '',
+                        'scope_of_works' => $item['scope_of_works'] ?? null,
                         'key_scope_keyword' => $item['key_scope_keyword'] ?? null,
-                        'unit_price'        => (float) ($item['unit_price'] ?? 0),
-                        'setup_fee'         => (float) ($item['setup_fee'] ?? 0),
-                        'hourly_rate'       => $item['hourly_rate'] ?? null,
-                        'frequency'         => $item['frequency'] ?? 'once_off',
-                        'image_url'         => $item['image_url'] ?? null,
-                        'notes'             => $item['notes'] ?? null,
-                        'sort_order'        => $index,
+                        'unit_price' => (float) ($item['unit_price'] ?? 0),
+                        'setup_fee' => (float) ($item['setup_fee'] ?? 0),
+                        'hourly_rate' => $item['hourly_rate'] ?? null,
+                        'frequency' => $item['frequency'] ?? 'once_off',
+                        'image_url' => $item['image_url'] ?? null,
+                        'notes' => $item['notes'] ?? null,
+                        'sort_order' => $index,
                     ]);
                 }
 
@@ -194,7 +191,7 @@ class QuoteController extends Controller
                     "Quote {$quote->quote_number} cannot be edited because it is already {$quote->status}."
                 );
         }
-        $validated    = $request->validated();
+        $validated = $request->validated();
         $itemsPayload = json_decode($validated['items'], true);
 
         if (! is_array($itemsPayload) || empty($itemsPayload)) {
@@ -213,35 +210,35 @@ class QuoteController extends Controller
 
             DB::transaction(function () use ($quote, $validated, $itemsPayload, $logoPath) {
                 $quote->update([
-                    'client_name'           => $validated['client_name'],
-                    'contact_name'          => $validated['contact_name'] ?? null,
-                    'email'                 => $validated['email'] ?? null,
-                    'mobile'                => $validated['mobile'] ?? null,
-                    'website'               => $validated['website'] ?? null,
-                    'logo_url'              => $logoPath ?? $quote->logo_url,
-                    'sharepoint_file_url'   => $validated['sharepoint_file_url'] ?? null,
+                    'client_name' => $validated['client_name'],
+                    'contact_name' => $validated['contact_name'] ?? null,
+                    'email' => $validated['email'] ?? null,
+                    'mobile' => $validated['mobile'] ?? null,
+                    'website' => $validated['website'] ?? null,
+                    'logo_url' => $logoPath ?? $quote->logo_url,
+                    'sharepoint_file_url' => $validated['sharepoint_file_url'] ?? null,
                     'sharepoint_source_url' => $validated['sharepoint_source_url'] ?? null,
-                    'notes'                 => $validated['notes'] ?? null,
-                    'expires_at'            => $validated['expires_at'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                    'expires_at' => $validated['expires_at'] ?? null,
                 ]);
 
                 $quote->items()->delete();
 
                 foreach ($itemsPayload as $index => $item) {
                     $quote->items()->create([
-                        'product_id'        => $item['product_id'] ?? null,
-                        'quantity'          => $item['quantity'] ?? 1,
-                        'category_name'     => $item['category_name'] ?? '',
-                        'product_name'      => $item['product_name'] ?? '',
-                        'scope_of_works'    => $item['scope_of_works'] ?? null,
+                        'product_id' => $item['product_id'] ?? null,
+                        'quantity' => $item['quantity'] ?? 1,
+                        'category_name' => $item['category_name'] ?? '',
+                        'product_name' => $item['product_name'] ?? '',
+                        'scope_of_works' => $item['scope_of_works'] ?? null,
                         'key_scope_keyword' => $item['key_scope_keyword'] ?? null,
-                        'unit_price'        => (float) ($item['unit_price'] ?? 0),
-                        'setup_fee'         => (float) ($item['setup_fee'] ?? 0),
-                        'hourly_rate'       => $item['hourly_rate'] ?? null,
-                        'frequency'         => $item['frequency'] ?? 'once_off',
-                        'image_url'         => $item['image_url'] ?? null,
-                        'notes'             => $item['notes'] ?? null,
-                        'sort_order'        => $index,
+                        'unit_price' => (float) ($item['unit_price'] ?? 0),
+                        'setup_fee' => (float) ($item['setup_fee'] ?? 0),
+                        'hourly_rate' => $item['hourly_rate'] ?? null,
+                        'frequency' => $item['frequency'] ?? 'once_off',
+                        'image_url' => $item['image_url'] ?? null,
+                        'notes' => $item['notes'] ?? null,
+                        'sort_order' => $index,
                     ]);
                 }
 
@@ -288,7 +285,7 @@ class QuoteController extends Controller
         // Validate that at least one viable channel exists on the quote.
         // The form can request email/SMS but the quote may have no address.
         $wantsEmail = (bool) ($validated['send_email'] ?? false);
-        $wantsSms   = (bool) ($validated['send_sms'] ?? false);
+        $wantsSms = (bool) ($validated['send_sms'] ?? false);
 
         if ($wantsEmail && empty($quote->email)) {
             return back()->withErrors([
@@ -305,12 +302,12 @@ class QuoteController extends Controller
         try {
             ['delivery' => $delivery, 'already_pending' => $alreadyPending] =
                 $this->deliveryService->createAndDispatch(
-                    quote:     $quote,
+                    quote: $quote,
                     validated: [
-                        'send_email'    => $wantsEmail,
-                        'send_sms'      => $wantsSms,
+                        'send_email' => $wantsEmail,
+                        'send_sms' => $wantsSms,
                         'email_message' => $validated['extra_message'] ?? null,
-                        'sms_message'   => $validated['extra_sms_message'] ?? null,
+                        'sms_message' => $validated['extra_sms_message'] ?? null,
                     ],
                     userId: $request->user()->id,
                 );
@@ -320,6 +317,14 @@ class QuoteController extends Controller
                     ->route('admin.quotes.show', $quote)
                     ->with('info', 'This quote already has a delivery in progress. Please wait for it to complete.');
             }
+
+            Activity::record(
+                description: "Sent quote {$quote->quote_number}",
+                subject: $quote,
+                event: 'send',
+                properties: ['delivery_id' => $delivery->id],
+                logName: 'quotes',
+            );
 
             return redirect()
                 ->route('admin.quotes.show', $quote)
@@ -372,12 +377,21 @@ class QuoteController extends Controller
             $updates['rejected_at'] = now();
         }
 
+        $oldStatus = $quote->status;
         $quote->update($updates);
+
+        Activity::record(
+            description: "Changed quote {$quote->quote_number} status from {$oldStatus} to {$newStatus}",
+            subject: $quote,
+            event: 'status',
+            properties: ['old' => $oldStatus, 'new' => $newStatus],
+            logName: 'quotes',
+        );
 
         return back()->with(
             'success',
-            "Quote {$quote->quote_number} status updated to " .
-            ucfirst($newStatus) . '.'
+            "Quote {$quote->quote_number} status updated to ".
+            ucfirst($newStatus).'.'
         );
     }
 
@@ -395,12 +409,12 @@ class QuoteController extends Controller
             'rejected_at',
         ]);
 
-        $newQuote->status       = 'draft';
+        $newQuote->status = 'draft';
         $newQuote->quote_number = Quote::generateQuoteNumber();
         $newQuote->save();
 
         foreach ($quote->items as $item) {
-            $newItem           = $item->replicate(['quote_id']);
+            $newItem = $item->replicate(['quote_id']);
             $newItem->quote_id = $newQuote->id;
             $newItem->save();
         }
@@ -439,18 +453,18 @@ class QuoteController extends Controller
 
     private function buildQuoteData(Quote $quote, bool $forPdf = false): array
     {
-        $quote->load(['items.product.category','signatures']);
+        $quote->load(['items.product.category', 'signatures']);
 
         $path = fn (string $storagePath) => $forPdf
-            ? public_path('storage/' . $storagePath)
-            : asset('storage/' . $storagePath);
+            ? public_path('storage/'.$storagePath)
+            : asset('storage/'.$storagePath);
 
         $staticPath = fn (string $publicPath) => $forPdf
             ? public_path($publicPath)
             : asset($publicPath);
 
         $exists = fn (string $storagePath) => file_exists(
-            public_path('storage/' . $storagePath)
+            public_path('storage/'.$storagePath)
         );
 
         $signature = $quote->signatures
@@ -473,11 +487,10 @@ class QuoteController extends Controller
             }
         }
 
-
-        $coverSrc            = $staticPath('images/img.png');
-        $defaultSrc          = $staticPath('images/default.png');
-        $closingSrc          = $staticPath('images/media/image67.jpg');
-        $partnersSrc         = $staticPath('images/our-partner-logos.jpeg');
+        $coverSrc = $staticPath('images/img.png');
+        $defaultSrc = $staticPath('images/default.png');
+        $closingSrc = $staticPath('images/media/image67.jpg');
+        $partnersSrc = $staticPath('images/our-partner-logos.jpeg');
         $threeStepRollOutSrc = $staticPath('images/three-step.jpeg');
 
         $configImages = collect(config('quote.images', []))
@@ -490,7 +503,7 @@ class QuoteController extends Controller
 
                 return [
                     'placeholder' => $img['placeholder'],
-                    'src'         => $src,
+                    'src' => $src,
                 ];
             })
             ->filter()
@@ -515,10 +528,10 @@ class QuoteController extends Controller
                 $category = $categoryItems->first()?->product?->category;
 
                 return [
-                    'name'       => $categoryName,
+                    'name' => $categoryName,
                     'sort_order' => $category?->sort_order ?? PHP_INT_MAX,
-                    'image'      => $category?->icon ? $path($category->icon) : null,
-                    'items'      => $categoryItems
+                    'image' => $category?->icon ? $path($category->icon) : null,
+                    'items' => $categoryItems
                         ->sortBy(fn ($item) => $item->product?->sort_order ?? PHP_INT_MAX)
                         ->values(),
                 ];
@@ -527,22 +540,22 @@ class QuoteController extends Controller
             ->values();
 
         return [
-            'quote'               => $quote,
-            'items'               => $items,
-            'groupedItems'        => $groupedItems,
-            'coverSrc'            => $coverSrc,
-            'defaultSrc'          => $defaultSrc,
-            'closingSrc'          => $closingSrc,
-            'partnersSrc'         => $partnersSrc,
+            'quote' => $quote,
+            'items' => $items,
+            'groupedItems' => $groupedItems,
+            'coverSrc' => $coverSrc,
+            'defaultSrc' => $defaultSrc,
+            'closingSrc' => $closingSrc,
+            'partnersSrc' => $partnersSrc,
             'threeStepRollOutSrc' => $threeStepRollOutSrc,
-            'clientLogoSrc'       => $clientLogoSrc,
-            'configImages'        => $configImages,
-            'stageColumns'        => collect(config('quote.stage_columns')),
-            'stageAccents'        => ['#fbbf24', '#f97316', '#c2410c'],
-            'termsAndConditions'  => $quote->terms_and_conditions
+            'clientLogoSrc' => $clientLogoSrc,
+            'configImages' => $configImages,
+            'stageColumns' => collect(config('quote.stage_columns')),
+            'stageAccents' => ['#fbbf24', '#f97316', '#c2410c'],
+            'termsAndConditions' => $quote->terms_and_conditions
                 ?? config('quote.default_terms'),
-            'signature'           => $signature,
-            'signatureSrc'        => $signatureSrc,
+            'signature' => $signature,
+            'signatureSrc' => $signatureSrc,
         ];
     }
 
@@ -558,7 +571,7 @@ class QuoteController extends Controller
             return null;
         }
 
-        $key = 'quote_image:' . md5($fullPath . $width . $height . filemtime($fullPath));
+        $key = 'quote_image:'.md5($fullPath.$width.$height.filemtime($fullPath));
 
         return Cache::rememberForever($key, function () use ($fullPath, $width, $height) {
             return self::cropToBase64($fullPath, $width, $height);
@@ -567,9 +580,9 @@ class QuoteController extends Controller
 
     private static function cropToBase64(
         string $path,
-        int    $targetW,
-        int    $targetH,
-        bool   $crop = true
+        int $targetW,
+        int $targetH,
+        bool $crop = true
     ): ?string {
         if (! file_exists($path) || ! is_readable($path)) {
             return null;
@@ -585,8 +598,8 @@ class QuoteController extends Controller
 
         $mimeMap = [
             IMAGETYPE_JPEG => 'image/jpeg',
-            IMAGETYPE_PNG  => 'image/png',
-            IMAGETYPE_GIF  => 'image/gif',
+            IMAGETYPE_PNG => 'image/png',
+            IMAGETYPE_GIF => 'image/gif',
             IMAGETYPE_WEBP => 'image/webp',
         ];
 
@@ -596,10 +609,10 @@ class QuoteController extends Controller
 
         $src = match ($type) {
             IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
-            IMAGETYPE_PNG  => @imagecreatefrompng($path),
-            IMAGETYPE_GIF  => @imagecreatefromgif($path),
+            IMAGETYPE_PNG => @imagecreatefrompng($path),
+            IMAGETYPE_GIF => @imagecreatefromgif($path),
             IMAGETYPE_WEBP => @imagecreatefromwebp($path),
-            default        => false,
+            default => false,
         };
 
         if (! $src) {
@@ -607,22 +620,22 @@ class QuoteController extends Controller
         }
 
         if ($crop) {
-            $scale   = max($targetW / $origW, $targetH / $origH);
+            $scale = max($targetW / $origW, $targetH / $origH);
             $scaledW = (int) round($origW * $scale);
             $scaledH = (int) round($origH * $scale);
-            $srcX    = (int) round(($scaledW - $targetW) / 2 / $scale);
-            $srcY    = (int) round(($scaledH - $targetH) / 2 / $scale);
-            $srcW    = (int) round($targetW / $scale);
-            $srcH    = (int) round($targetH / $scale);
-            $dst     = imagecreatetruecolor($targetW, $targetH);
+            $srcX = (int) round(($scaledW - $targetW) / 2 / $scale);
+            $srcY = (int) round(($scaledH - $targetH) / 2 / $scale);
+            $srcW = (int) round($targetW / $scale);
+            $srcH = (int) round($targetH / $scale);
+            $dst = imagecreatetruecolor($targetW, $targetH);
             self::preserveTransparency($dst, $type);
             imagecopyresampled($dst, $src, 0, 0, $srcX, $srcY, $targetW, $targetH, $srcW, $srcH);
         } else {
-            $scale   = min($targetW / $origW, $targetH / $origH, 1.0);
-            $fitW    = (int) round($origW * $scale);
-            $fitH    = (int) round($origH * $scale);
-            $dst     = imagecreatetruecolor($targetW, $targetH);
-            $white   = imagecolorallocate($dst, 255, 255, 255);
+            $scale = min($targetW / $origW, $targetH / $origH, 1.0);
+            $fitW = (int) round($origW * $scale);
+            $fitH = (int) round($origH * $scale);
+            $dst = imagecreatetruecolor($targetW, $targetH);
+            $white = imagecolorallocate($dst, 255, 255, 255);
             imagefilledrectangle($dst, 0, 0, $targetW, $targetH, $white);
             $offsetX = (int) round(($targetW - $fitW) / 2);
             $offsetY = (int) round(($targetH - $fitH) / 2);
@@ -634,15 +647,15 @@ class QuoteController extends Controller
         ob_start();
         match ($type) {
             IMAGETYPE_JPEG => imagejpeg($dst, null, 85),
-            IMAGETYPE_PNG  => imagepng($dst, null, 6),
-            IMAGETYPE_GIF  => imagegif($dst),
+            IMAGETYPE_PNG => imagepng($dst, null, 6),
+            IMAGETYPE_GIF => imagegif($dst),
             IMAGETYPE_WEBP => imagewebp($dst, null, 85),
-            default        => imagejpeg($dst, null, 85),
+            default => imagejpeg($dst, null, 85),
         };
         $raw = ob_get_clean();
         imagedestroy($dst);
 
-        return 'data:' . $mimeMap[$type] . ';base64,' . base64_encode($raw);
+        return 'data:'.$mimeMap[$type].';base64,'.base64_encode($raw);
     }
 
     private static function preserveTransparency(mixed $dst, int $type): void

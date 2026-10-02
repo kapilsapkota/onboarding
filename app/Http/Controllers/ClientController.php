@@ -6,19 +6,23 @@ use App\Jobs\WriteXeroPayment;
 use App\Models\Client;
 use App\Models\ClientContact;
 use App\Models\Company;
+use App\Models\StripeAccount;
 use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
 use App\Models\XeroContact;
 use App\Models\XeroInvoice;
+use App\Services\StripeAccountResolver;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use Stripe\StripeClient;
 
 class ClientController extends Controller
 {
+    public function __construct(private StripeAccountResolver $accounts) {}
+
     public function index(Request $request): View
     {
         $perPage = $request->input('per_page', 25);
@@ -315,7 +319,13 @@ class ClientController extends Controller
                 ->get();
         }
 
-        return view('clients.show', compact('client', 'invoices', 'xeroContacts', 'xeroContact'));
+        return view('clients.show', compact('client', 'invoices', 'xeroContacts', 'xeroContact') + [
+            // Stripe.js must initialise with the same account's publishable key
+            // that the SetupIntent below is created with.
+            'stripePublishableKey' => $this->accounts->publishableKeyFor(
+                $this->accounts->forClient($client)
+            ),
+        ]);
     }
 
     public function xeroDateToCarbon(?string $xeroDate): ?Carbon
@@ -488,7 +498,9 @@ class ClientController extends Controller
             'customer_email' => ['required', 'email', 'max:255'],
         ]);
 
-        $stripe = new StripeClient(config('services.stripe.secret'));
+        // Operate on the client's own Stripe account (legacy keys when unscoped).
+        $account = $this->accounts->forClient($client);
+        $stripe = $this->accounts->clientFor($account);
 
         if ($client->stripe_customer_id) {
             // Update existing Stripe customer with latest details
@@ -507,7 +519,7 @@ class ClientController extends Controller
             $client->update(['stripe_customer_id' => $stripeCustomer->id]);
         }
 
-        StripeCustomer::updateOrCreate(
+        $this->stampAccount(StripeCustomer::updateOrCreate(
             ['stripe_customer_id' => $stripeCustomer->id],
             [
                 'name' => $data['customer_name'],
@@ -515,7 +527,7 @@ class ClientController extends Controller
                 'stripe_data' => $stripeCustomer->toArray(),
                 'last_synced_at' => now(),
             ]
-        );
+        ), $account);
 
         $setupIntent = $stripe->setupIntents->create([
             'customer' => $stripeCustomer->id,
@@ -534,7 +546,10 @@ class ClientController extends Controller
             'make_default' => ['nullable', 'boolean'],
         ]);
 
-        $stripe = new StripeClient(config('services.stripe.secret'));
+        // The SetupIntent was created on the client's own account, so it must
+        // be retrieved with that account's keys (legacy keys when unscoped).
+        $account = $this->accounts->forClient($client);
+        $stripe = $this->accounts->clientFor($account);
 
         $setupIntent = $stripe->setupIntents->retrieve(
             $validated['setup_intent_id']
@@ -582,6 +597,8 @@ class ClientController extends Controller
             ]
         );
 
+        $this->stampAccount($stripeCustomer, $account);
+
         /*
          * Extract display information.
          */
@@ -614,6 +631,8 @@ class ClientController extends Controller
                 'last_synced_at' => now(),
             ]
         );
+
+        $this->stampAccount($localPaymentMethod, $account);
 
         /*
          * Make it the default payment method if requested.
@@ -669,7 +688,8 @@ class ClientController extends Controller
         }
 
         try {
-            $stripe = new StripeClient(config('services.stripe.secret'));
+            // Default must be set on the same Stripe account that owns the customer.
+            $stripe = $this->accounts->clientFor($this->accounts->forClient($client));
 
             // Set the default payment method on the Stripe Customer.
             $stripe->customers->update(
@@ -1022,5 +1042,17 @@ class ClientController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    /**
+     * Stamp an unstamped mirror row with its Stripe account. Rows already
+     * stamped to an account are never touched, so this is safe to call on
+     * legacy pool rows discovered through any endpoint.
+     */
+    private function stampAccount(Model $model, ?StripeAccount $account): void
+    {
+        if ($account && $model->stripe_account_id === null) {
+            $model->update(['stripe_account_id' => $account->id]);
+        }
     }
 }

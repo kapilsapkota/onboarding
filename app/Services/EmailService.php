@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Data\EmailResult;
+use App\Support\Activity;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -36,7 +37,7 @@ class EmailService
             $messageId = $sent?->getMessageId();
 
             Log::info('email.sent', [
-                'to'         => $to,
+                'to' => $to,
                 'message_id' => $messageId,
             ]);
 
@@ -44,26 +45,40 @@ class EmailService
 
         } catch (TransportException $e) {
             Log::error('email.transport_failed', [
-                'to'    => $to,
+                'to' => $to,
                 'error' => $e->getMessage(),
                 'class' => $e::class,
             ]);
 
+            Activity::record(
+                description: 'Email to '.$to.' failed',
+                event: 'failed',
+                properties: ['to' => [$to], 'mailable' => $mailable::class, 'error' => $e->getMessage()],
+                logName: 'mail',
+            );
+
             return EmailResult::failure(
                 errorMessage: $this->humaniseTransportError($e),
-                exception:    $e,
+                exception: $e,
             );
 
         } catch (Throwable $e) {
             Log::error('email.failed', [
-                'to'    => $to,
+                'to' => $to,
                 'error' => $e->getMessage(),
                 'class' => $e::class,
             ]);
 
+            Activity::record(
+                description: 'Email to '.$to.' failed',
+                event: 'failed',
+                properties: ['to' => [$to], 'mailable' => $mailable::class, 'error' => $e->getMessage()],
+                logName: 'mail',
+            );
+
             return EmailResult::failure(
                 errorMessage: 'The email could not be sent. Please try again.',
-                exception:    $e,
+                exception: $e,
             );
         }
     }

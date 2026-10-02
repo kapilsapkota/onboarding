@@ -1,56 +1,73 @@
 <?php
+
 namespace App\Services;
 
-use Stripe\StripeClient;
 use App\Models\Client;
+use App\Models\StripeAccount;
+use Stripe\PaymentIntent;
+use Stripe\StripeClient;
 
 class StripeService
 {
-    protected StripeClient $client; // ← rename to avoid confusion
+    public function __construct(
+        private StripeAccountResolver $accounts,
+        private ?StripeAccount $account = null,
+    ) {}
 
-    public function __construct()
+    /** Bind this service to one account (or null for the legacy global keys). */
+    public function forAccount(?StripeAccount $account): self
     {
-        $this->client = new StripeClient(config('services.stripe.secret'));
+        return new self($this->accounts, $account);
     }
 
-    public function createSetupIntent(Client $model): array
+    private function client(?StripeAccount $override = null): StripeClient
     {
-        if (!$model->stripe_customer_id) {
-            $customer = $this->client->customers->create([
-                'name'     => $model->company_name,
-                'email'    => $model->billing_email,
+        return $this->accounts->clientFor($override ?? $this->account);
+    }
+
+    public function createSetupIntent(Client $model, ?StripeAccount $account = null): array
+    {
+        $account ??= $this->account ?? $this->accounts->forClient($model);
+        $client = $this->client($account);
+
+        if (! $model->stripe_customer_id) {
+            $customer = $client->customers->create([
+                'name' => $model->company_name,
+                'email' => $model->billing_email,
                 'metadata' => ['client_id' => $model->id],
             ]);
 
             $model->update(['stripe_customer_id' => $customer->id]);
         }
 
-        $setupIntent = $this->client->setupIntents->create([
-            'customer'             => $model->stripe_customer_id,
+        $setupIntent = $client->setupIntents->create([
+            'customer' => $model->stripe_customer_id,
             'payment_method_types' => ['au_becs_debit'],
-            'metadata'             => ['client_id' => $model->id],
+            'metadata' => ['client_id' => $model->id],
         ]);
 
         return [
-            'client_secret'   => $setupIntent->client_secret,
+            'client_secret' => $setupIntent->client_secret,
             'setup_intent_id' => $setupIntent->id,
         ];
     }
 
-    public function chargeClient(Client $model, int $amountCents, string $description): \Stripe\PaymentIntent
+    public function chargeClient(Client $model, int $amountCents, string $description, ?StripeAccount $account = null): PaymentIntent
     {
-        if (!$model->stripe_payment_method_id || $model->mandate_status !== 'active') {
+        if (! $model->stripe_payment_method_id || $model->mandate_status !== 'active') {
             throw new \Exception('Client does not have an active mandate.');
         }
 
-        return $this->client->paymentIntents->create([
-            'amount'               => $amountCents,
-            'currency'             => 'aud',
-            'customer'             => $model->stripe_customer_id,
-            'payment_method'       => $model->stripe_payment_method_id,
+        $account ??= $this->account ?? $this->accounts->forClient($model);
+
+        return $this->client($account)->paymentIntents->create([
+            'amount' => $amountCents,
+            'currency' => 'aud',
+            'customer' => $model->stripe_customer_id,
+            'payment_method' => $model->stripe_payment_method_id,
             'payment_method_types' => ['au_becs_debit'],
-            'confirm'              => true,
-            'description'          => $description,
+            'confirm' => true,
+            'description' => $description,
         ]);
     }
 }

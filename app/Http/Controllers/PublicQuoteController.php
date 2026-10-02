@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Quote;
 use App\Models\QuoteDelivery;
 use App\Models\QuoteSignature;
-use App\Services\Quotes\QuotePublicLinkService;
 use App\Services\Quotes\QuotePdfService;
+use App\Services\Quotes\QuotePublicLinkService;
+use App\Support\Activity;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +26,7 @@ class PublicQuoteController extends Controller
 {
     public function __construct(
         private readonly QuotePublicLinkService $publicLinkService,
-        private readonly QuotePdfService        $pdfService,
+        private readonly QuotePdfService $pdfService,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -40,14 +43,14 @@ class PublicQuoteController extends Controller
         $groupedItems = $quote->items
             ->groupBy(fn ($item) => $item->product?->category?->name ?? $item->category_name ?? 'Other')
             ->map(fn ($items, $name) => [
-                'name'  => $name,
+                'name' => $name,
                 'items' => $items->values(),
             ])
             ->values();
 
         // Whether to show the signature panel.
         $alreadySigned = $quote->signatures()->exists();
-        $isExpired     = $quote->expires_at && $quote->expires_at->isPast();
+        $isExpired = $quote->expires_at && $quote->expires_at->isPast();
 
         // The public PDF URL — used by the iframe.
         $pdfUrl = route('quotes.public.pdf', ['token' => $token]);
@@ -77,14 +80,14 @@ class PublicQuoteController extends Controller
         $quote = $delivery->quote->load(['items.product.category']);
 
         if ($this->pdfService->pdfExists($delivery)) {
-            $content  = $this->pdfService->getContent($delivery);
+            $content = $this->pdfService->getContent($delivery);
             $filename = $delivery->pdf_filename ?? $quote->getPdfFilenameAttribute();
 
             return response($content, 200, [
-                'Content-Type'        => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
-                'Content-Length'      => strlen($content),
-                'Cache-Control'       => 'private, max-age=3600',
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Content-Length' => strlen($content),
+                'Cache-Control' => 'private, max-age=3600',
             ]);
         }
 
@@ -93,7 +96,7 @@ class PublicQuoteController extends Controller
 
         $data = $this->buildPdfData($quote);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotes.pdf', $data)
+        $pdf = Pdf::loadView('admin.quotes.pdf', $data)
             ->setPaper('a4', 'landscape')
             ->setOption('isRemoteEnabled', true)
             ->setOption('isFontSubsettingEnabled', true)
@@ -103,9 +106,9 @@ class PublicQuoteController extends Controller
         $filename = $quote->getPdfFilenameAttribute();
 
         return response($pdf->output(), 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
-            'Cache-Control'       => 'private, max-age=3600',
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'private, max-age=3600',
         ]);
     }
 
@@ -132,17 +135,18 @@ class PublicQuoteController extends Controller
      * Build PDF view data using absolute paths (required for DomPDF).
      * Mirrors QuotePdfService::buildPdfData() — used only for the fallback path.
      */
-    private function buildPdfData(\App\Models\Quote $quote): array
+    private function buildPdfData(Quote $quote): array
     {
-        $path       = fn (string $p) => public_path('storage/' . $p);
+        $path = fn (string $p) => public_path('storage/'.$p);
         $staticPath = fn (string $p) => public_path($p);
-        $exists     = fn (string $p) => file_exists(public_path('storage/' . $p));
+        $exists = fn (string $p) => file_exists(public_path('storage/'.$p));
 
         $defaultSrc = $staticPath('images/default.png');
 
         $configImages = collect(config('quote.images', []))
             ->map(function ($img) use ($staticPath) {
                 $src = $staticPath($img['image']);
+
                 return file_exists($src) ? ['placeholder' => $img['placeholder'], 'src' => $src] : null;
             })
             ->filter()->values();
@@ -155,6 +159,7 @@ class PublicQuoteController extends Controller
             $item->product_image_src = ($item->product?->image_url && $exists($item->product->image_url))
                 ? $path($item->product->image_url)
                 : $defaultSrc;
+
             return $item;
         });
 
@@ -162,29 +167,30 @@ class PublicQuoteController extends Controller
             ->groupBy(fn ($i) => $i->product?->category?->name ?? $i->category_name ?? '')
             ->map(function ($categoryItems, $categoryName) use ($path) {
                 $category = $categoryItems->first()?->product?->category;
+
                 return [
-                    'name'       => $categoryName,
+                    'name' => $categoryName,
                     'sort_order' => $category?->sort_order ?? PHP_INT_MAX,
-                    'image'      => $category?->icon ? $path($category->icon) : null,
-                    'items'      => $categoryItems->sortBy(fn ($i) => $i->product?->sort_order ?? PHP_INT_MAX)->values(),
+                    'image' => $category?->icon ? $path($category->icon) : null,
+                    'items' => $categoryItems->sortBy(fn ($i) => $i->product?->sort_order ?? PHP_INT_MAX)->values(),
                 ];
             })
             ->sortBy('sort_order')->values();
 
         return [
-            'quote'               => $quote,
-            'items'               => $items,
-            'groupedItems'        => $groupedItems,
-            'coverSrc'            => $staticPath('images/img.png'),
-            'defaultSrc'          => $defaultSrc,
-            'closingSrc'          => $staticPath('images/media/image67.jpg'),
-            'partnersSrc'         => $staticPath('images/partners_.png'),
+            'quote' => $quote,
+            'items' => $items,
+            'groupedItems' => $groupedItems,
+            'coverSrc' => $staticPath('images/img.png'),
+            'defaultSrc' => $defaultSrc,
+            'closingSrc' => $staticPath('images/media/image67.jpg'),
+            'partnersSrc' => $staticPath('images/partners_.png'),
             'threeStepRollOutSrc' => $staticPath('images/threestep.jpeg'),
-            'clientLogoSrc'       => $clientLogoSrc,
-            'configImages'        => $configImages,
-            'stageColumns'        => collect(config('quote.stage_columns')),
-            'stageAccents'        => ['#fbbf24', '#f97316', '#c2410c'],
-            'termsAndConditions'  => $quote->terms_and_conditions ?? config('quote.default_terms'),
+            'clientLogoSrc' => $clientLogoSrc,
+            'configImages' => $configImages,
+            'stageColumns' => collect(config('quote.stage_columns')),
+            'stageAccents' => ['#fbbf24', '#f97316', '#c2410c'],
+            'termsAndConditions' => $quote->terms_and_conditions ?? config('quote.default_terms'),
         ];
     }
 
@@ -224,69 +230,79 @@ class PublicQuoteController extends Controller
     {
         if (! $request->hasValidSignature()) {
             return view('admin.quotes.message', [
-                'title'   => 'Link Expired',
+                'title' => 'Link Expired',
                 'message' => 'This secure link is invalid or has expired. Please request a new link from our team.',
             ]);
         }
 
         if ($quote->signatures()->exists()) {
             return view('admin.quotes.message', [
-                'title'   => 'Already Signed',
+                'title' => 'Already Signed',
                 'message' => 'This quote has already been signed and accepted.',
             ]);
         }
 
         if ($quote->expires_at && $quote->expires_at->isPast()) {
             return view('admin.quotes.message', [
-                'title'   => 'Quote Expired',
-                'message' => 'This quote expired on ' . $quote->expires_at->format('d/m/Y') . '. Please contact us for an updated quote.',
+                'title' => 'Quote Expired',
+                'message' => 'This quote expired on '.$quote->expires_at->format('d/m/Y').'. Please contact us for an updated quote.',
             ]);
         }
 
         return view('admin.quotes.sign-form', compact('quote'));
     }
 
-    public function saveSignature(Request $request, Quote $quote): \Illuminate\Http\JsonResponse
+    public function saveSignature(Request $request, Quote $quote): JsonResponse
     {
         $request->validate([
-            'company_name'      => 'nullable|string|max:255',
+            'company_name' => 'nullable|string|max:255',
             'authorised_person' => 'required|string|max:255',
-            'position'          => 'nullable|string|max:255',
-            'signature_data'    => 'required|string',
+            'position' => 'nullable|string|max:255',
+            'signature_data' => 'required|string',
         ]);
 
         $base64Image = $request->signature_data;
 
-        @list($type, $fileData) = explode(';', $base64Image);
-        @list(, $fileData)      = explode(',', $fileData);
+        @[$type, $fileData] = explode(';', $base64Image);
+        @[, $fileData] = explode(',', $fileData);
 
         $decodedImage = base64_decode($fileData);
-        $fileName     = 'quote_' . $quote->id . '_sign_' . Str::random(10) . '.png';
-        $filePath     = 'signatures/' . $fileName;
+        $fileName = 'quote_'.$quote->id.'_sign_'.Str::random(10).'.png';
+        $filePath = 'signatures/'.$fileName;
 
         Storage::disk('local')->put($filePath, $decodedImage);
 
         $quote->signatures()->create([
-            'company_name'      => $request->company_name,
+            'company_name' => $request->company_name,
             'authorised_person' => $request->authorised_person,
-            'position'          => $request->position,
-            'signature_path'    => $filePath,
-            'ip_address'        => $request->ip(),
-            'user_agent'        => $request->userAgent(),
-            'signed_at'         => now(),
+            'position' => $request->position,
+            'signature_path' => $filePath,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'signed_at' => now(),
         ]);
 
         if (is_null($quote->accepted_at)) {
             $quote->update([
                 'accepted_at' => now(),
-                'status'      => 'accepted'
+                'status' => 'accepted',
             ]);
         }
+
+        Activity::record(
+            description: 'Quote '.$quote->quote_number.' signed by '.($request->authorised_person ?? 'customer'),
+            subject: $quote,
+            event: 'signed',
+            properties: [
+                'authorised_person' => $request->authorised_person,
+                'company_name' => $request->company_name,
+            ],
+            logName: 'quotes',
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Your signature has been recorded and the proposal has been accepted.',
         ]);
     }
-
 }

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'category_id',
@@ -30,20 +31,20 @@ class Product extends Model
         'is_active',
         'quote_default',
         'sort_order',
-        'quote_default'
+        'quote_default',
     ];
 
     protected $casts = [
-        'scope_items'     => 'array',
-        'fixed_price'     => 'decimal:2',
-        'setup_fee'       => 'decimal:2',
-        'price_min'       => 'decimal:2',
-        'price_max'       => 'decimal:2',
+        'scope_items' => 'array',
+        'fixed_price' => 'decimal:2',
+        'setup_fee' => 'decimal:2',
+        'price_min' => 'decimal:2',
+        'price_max' => 'decimal:2',
         'price_increment' => 'decimal:2',
-        'hourly_rate'     => 'decimal:2',
-        'is_active'       => 'boolean',
-        'quote_default'       => 'boolean',
-        'sort_order'      => 'integer',
+        'hourly_rate' => 'decimal:2',
+        'is_active' => 'boolean',
+        'quote_default' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function category(): BelongsTo
@@ -67,8 +68,8 @@ class Product extends Model
 
         $options = [];
         $current = (float) $this->price_min;
-        $max     = (float) $this->price_max;
-        $step    = (float) $this->price_increment;
+        $max = (float) $this->price_max;
+        $step = (float) $this->price_increment;
 
         while ($current <= $max + 0.001) {
             $options[] = round($current, 2);
@@ -104,10 +105,10 @@ class Product extends Model
     public function getFrequencyLabelAttribute(): string
     {
         return match ($this->frequency) {
-            'monthly'     => 'Monthly',
-            'quarterly'   => 'Quarterly',
-            'annually'    => 'Annually',
-            default       => 'Once Off',
+            'monthly' => 'Monthly',
+            'quarterly' => 'Quarterly',
+            'annually' => 'Annually',
+            default => 'Once Off',
         };
     }
 }

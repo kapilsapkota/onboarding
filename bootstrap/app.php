@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\LogAdminActivity;
 use App\Http\Middleware\MigrationToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'migration.token' => MigrationToken::class,
         ]);
+        $middleware->append(LogAdminActivity::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -177,6 +177,32 @@
                     </a>
                 @endcan
 
+                {{-- Activity Logs --}}
+                @can('view-activity-log')
+                    <a href="{{ route('admin.activity-logs.index') }}"
+                       class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/activity-logs*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                       :title="collapsed ? '{{ __('Activity Logs') }}' : ''">
+
+                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/activity-logs*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke="currentColor"
+                             stroke-width="1.75">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+
+                        <span x-show="!collapsed"
+                              x-transition
+                              class="ml-3 whitespace-nowrap">
+                    {{ __('Activity Logs') }}
+                </span>
+
+                    </a>
+                @endcan
+
                 <div class="space-y-1">
 
                 <div

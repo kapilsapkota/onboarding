@@ -8,6 +8,7 @@ use App\Models\StripeAccount;
 use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
 use App\Services\StripeAccountResolver;
+use App\Support\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -125,6 +126,14 @@ class DdrController extends Controller
                 $client->update(['mandate_status' => 'failed']);
             }
         }
+
+        Activity::record(
+            description: 'New DDR submission for '.($client->company_name ?? 'unknown company').' on '.$account->display_name,
+            subject: $client,
+            event: 'submitted',
+            properties: ['company_name' => $client->company_name, 'stripe_account_id' => $account->id],
+            logName: 'onboarding',
+        );
 
         Mail::to('alit@allinit.com.au')
             ->cc('kapils@allinit.com.au')

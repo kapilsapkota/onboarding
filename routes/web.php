@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DirectDebitPaymentController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -231,4 +232,5 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('permissions/bulk-group', [PermissionController::class, 'bulkUpdateGroup'])->name('permissions.bulk-group');
     Route::delete('permissions/bulk', [PermissionController::class, 'bulkDestroy'])->name('permissions.bulk-destroy');
     Route::resource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
+    Route::resource('activity-logs', ActivityLogController::class)->only(['index', 'show', 'destroy']);
 });

@@ -5,16 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessSingleDirectDebit;
 use App\Models\DirectDebitPayment;
+use App\Services\StripeAccountResolver;
 use App\Services\XeroService;
+use App\Support\Activity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Stripe\StripeClient;
+use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\AuthenticationException;
+use Stripe\Exception\InvalidRequestException;
 
 class DirectDebitPaymentController extends Controller
 {
-    public function __construct(private readonly XeroService $xero) {}
+    public function __construct(
+        private readonly XeroService $xero,
+        private readonly StripeAccountResolver $accounts,
+    ) {}
 
     public function index(Request $request)
     {
@@ -43,12 +51,12 @@ class DirectDebitPaymentController extends Controller
 
         if ($request->filled('xero_posted')) {
             match ($request->xero_posted) {
-                'yes'    => $query->whereNotNull('xero_payment_id'),
-                'no'     => $query->whereNull('xero_payment_id')->where('xero_post_attempted', false),
+                'yes' => $query->whereNotNull('xero_payment_id'),
+                'no' => $query->whereNull('xero_payment_id')->where('xero_post_attempted', false),
                 'failed' => $query->where('xero_post_attempted', true)
                     ->whereNull('xero_payment_id')
                     ->whereNotNull('xero_post_error'),
-                default  => null,
+                default => null,
             };
         }
 
@@ -58,7 +66,7 @@ class DirectDebitPaymentController extends Controller
                 $q->where('xero_invoice_number', 'like', "%{$search}%")
                     ->orWhere('our_reference', 'like', "%{$search}%")
                     ->orWhere('gateway_payment_id', 'like', "%{$search}%")
-                    ->orWhereHas('client', fn($q) => $q->where('company_name', 'like', "%{$search}%"));
+                    ->orWhereHas('client', fn ($q) => $q->where('company_name', 'like', "%{$search}%"));
             });
         }
 
@@ -74,13 +82,16 @@ class DirectDebitPaymentController extends Controller
 
         // ── Stripe ────────────────────────────────────────────────────────────
         $stripePaymentIntent = null;
-        $stripeBalanceTx     = null;
-        $stripeCharge        = null;
-        $stripeError         = null;
+        $stripeBalanceTx = null;
+        $stripeCharge = null;
+        $stripeError = null;
 
         if ($payment->gateway === 'stripe' && $payment->gateway_payment_id) {
             try {
-                $stripe = new StripeClient(config('services.stripe.secret'));
+                // Read through the payment's own Stripe account (legacy keys when unscoped).
+                $stripe = $this->accounts->clientFor(
+                    $this->accounts->forDirectDebitPayment($payment)
+                );
 
                 if (str_starts_with($payment->gateway_payment_id, 'pi_')) {
                     $stripePaymentIntent = $stripe->paymentIntents->retrieve(
@@ -104,20 +115,20 @@ class DirectDebitPaymentController extends Controller
                     );
                 }
 
-            } catch (\Stripe\Exception\AuthenticationException $e) {
+            } catch (AuthenticationException $e) {
                 $stripeError = 'Stripe API key invalid.';
                 Log::error('Stripe auth failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
 
-            } catch (\Stripe\Exception\InvalidRequestException $e) {
-                $stripeError = 'Payment not found in Stripe: ' . $e->getMessage();
+            } catch (InvalidRequestException $e) {
+                $stripeError = 'Payment not found in Stripe: '.$e->getMessage();
                 Log::warning('Stripe invalid request', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
 
-            } catch (\Stripe\Exception\ApiConnectionException $e) {
+            } catch (ApiConnectionException $e) {
                 $stripeError = 'Could not connect to Stripe. Try again later.';
                 Log::error('Stripe connection error', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
 
             } catch (\Exception $e) {
-                $stripeError = 'Stripe error: ' . $e->getMessage();
+                $stripeError = 'Stripe error: '.$e->getMessage();
                 Log::error('Stripe fetch failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
             }
         }
@@ -125,7 +136,7 @@ class DirectDebitPaymentController extends Controller
         // ── Xero ──────────────────────────────────────────────────────────────
         $xeroPaymentData = null;
         $xeroInvoiceData = null;
-        $xeroError       = null;
+        $xeroError = null;
 
         if ($payment->xero_payment_id && $payment->tenant?->connection) {
             try {
@@ -145,17 +156,17 @@ class DirectDebitPaymentController extends Controller
                 $xeroError = $e->getMessage();
                 Log::warning('Xero fetch failed on show page', [
                     'payment_id' => $payment->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
 
             } catch (\Exception $e) {
-                $xeroError = 'Xero error: ' . $e->getMessage();
+                $xeroError = 'Xero error: '.$e->getMessage();
                 Log::error('Xero unexpected error on show page', [
                     'payment_id' => $payment->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
-        } elseif ($payment->xero_payment_id && !$payment->tenant?->connection) {
+        } elseif ($payment->xero_payment_id && ! $payment->tenant?->connection) {
             $xeroError = 'Xero tenant has no active connection.';
         }
 
@@ -181,7 +192,10 @@ class DirectDebitPaymentController extends Controller
         // If it was already submitted to Stripe, attempt to cancel the PaymentIntent
         if ($directDebitPayment->gateway === 'stripe' && $directDebitPayment->gateway_payment_id) {
             try {
-                $stripe = new StripeClient(config('services.stripe.secret'));
+                // Cancel through the payment's own Stripe account.
+                $stripe = $this->accounts->clientFor(
+                    $this->accounts->forDirectDebitPayment($directDebitPayment)
+                );
 
                 if (str_starts_with($directDebitPayment->gateway_payment_id, 'pi_')) {
                     $intent = $stripe->paymentIntents->retrieve($directDebitPayment->gateway_payment_id);
@@ -191,36 +205,44 @@ class DirectDebitPaymentController extends Controller
                         $stripe->paymentIntents->cancel($directDebitPayment->gateway_payment_id);
                         Log::info('Stripe PaymentIntent cancelled', [
                             'payment_id' => $directDebitPayment->id,
-                            'pi_id'      => $directDebitPayment->gateway_payment_id,
+                            'pi_id' => $directDebitPayment->gateway_payment_id,
                         ]);
                     }
                 }
 
-            } catch (\Stripe\Exception\InvalidRequestException $e) {
+            } catch (InvalidRequestException $e) {
                 // PI already in a terminal state — log but still mark ours as cancelled
                 Log::warning('Could not cancel Stripe PI (already terminal)', [
                     'payment_id' => $directDebitPayment->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
 
             } catch (\Exception $e) {
                 Log::error('Stripe cancel failed', [
                     'payment_id' => $directDebitPayment->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
-                return back()->with('error', 'Could not cancel payment in Stripe: ' . $e->getMessage());
+
+                return back()->with('error', 'Could not cancel payment in Stripe: '.$e->getMessage());
             }
         }
 
         $directDebitPayment->update([
-            'status'       => 'cancelled',
+            'status' => 'cancelled',
             'cancelled_at' => now(),
         ]);
 
         Log::info('DirectDebitPayment cancelled', [
             'payment_id' => $directDebitPayment->id,
-            'by_user'    => $request->user()->id,
+            'by_user' => $request->user()->id,
         ]);
+
+        Activity::record(
+            description: "Cancelled direct debit payment {$directDebitPayment->our_reference}",
+            subject: $directDebitPayment,
+            event: 'cancel',
+            logName: 'direct-debit',
+        );
 
         return back()->with('success', "Payment {$directDebitPayment->our_reference} has been cancelled.");
     }
@@ -250,15 +272,15 @@ class DirectDebitPaymentController extends Controller
         $retry = DB::transaction(function () use ($directDebitPayment, $request) {
             return DirectDebitPayment::create([
                 ...DirectDebitPayment::dataFromInvoice(
-                    invoice:           $directDebitPayment->invoice,
-                    initiatedByType:   'manual',
+                    invoice: $directDebitPayment->invoice,
+                    initiatedByType: 'manual',
                     initiatedByUserId: $request->user()->id,
-                    overrideAmount:    (float) $directDebitPayment->amount,
-                    client:            $directDebitPayment->client,
+                    overrideAmount: (float) $directDebitPayment->amount,
+                    client: $directDebitPayment->client,
                 ),
-                'retry_of_id'    => $directDebitPayment->id,
+                'retry_of_id' => $directDebitPayment->id,
                 'attempt_number' => $directDebitPayment->attempt_number + 1,
-                'gateway'        => $directDebitPayment->gateway,
+                'gateway' => $directDebitPayment->gateway,
             ]);
         });
 
@@ -266,10 +288,18 @@ class DirectDebitPaymentController extends Controller
 
         Log::info('DirectDebitPayment retry created', [
             'original_id' => $directDebitPayment->id,
-            'retry_id'    => $retry->id,
-            'attempt'     => $retry->attempt_number,
-            'by_user'     => $request->user()->id,
+            'retry_id' => $retry->id,
+            'attempt' => $retry->attempt_number,
+            'by_user' => $request->user()->id,
         ]);
+
+        Activity::record(
+            description: "Retried direct debit payment {$directDebitPayment->our_reference} as attempt #{$retry->attempt_number}",
+            subject: $retry,
+            event: 'retry',
+            properties: ['original_id' => $directDebitPayment->id],
+            logName: 'direct-debit',
+        );
 
         return redirect()
             ->route('admin.directDebitPayment.show', $retry)
@@ -301,17 +331,17 @@ class DirectDebitPaymentController extends Controller
 
         try {
             $connection = $this->xero->refreshToken($directDebitPayment->tenant->connection);
-            $tenantId   = $directDebitPayment->tenant->tenant_id;
+            $tenantId = $directDebitPayment->tenant->tenant_id;
 
             $payload = [
-                'Invoice'   => ['InvoiceID' => $directDebitPayment->xero_invoice_xero_id],
-                'Account'   => ['AccountID' => $directDebitPayment->xero_bank_account_id],
-                'Date'      => ($directDebitPayment->settled_at ?? now())->format('Y-m-d'),
-                'Amount'    => (float) $directDebitPayment->amount,
+                'Invoice' => ['InvoiceID' => $directDebitPayment->xero_invoice_xero_id],
+                'Account' => ['AccountID' => $directDebitPayment->xero_bank_account_id],
+                'Date' => ($directDebitPayment->settled_at ?? now())->format('Y-m-d'),
+                'Amount' => (float) $directDebitPayment->amount,
                 'Reference' => $directDebitPayment->our_reference,
             ];
 
-            $response = \Illuminate\Support\Facades\Http::withToken($connection->access_token)
+            $response = Http::withToken($connection->access_token)
                 ->withHeaders(['Xero-tenant-id' => $tenantId])
                 ->put('https://api.xero.com/api.xro/2.0/Payments', $payload);
 
@@ -322,27 +352,36 @@ class DirectDebitPaymentController extends Controller
 
                 Log::error('postToXero failed', [
                     'payment_id' => $directDebitPayment->id,
-                    'status'     => $response->status(),
-                    'body'       => $errorBody,
+                    'status' => $response->status(),
+                    'body' => $errorBody,
                 ]);
 
-                return back()->with('error', 'Xero rejected the payment: ' . $errorBody);
+                return back()->with('error', 'Xero rejected the payment: '.$errorBody);
             }
 
             $xeroPaymentId = $response->json('Payments.0.PaymentID');
 
             if (! $xeroPaymentId) {
                 $directDebitPayment->markXeroPostFailed('No PaymentID returned from Xero.');
+
                 return back()->with('error', 'Xero did not return a PaymentID. Check the Xero audit log.');
             }
 
             $directDebitPayment->markXeroPosted($xeroPaymentId);
 
             Log::info('DirectDebitPayment posted to Xero', [
-                'payment_id'      => $directDebitPayment->id,
+                'payment_id' => $directDebitPayment->id,
                 'xero_payment_id' => $xeroPaymentId,
-                'by_user'         => $request->user()->id,
+                'by_user' => $request->user()->id,
             ]);
+
+            Activity::record(
+                description: "Posted direct debit payment {$directDebitPayment->our_reference} to Xero",
+                subject: $directDebitPayment,
+                event: 'post-to-xero',
+                properties: ['xero_payment_id' => $xeroPaymentId],
+                logName: 'xero',
+            );
 
             return back()->with('success', "Posted to Xero successfully. Xero Payment ID: {$xeroPaymentId}");
 
@@ -351,10 +390,10 @@ class DirectDebitPaymentController extends Controller
 
             Log::error('postToXero exception', [
                 'payment_id' => $directDebitPayment->id,
-                'error'      => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Failed to post to Xero: ' . $e->getMessage());
+            return back()->with('error', 'Failed to post to Xero: '.$e->getMessage());
         }
     }
 }
