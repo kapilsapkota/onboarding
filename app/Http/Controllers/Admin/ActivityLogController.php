@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,11 +36,18 @@ class ActivityLogController extends Controller
             ->paginate(50)
             ->withQueryString();
 
+        $viewMode = $request->input('view', 'timeline');
+
+        if (! in_array($viewMode, ['timeline', 'table'], true)) {
+            $viewMode = 'timeline';
+        }
+
         return view('admin.activity-logs.index', [
             'logs' => $logs,
             'logNames' => ActivityLog::distinct()->orderBy('log_name')->pluck('log_name'),
             'events' => ActivityLog::distinct()->whereNotNull('event')->orderBy('event')->pluck('event'),
             'users' => User::orderBy('name')->get(['id', 'name']),
+            'viewMode' => $viewMode,
         ]);
     }
 
@@ -50,6 +58,22 @@ class ActivityLogController extends Controller
         $activityLog->load('causer');
 
         return view('admin.activity-logs.show', ['log' => $activityLog]);
+    }
+
+    /**
+     * Whole email body for the instant preview modal. Fetched on demand
+     * so the index page stays light.
+     */
+    public function body(ActivityLog $activityLog): JsonResponse
+    {
+        $this->authorizeAction('view-activity-log');
+
+        return response()->json([
+            'html' => $activityLog->properties['html_body'] ?? null,
+            'text' => $activityLog->properties['text_body'] ?? null,
+            'truncated' => (bool) ($activityLog->properties['body_truncated'] ?? false),
+            'attachments' => $activityLog->properties['attachments'] ?? [],
+        ]);
     }
 
     public function destroy(ActivityLog $activityLog): RedirectResponse

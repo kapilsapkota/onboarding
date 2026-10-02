@@ -65,7 +65,32 @@ test('every sent email is logged with recipient and subject', function () {
     expect($log)->not->toBeNull()
         ->and($log->properties['to'])->toContain('customer@example.com')
         ->and($log->properties['subject'])->toBe('Quote Q-100 ready')
+        ->and($log->properties['html_body'])->toContain('Hello')
         ->and($log->description)->toContain('customer@example.com');
+});
+
+test('sent email body is available on demand and on the detail page', function () {
+    Mail::to('reader@example.com')->send(
+        (new Mailable)->subject('Body check')->html('<p>Whole body here</p>')
+    );
+
+    $log = ActivityLog::where('log_name', 'mail')->where('event', 'sent')->latest()->first();
+
+    expect($log)->not->toBeNull();
+
+    $plain = User::factory()->create();
+    $this->actingAs($plain)->getJson(route('admin.activity-logs.body', $log))->assertForbidden();
+
+    $viewer = makeCoverageViewer();
+    $this->actingAs($viewer)->getJson(route('admin.activity-logs.body', $log))
+        ->assertOk()
+        ->assertJsonPath('html', '<p>Whole body here</p>')
+        ->assertJsonPath('truncated', false);
+
+    $this->actingAs($viewer)->get(route('admin.activity-logs.show', $log))
+        ->assertOk()
+        ->assertSee('Email preview', false)
+        ->assertSee('Whole body here', false);
 });
 
 test('mail notifications are logged with recipient and class', function () {

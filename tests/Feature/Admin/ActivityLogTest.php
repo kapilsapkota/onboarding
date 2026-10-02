@@ -77,6 +77,57 @@ test('activity log index requires permission', function () {
     $this->actingAs($viewer)->get(route('admin.activity-logs.index'))->assertOk()->assertSee('Activity Logs', false);
 });
 
+test('index defaults to timeline with avatars and inline diffs', function () {
+    $user = makeActivityViewer(['view-activity-log']);
+    $this->actingAs($user);
+
+    $company = Company::create(['name' => 'Before Co', 'slug' => 'before-co']);
+    $company->update(['name' => 'After Co']);
+
+    $response = $this->actingAs($user)->get(route('admin.activity-logs.index'))->assertOk();
+
+    $response->assertSee('Timeline', false)
+        ->assertSee('Today', false)
+        ->assertSee('Before Co', false)
+        ->assertSee('After Co', false)
+        ->assertSee('ago', false);
+});
+
+test('index rows open details in a modal without leaving the page', function () {
+    $user = makeActivityViewer(['view-activity-log']);
+    $this->actingAs($user);
+
+    $company = Company::create(['name' => 'Modal Co', 'slug' => 'modal-co']);
+    $company->update(['name' => 'Modal Co 2']);
+
+    $response = $this->actingAs($user)->get(route('admin.activity-logs.index'))->assertOk();
+
+    $response->assertSee('activity-log-modal', false)
+        ->assertSee('openLog', false)
+        ->assertSee('click any row for details', false);
+});
+
+test('index table view renders the classic table', function () {
+    $viewer = makeActivityViewer();
+    $this->actingAs($viewer)
+        ->get(route('admin.activity-logs.index', ['view' => 'table']))
+        ->assertOk()
+        ->assertSee('Area / Event', false);
+});
+
+test('index falls back to timeline for unknown view modes', function () {
+    $viewer = makeActivityViewer();
+    $this->actingAs($viewer);
+
+    Company::create(['name' => 'Fallback Co', 'slug' => 'fallback-co']);
+
+    $this->actingAs($viewer)
+        ->get(route('admin.activity-logs.index', ['view' => 'nope']))
+        ->assertOk()
+        ->assertSee('Today', false)
+        ->assertDontSee('Area / Event', false);
+});
+
 test('mutating admin requests are logged without passwords', function () {
     Permission::firstOrCreate(['name' => 'view-user', 'guard_name' => 'web']);
     Permission::firstOrCreate(['name' => 'create-user', 'guard_name' => 'web']);

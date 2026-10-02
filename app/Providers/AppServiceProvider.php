@@ -78,6 +78,33 @@ class AppServiceProvider extends ServiceProvider
                 $to = $addresses($email->getTo());
                 $subject = $email->getSubject() ?? '(no subject)';
 
+                // Whole-body capture so the log can show the exact email sent.
+                // Capped to keep the activity table lean; fetched on demand.
+                $cap = fn (?string $body): array => $body === null
+                    ? [null, false]
+                    : (mb_strlen($body) > 150000
+                        ? [mb_substr($body, 0, 150000), true]
+                        : [$body, false]);
+
+                [$htmlBody, $htmlTruncated] = $cap(
+                    method_exists($email, 'getHtmlBody') ? $email->getHtmlBody() : null
+                );
+                [$textBody, $textTruncated] = $cap(
+                    method_exists($email, 'getTextBody') ? $email->getTextBody() : null
+                );
+
+                $attachments = [];
+
+                foreach (method_exists($email, 'getAttachments') ? $email->getAttachments() : [] as $attachment) {
+                    try {
+                        $attachments[] = method_exists($attachment, 'getFilename')
+                            ? ($attachment->getFilename() ?? 'attachment')
+                            : 'attachment';
+                    } catch (\Throwable) {
+                        $attachments[] = 'attachment';
+                    }
+                }
+
                 Activity::record(
                     description: 'Email "'.$subject.'" sent to '.implode(', ', $to),
                     event: 'sent',
@@ -87,6 +114,10 @@ class AppServiceProvider extends ServiceProvider
                         'bcc' => $addresses($email->getBcc()),
                         'subject' => $subject,
                         'message_id' => $event->sent->getMessageId(),
+                        'html_body' => $htmlBody,
+                        'text_body' => $textBody,
+                        'body_truncated' => ($htmlTruncated || $textTruncated) ? true : null,
+                        'attachments' => $attachments,
                     ]),
                     logName: 'mail',
                 );

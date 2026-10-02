@@ -232,5 +232,6 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('permissions/bulk-group', [PermissionController::class, 'bulkUpdateGroup'])->name('permissions.bulk-group');
     Route::delete('permissions/bulk', [PermissionController::class, 'bulkDestroy'])->name('permissions.bulk-destroy');
     Route::resource('permissions', PermissionController::class)->except(['show', 'create', 'edit']);
+    Route::get('activity-logs/{activityLog}/body', [ActivityLogController::class, 'body'])->name('activity-logs.body');
     Route::resource('activity-logs', ActivityLogController::class)->only(['index', 'show', 'destroy']);
 });

@@ -26,7 +26,7 @@ class QuoteDeliveryMail extends Mailable
     use SerializesModels;
 
     public function __construct(
-        public readonly QuoteDelivery  $delivery,
+        public readonly QuoteDelivery $delivery,
         private readonly QuotePdfService $pdfService,
     ) {}
 
@@ -51,16 +51,16 @@ class QuoteDeliveryMail extends Mailable
         $quote = $this->delivery->quote;
 
         return new Content(
-            markdown: 'emails.quotes.delivery',
+            view: 'emails.quotes.delivery',
             with: [
-                'quote'          => $quote,
-                'delivery'       => $this->delivery,
-                'clientName'     => $quote->contact_name ?? $quote->client_name ?? 'there',
-                'quoteNumber'    => $quote->quote_number,
-                'quoteTotal'     => $quote->total,
-                'quoteExpiry'    => $quote->expires_at,
-                'publicUrl'      => $this->delivery->public_url,
-                'extraMessage'   => $this->delivery->email_message,
+                'quote' => $quote,
+                'delivery' => $this->delivery,
+                'clientName' => $quote->contact_name ?? $quote->client_name ?? 'there',
+                'quoteNumber' => $quote->quote_number,
+                'quoteTotal' => $quote->total,
+                'quoteExpiry' => $quote->expires_at,
+                'publicUrl' => $this->delivery->public_url,
+                'extraMessage' => $this->delivery->email_message,
             ],
         );
     }

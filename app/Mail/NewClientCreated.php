@@ -25,14 +25,14 @@ class NewClientCreated extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'New Client Onboarded: ' . ($this->client->company_name ?? 'Unknown Company'),
+            subject: 'New Client Onboarded: '.($this->client->company_name ?? 'Unknown Company'),
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.clients.created',
+            view: 'emails.clients.created',
         );
     }
 

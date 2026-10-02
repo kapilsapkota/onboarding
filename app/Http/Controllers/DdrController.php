@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\NewClientCreated;
+use App\Mail\DirectDebitConfigured;
 use App\Models\Client;
 use App\Models\StripeAccount;
 use App\Models\StripeCustomer;
@@ -137,7 +137,11 @@ class DdrController extends Controller
 
         Mail::to('alit@allinit.com.au')
             ->cc('kapils@allinit.com.au')
-            ->queue(new NewClientCreated($client));
+            ->queue(new DirectDebitConfigured(
+                $client,
+                $client->company ?? $account->company,
+                $account->display_name,
+            ));
 
         return redirect()->route('onboarding.thanks');
     }

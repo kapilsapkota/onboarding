@@ -26,4 +26,15 @@ trait HasStripeAccountContext
     {
         return $account?->company?->name;
     }
+
+    /**
+     * Absolute logo URL for the account's company, falling back to the
+     * default brand logo when the company has none.
+     */
+    protected function stripeAccountLogoUrl(?StripeAccount $account): string
+    {
+        $logo = $account?->company?->logo;
+
+        return $logo ? asset('images/'.$logo) : asset('images/allinit.png');
+    }
 }

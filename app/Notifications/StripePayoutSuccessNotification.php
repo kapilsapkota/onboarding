@@ -59,6 +59,7 @@ class StripePayoutSuccessNotification extends Notification implements ShouldQueu
                 'notifiable' => $notifiable,
                 'accountLabel' => $this->stripeAccountLabel($account),
                 'companyName' => $this->stripeAccountCompanyName($account),
+                'logoUrl' => $this->stripeAccountLogoUrl($account),
             ]);
     }
 }

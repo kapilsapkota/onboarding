@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\DirectDebitConfigured;
 use App\Mail\NewClientCreated;
 use App\Models\Client;
 use App\Services\StripeAccountResolver;
@@ -302,10 +303,14 @@ class OnboardingController extends Controller
             logName: 'onboarding',
         );
 
-        // Send email notification
+        // Direct-debit submissions get their own confirmation email.
         Mail::to('alit@allinit.com.au')
             ->cc('kapils@allinit.com.au')
-            ->queue(new NewClientCreated($client));
+            ->queue(new DirectDebitConfigured(
+                $client,
+                $client->company,
+                'the direct debit form',
+            ));
 
         return redirect()->route('onboarding.thanks');
     }

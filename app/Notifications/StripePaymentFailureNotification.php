@@ -56,6 +56,7 @@ class StripePaymentFailureNotification extends Notification implements ShouldQue
                 'notifiable' => $notifiable,
                 'accountLabel' => $this->stripeAccountLabel($account),
                 'companyName' => $this->stripeAccountCompanyName($account),
+                'logoUrl' => $this->stripeAccountLogoUrl($account),
             ]);
     }
 }

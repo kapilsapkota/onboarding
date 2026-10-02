@@ -41,11 +41,31 @@
 - **Notifications account/company-aware**: shared `HasStripeAccountContext` trait (`"Account — Company"` / `"Legacy pool"`); subjects suffixed `[label]`; account+company rows in all 4 email blades; payout notification takes optional account id (else local-row lookup); DD-failed mails hardened + name merchant company.
 - **UI for payouts/transactions/batches**: account filters + badges everywhere; live-API transactions read through the picked account's keys (cache keys namespaced per account; API failures → error banner, never 500).
 
+### D. Webhook reconciliation diagnosis (legacy org, read-only + one command)
+- Legacy org migrated to `stripe_accounts.id=1` (`is_legacy=1`); all rows stamped, webhooks correctly hit `/webhooks/stripe/1`. Scoping was NOT the bug.
+- Real cause of `succeeded` + `unreconciled` items: `handleChargeSucceeded()` early-returns (silently, no log) when `charge.balance_transaction` is empty, and `payment_intent.succeeded`'s `reconcileQuietly()` runs while the BT is still pending → `null`. `charge.updated` is unhandled, so nothing retries. BTs existed in Stripe all along.
+- Also: `stripe:reconcile-items` only picks up `status=succeeded`, so `processing`-stuck rows (missed webhooks) are never retried even when Stripe shows succeeded.
+- Ran `php artisan stripe:reconcile-items --account=1 --days=7` → 2/2 reconciled. **Proposed (not implemented)**: log the empty-BT early return, retry reconcile on `charge.updated`, extend the command to refresh stale `processing` rows.
+
+### E. Activity log modern UI + email body capture
+- `ActivityLog` model gained presenters: `initials()`, `avatarUrl()`, `avatarColor()`, `eventTheme()`, `changesList()`, `remainingChangesCount()`, `previewValue()`.
+- Index (`admin/activity-logs`): `?view=timeline|table` toggle (timeline default, invalid falls back), slim clickable feed grouped Today/Yesterday/date with vertically-centred avatars, inline first-change `old → new`, relative timestamps; **detail opens in an Alpine instant modal** (data embedded per page, `openLog(id)`), no navigation. Table view kept. `show` route kept as "Open full page" fallback + polished with avatar header.
+- **Whole email bodies now logged**: `MessageSent` listener stores capped (150KB) `html_body`/`text_body` + `attachments` + `body_truncated` in `properties`. New `GET admin/activity-logs/{log}/body` (JSON, same `view-activity-log` gate) feeds a sandboxed (`sandbox=""`) iframe preview in the modal + direct preview on the show page. Old entries show "no body captured".
+- `tailwind.config.js` safelist now pins event-theme classes (they live only in PHP strings — see gotcha 11); ran `npm run build` (current bundle `app-DBxRi_Qj.css`).
+- Tests: `ActivityLogTest` (+timeline/modal cases), `ActivityCoverageTest` (+body capture/endpoint/detail cases).
+
+### F. Split DDR vs onboarding emails + shared email layout
+- New `App\Mail\DirectDebitConfigured` (subject `Direct Debit Configured Successfully for {Client}`), sent from `DdrController::store` (with `$client->company ?? $account->company` + account display name) and `OnboardingController::directDebitStore` (no company → app branding). Full `OnboardingController::store` still sends `NewClientCreated` unchanged.
+- Masked account number (`•••• 1234`), mandate-status pill, primary contact, next-steps, View Client button.
+- **One shared layout** `resources/views/emails/layout.blade.php` (logo header → colored band + badge → content → branded footer, responsive + preheader). All 7 emails converted: DDR + onboarding + quote (markdown→`view:`) and all 4 Stripe notifications (payout fragment gained its missing outer wrapper). Band colors: green success, red failed, amber dispute, indigo quote.
+- Company logo per email: `asset('images/'.$company->logo)` (allinit.png fallback); notifications via new `HasStripeAccountContext::stripeAccountLogoUrl()`.
+- Tests: `tests/Feature/Emails/DirectDebitEmailTest.php` (DDR/legacy-DD get new mail + branding; onboarding keeps old). Note `Mail::fake()` + `$mail->render()` works for content assertions.
+
 ## 3. Test suite status
 
-- Full suite: **~87 passed / ~395 assertions, 1 pre-existing failure**: `RegistrationTest > new users can register` — **fails on clean HEAD too** (registration assigns a `customer` role that doesn't exist in the test DB). Do not chase it unless asked.
-- New suites: `tests/Feature/Stripe/StripeAccountTest.php`, `MultiTenantStripeTest.php`, `WebhookSettlementTest.php`, `PayoutAccountContextTest.php`, `PayoutTransactionUiTest.php`, `tests/Feature/Admin/UserManagementTest.php`, `RolePermissionTest.php`.
-- Helper function names must be **unique across ALL Pest files** (all files load into one process). Existing: `makeAdmin`, `makeCompany`, `makeRoleAdmin`, `makeStripeCompany/Account`, `makeTenant*`, `makePayoutCompany/Account`, `makePayoutUi*`, `bindFakeBecs`, `StubBecsService`, `StubWebhookController`, `stripeWebhookPost/Headers/Event`.
+- Full suite status when last touched: activity + email + payout-context suites green (18 + 6 passed). **2 pre-existing failures, both fail on clean HEAD too, do not chase unless asked**: `RegistrationTest > new users can register` (assigns a `customer` role missing from test DB); `PayoutAccountContextTest > payout notification resolves account from the local payout` (subject says `[Legacy]`, test expects `Legacy pool`).
+- New suites since: `tests/Feature/Admin/ActivityLogTest.php`, `ActivityCoverageTest.php`, `tests/Feature/Emails/DirectDebitEmailTest.php` (+ Stripe `StripeAccountTest.php`, `MultiTenantStripeTest.php`, `WebhookSettlementTest.php`, `PayoutAccountContextTest.php`, `PayoutTransactionUiTest.php`, admin `UserManagementTest.php`, `RolePermissionTest.php` from before).
+- Helper function names must be **unique across ALL Pest files** (all files load into one process). Existing: `makeAdmin`, `makeCompany`, `makeRoleAdmin`, `makeStripeCompany/Account`, `makeTenant*`, `makePayoutCompany/Account`, `makePayoutUi*`, `makeActivityViewer`, `makeCoverageViewer`, `makeDdrCompany/Account`, `bindFakeBecs`, `StubBecsService`, `StubWebhookController`, `stripeWebhookPost/Headers/Event`.
 - Webhook tests post **raw JSON bodies** via `test()->call(..., $server, $payload)` with HMAC computed as `hash_hmac('sha256', "$ts.$payload", $secret)` — `$this->post()` sends form data and breaks signatures.
 - `StubWebhookController` (in WebhookSettlementTest) subclasses the controller overriding protected `becs()` so per-account settlement tests avoid network. `app()->instance()` works for constructor injection but **loses to `app(X, $params)`** (verified empirically) — production `becs()` uses `new`, keep it that way.
 - Sync queue in tests: jobs run inline; dummy Stripe keys fail fast with auth errors (safe). A past 300s timeout was a transient network stall, not code.
@@ -64,6 +84,10 @@
 8. `visibleAccounts()` lives on the **resolver** — reuse it; don't duplicate per controller.
 9. `clients.company_name` is still free text; `company_id` is the real link (nullable, "Unassigned" queue in UI).
 10. Payout/BT tables have **no company_id** (account only — company via relation). Xero mapping is **out of scope** (user decision).
+11. **Tailwind purges classes that only exist in PHP strings** (e.g. `ActivityLog::eventTheme()` palettes) — content scanner covers `resources/views/**` only. Either write classes literally in Blade or pin them in `tailwind.config.js` safelist, then `npm run build`. Several badge colors shipped unstyled because of this.
+12. **`Mail::fake()` + `$mail->render()`** renders markdown AND html mailables in tests without sending — use it for subject/body assertions. `asset()` inside queued mail needs correct `APP_URL`.
+13. Email preview uses `<iframe sandbox="" :srcdoc>` (modal, Alpine-bound) or `srcdoc="{{ ... }}"` (Blade-escaped, show page) — full HTML docs render fine inside srcdoc.
+14. `MailMessage->view(...)` notification views are plain Blade (no `x-mail::` components allowed); `@extends('emails.layout', [...])` works and receives both parent + view data.
 
 ## 5. Deploy / runbook
 
@@ -83,3 +107,5 @@ php artisan test --compact
 - Batches **list** has filter+badges; all detail pages covered. Nothing known pending.
 - Possible follow-ups if asked: `company_id` on payouts/BTs (currently account-only); Xero tenant↔company mapping (explicitly out of scope); cut over legacy `/ddr` + global webhook (currently parallel on purpose); `stripe:sync-payouts` per-account scheduling.
 - Legacy `/ddr` route closure renders `ddr` view with no `$stripeAccount` — the view handles it via `$stripeAccount ?? null`. Don't break that.
+- **Reconciliation hardening (diagnosed §D, not built)**: log empty-BT early return in `handleChargeSucceeded`, retry `reconcilePaymentIntent` on `charge.updated`, extend `stripe:reconcile-items` to refresh stale `processing` rows.
+- Past mail activity logs have **no bodies** (capture started with §E) — backfill is impossible; they show the fallback message by design.
