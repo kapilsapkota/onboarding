@@ -367,14 +367,22 @@ class StripeBulkChargeController extends Controller
         return $rowAccountId === null || $rowAccountId === $legacyId;
     }
 
-    /** Cancels a single charge item and its Stripe PaymentIntent. */
+    /**
+     * Cancels a single charge item and its Stripe PaymentIntent.
+     *
+     * Cancellable only while the item is non-terminal (pending/processing)
+     * and unreconciled. Pending items without a PaymentIntent are marked
+     * cancelled locally (the queued job skips non-pending items). Items
+     * with a PaymentIntent are retrieved first so terminal Stripe states
+     * (succeeded/canceled) sync locally instead of throwing.
+     */
     public function cancel(StripeChargeBatchItem $item): RedirectResponse
     {
         $item->refresh();
 
-        if (in_array($item->status, ['succeeded', 'failed', 'cancelled'], true)) {
+        if (! $item->isCancellable()) {
             return back()->withErrors([
-                'cancel' => 'This charge cannot be cancelled.',
+                'cancel' => "This charge cannot be cancelled (current status: {$item->status}).",
             ]);
         }
 
@@ -384,17 +392,46 @@ class StripeBulkChargeController extends Controller
 
         try {
             if ($item->stripe_payment_intent_id) {
+                $current = $stripe->paymentIntents->retrieve($item->stripe_payment_intent_id);
+
+                if (in_array($current->status ?? null, ['succeeded'], true)) {
+                    $item->update([
+                        'status' => 'succeeded',
+                        'stripe_data' => $current->toArray(),
+                    ]);
+                    $item->batch->recalculateStatus();
+
+                    return back()->withErrors([
+                        'cancel' => 'This charge has already succeeded in Stripe and cannot be cancelled. Issue a refund instead.',
+                    ]);
+                }
+
+                if (in_array($current->status ?? null, ['canceled'], true)) {
+                    $item->update([
+                        'status' => 'cancelled',
+                        'stripe_data' => $current->toArray(),
+                    ]);
+                    $item->batch->recalculateStatus();
+
+                    return back()->with(
+                        'success',
+                        'Charge was already cancelled in Stripe.'
+                    );
+                }
+
                 $intent = $stripe->paymentIntents->cancel(
                     $item->stripe_payment_intent_id
                 );
 
                 $item->update([
                     'status' => 'cancelled',
+                    'error_message' => null,
                     'stripe_data' => $intent->toArray(),
                 ]);
             } else {
                 $item->update([
                     'status' => 'cancelled',
+                    'error_message' => null,
                 ]);
             }
 

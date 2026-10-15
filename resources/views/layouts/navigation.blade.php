@@ -325,6 +325,32 @@
 
                                     </a>
                                 @endcan
+                                {{-- Stripe Customers --}}
+                                @can('view-direct-debit')
+                                    <a href="{{ route('admin.stripe.customers.index') }}"
+                                       class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                      {{ request()->is('admin/stripe/customers*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                                       :title="collapsed ? '{{ __('Stripe Customers') }}' : ''">
+
+                                        <svg
+                                            class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe/customers*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            stroke-width="1.75">
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+
+                                        <span x-show="!collapsed"
+                                              x-transition
+                                              class="ml-3 whitespace-nowrap">
+                    {{ __('Stripe Customers') }}
+                </span>
+
+                                    </a>
+                                @endcan
                                 {{-- Stripe Payouts --}}
                                 @can('view-payment')
                                     <a href="{{ route('admin.payouts.index') }}"

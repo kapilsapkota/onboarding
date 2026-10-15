@@ -36,6 +36,12 @@ class StripeCustomer extends Model
         return $this->belongsTo(StripeAccount::class);
     }
 
+    /** Our customer records linked to this Stripe customer id. */
+    public function clients(): HasMany
+    {
+        return $this->hasMany(Client::class, 'stripe_customer_id', 'stripe_customer_id');
+    }
+
     public function batchItems(): HasMany
     {
         return $this->hasMany(StripeChargeBatchItem::class, 'stripe_customer_id');

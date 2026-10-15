@@ -1,3 +1,6 @@
+@php
+use Carbon\Carbon;
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
@@ -14,7 +17,7 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-[#F5A97B]">{{ now()->format('l, d F Y') }}</p>
                         <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                            Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }}{{ auth()->user() ? ', '.auth()->user()->name : '' }}
+                            Good {{ Carbon::now()->hour < 12 ? 'morning' : (Carbon::now()->hour < 17 ? 'afternoon' : 'evening') }}{{ auth()->user() ? ', '.auth()->user()->name : '' }}
                         </h1>
                         <p class="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">
                             Bulk direct debit collections, mandates and client links, all one click away.

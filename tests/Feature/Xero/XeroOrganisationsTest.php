@@ -423,6 +423,25 @@ test('reconcile dropdown shows every customer without a scope', function () {
     $response->assertSee('All customers', false);
 });
 
+test('reconcile dropdown shows company and stripe account ownership', function () {
+    $admin = makeXeroOrgAdmin(['view-contact']);
+    ['otherCompany' => $otherCompany] = makeXeroOrgFixtures();
+
+    Client::create([
+        'company_name' => 'Outside Client Co',
+        'billing_email' => 'outside-client@example.com',
+        'company_id' => $otherCompany->id,
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.xero.reconcile.index'));
+
+    $response->assertOk();
+    // Client linked to Acme Group with cus_123 on the Acme Main stripe account.
+    $response->assertSee('Exact Email Co — exact@example.com · cus_123 [Acme Group · Acme Main]', false);
+    // Client with only a company link still shows where it belongs.
+    $response->assertSee('Outside Client Co — outside-client@example.com [Other Co]', false);
+});
+
 test('assigning a match requires edit-contact', function () {
     $plain = User::factory()->create();
     ['emailContact' => $contact, 'tenant' => $tenant, 'client' => $client] = makeXeroOrgFixtures();

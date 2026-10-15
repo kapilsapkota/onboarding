@@ -14,7 +14,7 @@ trait HasStripeAccountContext
     protected function stripeAccountLabel(?StripeAccount $account): string
     {
         if (! $account) {
-            return 'Legacy';
+            return 'Legacy pool';
         }
 
         $company = $account->company?->name;

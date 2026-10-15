@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\StripeAccountController;
 use App\Http\Controllers\Admin\StripeBulkChargeController;
+use App\Http\Controllers\Admin\StripeCustomerController;
 use App\Http\Controllers\Admin\StripePayoutController;
 use App\Http\Controllers\Admin\StripeTransactionController;
 use App\Http\Controllers\Admin\UserController;
@@ -218,6 +219,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('batches/{batch}', [StripeBulkChargeController::class, 'showBatch'])->name('batches.show');
         Route::get('batches', [StripeBulkChargeController::class, 'batches'])->name('batches.index');
         Route::post('items/{item}/retry', [StripeBulkChargeController::class, 'retry'])->name('items.retry');
+        Route::post('items/{item}/cancel', [StripeBulkChargeController::class, 'cancel'])->name('items.cancel');
+        Route::get('customers', [StripeCustomerController::class, 'index'])->name('customers.index');
+        Route::post('customers/sync', [StripeCustomerController::class, 'sync'])->name('customers.sync');
+        Route::get('customers/{customer}', [StripeCustomerController::class, 'show'])->name('customers.show');
     });
 
     // ── Stripe Accounts (multi-tenant credentials, DDR links) ───────────────

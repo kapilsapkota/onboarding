@@ -164,7 +164,12 @@ class XeroReconcileController extends Controller
      */
     private function clientsForScope(?XeroTenant $tenant, ?int $companyId, ?int $stripeAccountId, ?array $scopedTenantIds): array
     {
-        $base = Client::with('company:id,name')->orderBy('company_name');
+        $base = Client::with([
+            'company:id,name',
+            'stripeCustomer:stripe_customer_id,stripe_account_id,name,email',
+            'stripeCustomer.stripeAccount:id,display_name,company_id',
+            'stripeCustomer.stripeAccount.company:id,name',
+        ])->orderBy('company_name');
         $columns = ['id', 'company_name', 'billing_email', 'stripe_customer_id', 'company_id'];
 
         if (! $tenant && ! $companyId && ! $stripeAccountId) {

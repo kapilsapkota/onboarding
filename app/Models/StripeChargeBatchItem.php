@@ -121,4 +121,25 @@ class StripeChargeBatchItem extends Model
     {
         return $this->reconciliation_status === 'reconciled';
     }
+
+    /**
+     * Whether this item can still be cancelled.
+     *
+     * Terminal states (succeeded, failed, cancelled) and reconciled items
+     * can no longer be cancelled in Stripe — succeeded money needs a
+     * refund, failed items should be retried, and reconciled funds have
+     * already settled into a payout.
+     */
+    public function isCancellable(): bool
+    {
+        if (in_array($this->status, ['succeeded', 'failed', 'cancelled', 'canceled'], true)) {
+            return false;
+        }
+
+        if ($this->isReconciled()) {
+            return false;
+        }
+
+        return true;
+    }
 }

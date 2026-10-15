@@ -125,11 +125,13 @@
                                 <td class="px-4 py-4">
                                     @if($isAuto && $suggestion)
                                         <button type="button" data-contact="{{ $contact->xero_contact_id }}" data-customer="{{ $suggestion->id }}" data-tenant="{{ $contact->xero_tenant_id }}"
+                                                title="{{ collect([$suggestion->company?->name, $suggestion->stripeCustomer?->stripeAccount?->display_name])->filter()->unique()->implode(' · ') }}"
                                                 class="use-suggestion-btn inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700 transition hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300">
                                             ⚡ {{ $suggestion->company_name }} ({{ round($score) }}%)
                                         </button>
                                     @elseif($isPossible && $suggestion)
                                         <button type="button" data-contact="{{ $contact->xero_contact_id }}" data-customer="{{ $suggestion->id }}" data-tenant="{{ $contact->xero_tenant_id }}"
+                                                title="{{ collect([$suggestion->company?->name, $suggestion->stripeCustomer?->stripeAccount?->display_name])->filter()->unique()->implode(' · ') }}"
                                                 class="use-suggestion-btn inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-bold text-orange-700 transition hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300">
                                             ~ {{ $suggestion->company_name }} ({{ round($score) }}%)
                                         </button>
@@ -142,7 +144,19 @@
                                             class="customer-select w-full min-w-[220px] rounded-xl border-gray-200 bg-white px-3 py-2 text-xs shadow-sm focus:border-[#F06927] focus:ring-2 focus:ring-[#F06927]/30 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
                                         <option value="">— Select our customer —</option>
                                         @foreach($clients as $client)
-                                            <option value="{{ $client->id }}" {{ $suggestion?->id === $client->id ? 'selected' : '' }}>{{ $client->company_name }} — {{ $client->billing_email ?? 'no email' }}{{ $client->stripe_customer_id ? ' · ' . $client->stripe_customer_id : '' }}</option>
+                                            @php
+                                                $stripeAccount = $client->stripeCustomer?->stripeAccount;
+                                                $stripeCompanyName = $stripeAccount?->company?->name;
+                                                $belongsTo = collect([
+                                                    $client->company?->name,
+                                                    $stripeAccount?->display_name,
+                                                ])->filter()->unique()->values();
+                                                if ($stripeCompanyName && ! $belongsTo->contains($stripeCompanyName)) {
+                                                    $belongsTo->push($stripeCompanyName);
+                                                }
+                                                $belongsLabel = $belongsTo->isNotEmpty() ? ' [' . $belongsTo->implode(' · ') . ']' : '';
+                                            @endphp
+                                            <option value="{{ $client->id }}" {{ $suggestion?->id === $client->id ? 'selected' : '' }}>{{ $client->company_name }} — {{ $client->billing_email ?? 'no email' }}{{ $client->stripe_customer_id ? ' · ' . $client->stripe_customer_id : '' }}{{ $belongsLabel }}</option>
                                         @endforeach
                                     </select>
                                     @if($clients->isEmpty())

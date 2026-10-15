@@ -81,6 +81,7 @@
                                 'succeeded'  => 'bg-green-100 text-green-700',
                                 'processing' => 'bg-blue-100 text-blue-700',
                                 'failed'     => 'bg-red-100 text-red-700',
+                                'cancelled', 'canceled' => 'bg-gray-200 text-gray-600',
                                 default      => 'bg-gray-100 text-gray-700',
                             };
                         @endphp
@@ -101,17 +102,31 @@
                                 {{ $item->error_message ?? '-' }}
                             </td>
                             <td class="px-5 py-4 text-sm whitespace-nowrap">
-                                @if($item->status === 'failed' && ! $item->stripe_payment_intent_id)
-                                    <form method="POST" action="{{ route('admin.stripe.items.retry', $item) }}" class="inline">
-                                        @csrf
-                                        <button type="submit"
-                                                class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
-                                            Retry
-                                        </button>
-                                    </form>
-                                @else
-                                    <span class="text-gray-300">-</span>
-                                @endif
+                                <div class="flex items-center gap-2">
+                                    @if($item->status === 'failed' && ! $item->stripe_payment_intent_id)
+                                        <form method="POST" action="{{ route('admin.stripe.items.retry', $item) }}" class="inline">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
+                                                Retry
+                                            </button>
+                                        </form>
+                                    @endif
+                                    @if($item->isCancellable())
+                                        <form method="POST" action="{{ route('admin.stripe.items.cancel', $item) }}" class="inline cancel-item-form">
+                                            @csrf
+                                            <button type="button"
+                                                    class="cancel-item-btn px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-semibold rounded-lg hover:bg-red-100 transition"
+                                                    data-customer="{{ $item->stripeCustomer->name ?? $item->stripeCustomer->email ?? 'this customer' }}"
+                                                    data-amount="{{ $item->formattedAmount() }}">
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    @endif
+                                    @if(! ($item->status === 'failed' && ! $item->stripe_payment_intent_id) && ! $item->isCancellable())
+                                        <span class="text-gray-300">-</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -122,5 +137,26 @@
         </div>
 
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.querySelectorAll('.cancel-item-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const form = btn.closest('form');
+                const customer = btn.dataset.customer || 'this customer';
+                const amount = btn.dataset.amount || '';
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Cancel this charge?',
+                    html: `This will cancel the <strong>${amount} charge for ${customer}</strong> in Stripe as well. This cannot be undone.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, cancel it',
+                    cancelButtonText: 'Keep it',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                }).then(({ isConfirmed }) => { if (isConfirmed) form.submit(); });
+            });
+        });
+    </script>
 
 </x-app-layout>
