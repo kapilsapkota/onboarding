@@ -80,6 +80,14 @@ class StripeAccount extends Model
         return $this->hasMany(DirectDebitPayment::class);
     }
 
+    /**
+     * Xero organisations that use this account as their default for collections.
+     */
+    public function defaultForTenants(): HasMany
+    {
+        return $this->hasMany(XeroTenant::class, 'default_stripe_account_id');
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

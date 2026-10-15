@@ -5,44 +5,35 @@
         </h2>
     </x-slot>
 
-    <div class="py-6 max-w-full mx-auto sm:px-6 lg:px-8">
+    <div class="py-6 max-w-full mx-auto sm:px-6 lg:px-8 space-y-6">
         <x-alert></x-alert>
 
-        {{-- HEADER --}}
-        <div class="bg-white shadow-sm rounded-lg p-4 mb-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="font-semibold text-lg">{{ $xeroTenant->tenant_name }}</h3>
-                    <p class="text-sm text-gray-500">Match Xero contacts with your internal customers</p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        Last synced:
-                        @if($xeroTenant->last_contact_synced_at)
-                            {{ $xeroTenant->last_contact_synced_at->diffForHumans() }}
-                            <span>({{ $xeroTenant->last_contact_synced_at->format('d/m/Y H:i') }})</span>
-                        @else
-                            Never synced
-                        @endif
-                    </p>
-                </div>
-                <div class="flex gap-2">
-                    <form method="POST" action="{{ route('admin.xero.contacts.sync', ['tenant' => $xeroTenant]) }}">
-                        @csrf
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                            Sync Contacts
-                        </button>
-                    </form>
-                    <button id="bulkMatchBtn"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40"
-                            disabled>
-                        Bulk Match Selected
+        <x-ui.hero
+            eyebrow="Reconciliation · {{ $xeroTenant->last_contact_synced_at ? 'synced ' . $xeroTenant->last_contact_synced_at->diffForHumans() : 'never synced' }}"
+            :title="$xeroTenant->tenant_name"
+            subtitle="Match Xero contacts with your internal customers. For every organisation at once, use Reconcile All.">
+            <x-slot name="actions">
+                <form method="POST" action="{{ route('admin.xero.contacts.sync', ['tenant' => $xeroTenant]) }}">
+                    @csrf
+                    <button class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/10">
+                        Sync contacts
                     </button>
-                    <a href="{{ route('admin.xero.index') }}"
-                       class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                        Back
-                    </a>
-                </div>
-            </div>
-        </div>
+                </form>
+                <button id="autoMatchBtn"
+                        class="inline-flex items-center gap-2 rounded-xl bg-[#F06927] px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#D14F1A] hover:shadow-xl">
+                    Auto-match exact
+                </button>
+                <button id="bulkMatchBtn"
+                        class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10 disabled:opacity-40"
+                        disabled>
+                    Bulk match selected
+                </button>
+                <a href="{{ route('admin.xero.reconcile.index', ['tenant' => $xeroTenant->id]) }}"
+                   class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/10">
+                    Reconcile all →
+                </a>
+            </x-slot>
+        </x-ui.hero>
 
         {{-- SUMMARY PILLS / FILTERS --}}
         @php
@@ -104,9 +95,9 @@
         </div>
 
         {{-- TABLE --}}
-        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+        <div class="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-gray-100 dark:bg-gray-800 dark:ring-gray-700">
             <table class="w-full text-sm">
-                <thead class="bg-gray-100 dark:bg-gray-700 text-left text-xs uppercase tracking-wide text-gray-500">
+                <thead class="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500">
                 <tr>
                     <th class="p-3 w-8">
                         <input type="checkbox" id="selectAll" class="rounded">
@@ -248,8 +239,8 @@
 
                     @for($p = max(1, $currentPage - 2); $p <= min($lastPage, $currentPage + 2); $p++)
                         <a href="{{ $filterUrl($activeFilter, $p) }}"
-                           class="px-3 py-1 rounded border transition-colors
-                                  {{ $p === $currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50' }}">
+                           class="px-3 py-1 rounded-xl border transition-colors
+                                   {{ $p === $currentPage ? 'bg-[#F06927] text-white border-[#F06927]' : 'border-gray-300 hover:bg-gray-50' }}">
                             {{ $p }}
                         </a>
                     @endfor
@@ -435,6 +426,31 @@
             }
         });
 
+        // ── Auto-match exact (email/ABN) for this tenant ──────────────────────
+        document.getElementById('autoMatchBtn').addEventListener('click', async function () {
+            const { isConfirmed } = await Swal.fire({
+                icon:               'question',
+                title:              'Auto-match exact?',
+                text:               'This links every exact email/ABN match in this organisation. The rest stay for review.',
+                showCancelButton:   true,
+                confirmButtonText:  'Yes, auto-match',
+                cancelButtonText:   'Cancel',
+                confirmButtonColor: '#F06927',
+                cancelButtonColor:  '#6b7280',
+            });
+
+            if (!isConfirmed) return;
+
+            const res = await post('/admin/xero/contacts/auto-match', { tenant_id: TENANT_ID });
+
+            if (res.ok) {
+                await Swal.fire({ icon: 'success', title: 'Done!', text: res.message ?? 'Auto-match complete.', confirmButtonColor: '#F06927' });
+                location.reload();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Failed', text: res.message ?? 'Auto-match failed.', confirmButtonColor: '#F06927' });
+            }
+        });
+
         // ── POST helper ───────────────────────────────────────────────────────
         async function post(url, body) {
             const res = await fetch(url, {
@@ -447,3 +463,4 @@
     </script>
 
 </x-app-layout>
+

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessStripeCharge;
 use App\Models\StripeAccount;
 use App\Models\StripeChargeBatch;
 use App\Models\StripeChargeBatchItem;
@@ -11,6 +12,7 @@ use App\Models\StripePaymentMethod;
 use App\Services\StripeAccountResolver;
 use App\Services\StripeBulkChargeService;
 use App\Support\Activity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -25,7 +27,7 @@ class StripeBulkChargeController extends Controller
     ) {}
 
     /** Displays the customer selection and amount entry form. */
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $search = $request->string('search')->toString();
         $selectedAccount = $this->resolveSelectedAccount($request);
@@ -43,15 +45,22 @@ class StripeBulkChargeController extends Controller
             ])
             ->when($selectedAccount === 'unassigned', fn ($q) => $q->whereNull('stripe_account_id'))
             ->when($selectedAccount instanceof StripeAccount, fn ($q) => $q->where('stripe_account_id', $selectedAccount->id))
-            ->when($search, fn ($q) => $q
+            ->when($search, fn ($q) => $q->where(fn ($qq) => $qq
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
-            )
+            ))
             ->orderBy('name')
             ->paginate(100)
             ->withQueryString();
 
         $stripeAccounts = $this->visibleAccounts($request);
+
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'rows' => view('admin.stripe._bulk-charge-rows', compact('customers'))->render(),
+                'pagination' => $customers->links()->toHtml(),
+            ]);
+        }
 
         return view('admin.stripe.bulk-charge', compact('customers', 'search', 'stripeAccounts', 'selectedAccount'));
     }
@@ -407,6 +416,52 @@ class StripeBulkChargeController extends Controller
                 'cancel' => 'Unable to cancel the Stripe payment: '.$e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Retries a single failed charge item (e.g. transient "could not connect
+     * to Stripe" failures) by resetting it to pending and re-dispatching
+     * its job. Safe against double-charging: the job reuses the item's
+     * idempotency key, and items that already have a PaymentIntent are
+     * never retried automatically.
+     */
+    public function retry(StripeChargeBatchItem $item): RedirectResponse
+    {
+        $item->refresh();
+
+        if ($item->status !== 'failed') {
+            return back()->withErrors([
+                'retry' => "Only failed charges can be retried (current status: {$item->status}).",
+            ]);
+        }
+
+        if ($item->stripe_payment_intent_id) {
+            return back()->withErrors([
+                'retry' => 'This charge already has a Stripe PaymentIntent — check it in the Stripe dashboard instead of retrying.',
+            ]);
+        }
+
+        $item->update([
+            'status' => 'pending',
+            'error_message' => null,
+            'processed_at' => null,
+        ]);
+
+        $item->batch->recalculateStatus();
+
+        ProcessStripeCharge::dispatch($item->fresh(), Activity::getBatchUuid());
+
+        Activity::record(
+            description: "Retried bulk charge item #{$item->id} ({$item->amount}c)",
+            subject: $item,
+            event: 'retry',
+            logName: 'stripe',
+        );
+
+        return back()->with(
+            'success',
+            'Charge queued for retry.'
+        );
     }
 
     private function visibleAccounts(Request $request): Collection

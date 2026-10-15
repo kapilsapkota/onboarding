@@ -7,6 +7,20 @@
 
     <div class="max-w-5xl mx-auto space-y-6">
 
+        @if (session('success'))
+            <div class="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                @foreach ($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- Batch summary --}}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
@@ -56,6 +70,7 @@
                         <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">PaymentIntent</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Error</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
                     </tr>
                     </thead>
 
@@ -84,6 +99,19 @@
                             </td>
                             <td class="px-5 py-4 text-xs text-red-600 max-w-xs">
                                 {{ $item->error_message ?? '-' }}
+                            </td>
+                            <td class="px-5 py-4 text-sm whitespace-nowrap">
+                                @if($item->status === 'failed' && ! $item->stripe_payment_intent_id)
+                                    <form method="POST" action="{{ route('admin.stripe.items.retry', $item) }}" class="inline">
+                                        @csrf
+                                        <button type="submit"
+                                                class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
+                                            Retry
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="text-gray-300">-</span>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

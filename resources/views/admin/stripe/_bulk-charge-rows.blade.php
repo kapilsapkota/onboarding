@@ -1,6 +1,7 @@
 @forelse ($customers as $index => $customer)
     @php
         $pm = $customer->paymentMethods->first();
+        if (! $pm) continue;
         $accountLabel = $customer->stripeAccount?->display_name ?? 'Legacy pool';
     @endphp
 

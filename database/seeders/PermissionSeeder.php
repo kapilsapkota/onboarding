@@ -57,7 +57,17 @@ class PermissionSeeder extends Seeder
             ],
             'Invoices' => [
                 'view-invoice',
+                'create-invoice',
+                'edit-invoice',
+                'delete-invoice',
                 'sync-invoice',
+            ],
+            'Repeating Invoices' => [
+                'view-repeating-invoice',
+                'create-repeating-invoice',
+                'edit-repeating-invoice',
+                'delete-repeating-invoice',
+                'sync-repeating-invoice',
             ],
             'Xero' => [
                 'view-xero',
@@ -67,6 +77,7 @@ class PermissionSeeder extends Seeder
                 'sync-xero',
                 'sync-xero-contacts',
                 'sync-xero-invoices',
+                'sync-xero-repeating-invoices',
             ],
             'Payments' => [
                 'view-payment',
@@ -117,9 +128,11 @@ class PermissionSeeder extends Seeder
 
             'view-direct-debit', 'create-direct-debit', 'retry-direct-debit', 'cancel-direct-debit',
 
-            'view-invoice', 'sync-invoice',
+            'view-invoice', 'create-invoice', 'edit-invoice', 'delete-invoice', 'sync-invoice',
 
-            'view-xero', 'configure-xero', 'sync-xero', 'sync-xero-contacts', 'sync-xero-invoices',
+            'view-repeating-invoice', 'create-repeating-invoice', 'edit-repeating-invoice', 'delete-repeating-invoice', 'sync-repeating-invoice',
+
+            'view-xero', 'configure-xero', 'sync-xero', 'sync-xero-contacts', 'sync-xero-invoices', 'sync-xero-repeating-invoices',
 
             'view-payment', 'refund-payment',
 
@@ -142,6 +155,8 @@ class PermissionSeeder extends Seeder
             'view-direct-debit', 'create-direct-debit', 'retry-direct-debit',
 
             'view-invoice',
+
+            'view-repeating-invoice',
 
             'view-xero', 'sync-xero', 'sync-xero-invoices',
 

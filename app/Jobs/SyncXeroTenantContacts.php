@@ -54,19 +54,23 @@ class SyncXeroTenantContacts implements ShouldQueue
         );
 
         try {
-            $syncService->sync(
-                $connection,
-                $tenant
-            );
+            if ($this->contactId !== null) {
+                $syncService->syncOne($connection, $tenant, $this->contactId);
+            } else {
+                $syncService->sync($connection, $tenant);
+            }
 
             $tenant->update([
-                'last_contact_sync_at' => now(),
+                'last_contact_synced_at' => now(),
             ]);
 
         } catch (\Throwable $e) {
 
-            $tenant->update([
-                'sync_error' => $e->getMessage(),
+            Log::error('SyncXeroTenantContacts: job failed', [
+                'connection_id' => $this->connectionId,
+                'tenant_id' => $this->tenantId,
+                'contact_id' => $this->contactId,
+                'error' => $e->getMessage(),
             ]);
 
             throw $e;

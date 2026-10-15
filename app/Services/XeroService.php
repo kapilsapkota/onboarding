@@ -9,26 +9,29 @@ use App\Models\Payment;
 use App\Models\XeroConnection;
 use App\Models\XeroTenant;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class XeroService
 {
-    private const BASE_URL    = 'https://api.xero.com/api.xro/2.0';
+    private const BASE_URL = 'https://api.xero.com/api.xro/2.0';
+
     private const IDENTITY_URL = 'https://api.xero.com/connections';
-    private const TOKEN_URL   = 'https://identity.xero.com/connect/token';
+
+    private const TOKEN_URL = 'https://identity.xero.com/connect/token';
+
     private const AUTHORIZE_URL = 'https://login.xero.com/identity/connect/authorize';
 
     public function __construct(
-        private string $clientId     = '',
+        private string $clientId = '',
         private string $clientSecret = '',
-        private string $redirectUri  = '',
+        private string $redirectUri = '',
     ) {
-        $this->clientId     = config('services.xero.client_id');
+        $this->clientId = config('services.xero.client_id');
         $this->clientSecret = config('services.xero.client_secret');
-        $this->redirectUri  = config('services.xero.redirect_uri');
+        $this->redirectUri = config('services.xero.redirect_uri');
     }
 
     // ─────────────────────────────────────────────
@@ -39,13 +42,13 @@ class XeroService
     {
         $params = http_build_query([
             'response_type' => 'code',
-            'client_id'     => $this->clientId,
-            'redirect_uri'  => $this->redirectUri,
-            'scope'         => 'openid profile email accounting.transactions accounting.contacts offline_access',
-            'state'         => csrf_token(),
+            'client_id' => $this->clientId,
+            'redirect_uri' => $this->redirectUri,
+            'scope' => 'openid profile email accounting.transactions accounting.contacts offline_access',
+            'state' => csrf_token(),
         ]);
 
-        return self::AUTHORIZE_URL . '?' . $params;
+        return self::AUTHORIZE_URL.'?'.$params;
     }
 
     public function exchangeCode(string $code): array
@@ -53,8 +56,8 @@ class XeroService
         $response = Http::asForm()
             ->withBasicAuth($this->clientId, $this->clientSecret)
             ->post(self::TOKEN_URL, [
-                'grant_type'   => 'authorization_code',
-                'code'         => $code,
+                'grant_type' => 'authorization_code',
+                'code' => $code,
                 'redirect_uri' => $this->redirectUri,
             ]);
 
@@ -75,8 +78,8 @@ class XeroService
      *   5. Lock could not be acquired within 15 s → re-fetch (the other process
      *      most likely succeeded) and return whatever we get.
      *
-     * @throws XeroAuthException  When the refresh token is revoked/expired.
-     * @throws RequestException   On any other Xero HTTP error.
+     * @throws XeroAuthException When the refresh token is revoked/expired.
+     * @throws RequestException On any other Xero HTTP error.
      */
     public function refreshToken(XeroConnection $connection): XeroConnection
     {
@@ -85,7 +88,7 @@ class XeroService
             return $connection;
         }
 
-        $lockKey = 'xero-refresh-' . $connection->id;
+        $lockKey = 'xero-refresh-'.$connection->id;
 
         // Try to acquire the lock for up to 15 seconds.
         $refreshed = Cache::lock($lockKey, 30)->block(15, function () use ($connection) {
@@ -105,7 +108,7 @@ class XeroService
                 $response = Http::asForm()
                     ->withBasicAuth($this->clientId, $this->clientSecret)
                     ->post(self::TOKEN_URL, [
-                        'grant_type'    => 'refresh_token',
+                        'grant_type' => 'refresh_token',
                         'refresh_token' => $connection->refresh_token,
                     ]);
 
@@ -114,12 +117,12 @@ class XeroService
                 $data = $response->json();
 
                 $connection->update([
-                    'access_token'     => $data['access_token'],
-                    'refresh_token'    => $data['refresh_token'],
+                    'access_token' => $data['access_token'],
+                    'refresh_token' => $data['refresh_token'],
                     'token_expires_at' => now()->addSeconds($data['expires_in']),
                     // Clear any previous reauth flag on successful refresh.
-                    'needs_reauth'     => false,
-                    'reauth_reason'    => null,
+                    'needs_reauth' => false,
+                    'reauth_reason' => null,
                 ]);
 
                 return $connection->fresh();
@@ -131,17 +134,17 @@ class XeroService
                 // rotated, or the Xero app was disconnected). Nothing we can do
                 // automatically — an admin must re-authorize via OAuth.
                 if (in_array($status, [400, 401], true)) {
-                    $reason = 'Refresh token revoked or expired (HTTP ' . $status . '). Re-authorization required.';
+                    $reason = 'Refresh token revoked or expired (HTTP '.$status.'). Re-authorization required.';
 
                     Log::error('XeroService: refresh token is invalid, marking needs_reauth', [
                         'connection_id' => $connection->id,
-                        'status'        => $status,
-                        'body'          => $e->response->body(),
+                        'status' => $status,
+                        'body' => $e->response->body(),
                     ]);
 
                     $connection->update([
-                        'is_active'     => false,
-                        'needs_reauth'  => true,
+                        'is_active' => false,
+                        'needs_reauth' => true,
                         'reauth_reason' => $reason,
                     ]);
 
@@ -217,9 +220,9 @@ class XeroService
             foreach ($byEmail as $contact) {
                 $candidates[$contact['ContactID']] = [
                     'contact' => $contact,
-                    'score'   => 100,
-                    'method'  => 'email',
-                    'reason'  => 'Exact email match',
+                    'score' => 100,
+                    'method' => 'email',
+                    'reason' => 'Exact email match',
                 ];
             }
         }
@@ -229,15 +232,15 @@ class XeroService
         }
 
         $searchName = $customer->company_name ?? $customer->name;
-        $byName     = $this->searchContacts($connection, $searchName);
+        $byName = $this->searchContacts($connection, $searchName);
         foreach ($byName as $contact) {
             $score = $this->similarityScore($searchName, $contact['Name'] ?? '');
             if ($score >= 60) {
                 $candidates[$contact['ContactID']] = [
                     'contact' => $contact,
-                    'score'   => $score,
-                    'method'  => 'name',
-                    'reason'  => "Name similarity {$score}%",
+                    'score' => $score,
+                    'method' => 'name',
+                    'reason' => "Name similarity {$score}%",
                 ];
             }
         }
@@ -246,17 +249,17 @@ class XeroService
             $byAbn = $this->searchContacts($connection, $customer->abn);
             foreach ($byAbn as $contact) {
                 $existing = $candidates[$contact['ContactID']] ?? null;
-                $score    = 95;
+                $score = 95;
                 if ($existing) {
-                    $candidates[$contact['ContactID']]['score']  = max($existing['score'], $score);
+                    $candidates[$contact['ContactID']]['score'] = max($existing['score'], $score);
                     $candidates[$contact['ContactID']]['method'] = 'abn';
                     $candidates[$contact['ContactID']]['reason'] = 'ABN match';
                 } else {
                     $candidates[$contact['ContactID']] = [
                         'contact' => $contact,
-                        'score'   => $score,
-                        'method'  => 'abn',
-                        'reason'  => 'ABN match',
+                        'score' => $score,
+                        'method' => 'abn',
+                        'reason' => 'ABN match',
                     ];
                 }
             }
@@ -271,8 +274,8 @@ class XeroService
     {
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
-            ->get(self::BASE_URL . '/Contacts', [
-                'searchTerm'      => $term,
+            ->get(self::BASE_URL.'/Contacts', [
+                'searchTerm' => $term,
                 'includeArchived' => false,
             ]);
 
@@ -295,17 +298,17 @@ class XeroService
         $connection = $this->refreshToken($connection);
 
         $payload = [
-            'Name'         => $customer->company_name ?? $customer->name,
+            'Name' => $customer->company_name ?? $customer->name,
             'EmailAddress' => $customer->billing_email,
-            'Phones'       => $customer->phone ? [[
-                'PhoneType'   => 'DEFAULT',
+            'Phones' => $customer->phone ? [[
+                'PhoneType' => 'DEFAULT',
                 'PhoneNumber' => $customer->phone,
             ]] : [],
         ];
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
-            ->put(self::BASE_URL . '/Contacts', ['Contacts' => [$payload]]);
+            ->put(self::BASE_URL.'/Contacts', ['Contacts' => [$payload]]);
 
         $response->throw();
 
@@ -322,7 +325,7 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
-            ->get(self::BASE_URL . "/Invoices/{$invoiceId}");
+            ->get(self::BASE_URL."/Invoices/{$invoiceId}");
 
         $response->throw();
 
@@ -335,10 +338,10 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
-            ->get(self::BASE_URL . '/Invoices', [
+            ->get(self::BASE_URL.'/Invoices', [
                 'ContactIDs' => $xeroContactId,
-                'Statuses'   => 'AUTHORISED',
-                'Type'       => 'ACCREC',
+                'Statuses' => 'AUTHORISED',
+                'Type' => 'ACCREC',
             ]);
 
         if ($response->failed()) {
@@ -361,27 +364,27 @@ class XeroService
         }
 
         $payload = [
-            'Invoice'      => ['InvoiceID' => $payment->xero_invoice_id],
-            'Account'      => ['Code' => config('services.xero.bank_account_code', '090')],
-            'Date'         => now()->format('Y-m-d'),
-            'Amount'       => $payment->amount / 100,
-            'Reference'    => "Stripe BECS – {$payment->stripe_payment_intent_id}",
+            'Invoice' => ['InvoiceID' => $payment->xero_invoice_id],
+            'Account' => ['Code' => config('services.xero.bank_account_code', '090')],
+            'Date' => now()->format('Y-m-d'),
+            'Amount' => $payment->amount / 100,
+            'Reference' => "Stripe BECS – {$payment->stripe_payment_intent_id}",
             'CurrencyRate' => 1.0,
         ];
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $connection->tenant_id])
-            ->put(self::BASE_URL . '/Payments', $payload);
+            ->put(self::BASE_URL.'/Payments', $payload);
 
         if ($response->failed()) {
             $payment->update([
                 'xero_sync_status' => 'failed',
-                'xero_sync_error'  => $response->body(),
+                'xero_sync_error' => $response->body(),
             ]);
 
             Log::error('XeroService: payment sync failed', [
                 'payment_id' => $payment->id,
-                'response'   => $response->body(),
+                'response' => $response->body(),
             ]);
 
             return false;
@@ -390,13 +393,13 @@ class XeroService
         $xeroPayment = $response->json('Payments.0', []);
 
         $payment->update([
-            'xero_payment_id'  => $xeroPayment['PaymentID'] ?? null,
+            'xero_payment_id' => $xeroPayment['PaymentID'] ?? null,
             'xero_sync_status' => 'synced',
-            'xero_synced_at'   => now(),
+            'xero_synced_at' => now(),
         ]);
 
         Log::info('XeroService: invoice marked paid', [
-            'payment_id'      => $payment->id,
+            'payment_id' => $payment->id,
             'xero_invoice_id' => $payment->xero_invoice_id,
             'xero_payment_id' => $xeroPayment['PaymentID'] ?? null,
         ]);
@@ -410,8 +413,8 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-            ->get(self::BASE_URL . '/Contacts', [
-                'status'     => 'ACTIVE',
+            ->get(self::BASE_URL.'/Contacts', [
+                'status' => 'ACTIVE',
                 'isCustomer' => 'true',
             ]);
 
@@ -426,16 +429,16 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-            ->get(self::BASE_URL . '/Invoices', [
-                'where'    => 'Contact.ContactID=Guid("' . $contactId . '")',
+            ->get(self::BASE_URL.'/Invoices', [
+                'where' => 'Contact.ContactID=Guid("'.$contactId.'")',
                 'Statuses' => 'AUTHORISED',
-                'Type'     => 'ACCREC',
+                'Type' => 'ACCREC',
             ]);
 
         if ($response->failed()) {
             Log::error('XeroService: contact invoices fetch failed', [
                 'contact_id' => $contactId,
-                'body'       => $response->body(),
+                'body' => $response->body(),
             ]);
 
             return [];
@@ -450,12 +453,12 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-            ->get(self::BASE_URL . '/Accounts', ['where' => 'Type=="BANK"']);
+            ->get(self::BASE_URL.'/Accounts', ['where' => 'Type=="BANK"']);
 
         if ($response->failed()) {
             Log::error('XeroService: failed to fetch bank accounts', [
                 'tenant_id' => $tenant->tenant_id,
-                'body'      => $response->body(),
+                'body' => $response->body(),
             ]);
 
             return [];
@@ -464,8 +467,8 @@ class XeroService
         return collect($response->json('Accounts', []))
             ->map(fn ($a) => [
                 'account_id' => $a['AccountID'],
-                'name'       => $a['Name'],
-                'code'       => $a['Code'] ?? null,
+                'name' => $a['Name'],
+                'code' => $a['Code'] ?? null,
             ])
             ->values()
             ->all();
@@ -493,17 +496,17 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-            ->get(self::BASE_URL . "/Payments/{$paymentId}");
+            ->get(self::BASE_URL."/Payments/{$paymentId}");
 
         if ($response->failed()) {
             Log::error('XeroService: failed to fetch payment', [
-                'tenant_id'  => $tenant->tenant_id,
+                'tenant_id' => $tenant->tenant_id,
                 'payment_id' => $paymentId,
-                'status'     => $response->status(),
-                'body'       => $response->body(),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
-            throw new \RuntimeException('Xero payment fetch failed: ' . $response->body());
+            throw new \RuntimeException('Xero payment fetch failed: '.$response->body());
         }
 
         return $response->json('Payments.0', []);
@@ -515,19 +518,239 @@ class XeroService
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-            ->get(self::BASE_URL . "/Invoices/{$invoiceId}");
+            ->get(self::BASE_URL."/Invoices/{$invoiceId}");
 
         if ($response->failed()) {
             Log::error('XeroService: failed to fetch invoice', [
-                'tenant_id'  => $tenant->tenant_id,
+                'tenant_id' => $tenant->tenant_id,
                 'invoice_id' => $invoiceId,
-                'status'     => $response->status(),
-                'body'       => $response->body(),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
-            throw new \RuntimeException('Xero invoice fetch failed: ' . $response->body());
+            throw new \RuntimeException('Xero invoice fetch failed: '.$response->body());
         }
 
         return $response->json('Invoices.0', []);
+    }
+
+    // ─────────────────────────────────────────────
+    // Write-through CRUD (Xero is source of truth)
+    //
+    // Conventions (per Xero Accounting API):
+    //   - PUT creates, POST creates-or-updates.
+    //   - Invoices: DRAFT/SUBMITTED → DELETED, AUTHORISED → VOIDED.
+    //   - Contacts: no hard delete — ARCHIVED / ACTIVE restore.
+    //   - Repeating templates: DRAFT/AUTHORISED → DELETED.
+    // Every write sends an Idempotency-Key so queue retries are safe.
+    // ─────────────────────────────────────────────
+
+    /**
+     * Low-level tenant-scoped request with uniform error handling.
+     *
+     * @throws \RuntimeException with Xero's validation detail in the message.
+     */
+    public function api(XeroTenant $tenant, string $method, string $uri, array $payload = [], ?string $idempotencyKey = null): array
+    {
+        $connection = $this->refreshToken($tenant->connection);
+
+        $headers = ['Xero-tenant-id' => $tenant->tenant_id];
+
+        if ($idempotencyKey !== null) {
+            $headers['Idempotency-Key'] = substr($idempotencyKey, 0, 128);
+        }
+
+        $request = Http::withToken($connection->access_token)
+            ->withHeaders($headers)
+            ->acceptJson();
+
+        $method = strtoupper($method);
+        $url = self::BASE_URL.$uri;
+
+        $response = match ($method) {
+            'GET' => $request->get($url, $payload),
+            'PUT' => $request->put($url, $payload),
+            'POST' => $request->post($url, $payload),
+            default => throw new \InvalidArgumentException("Unsupported Xero method [{$method}]."),
+        };
+
+        if ($response->failed()) {
+            Log::error('XeroService: API request failed', [
+                'tenant_id' => $tenant->tenant_id,
+                'method' => $method,
+                'uri' => $uri,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new \RuntimeException($this->friendlyError($method, $uri, $response->json(), $response->status()));
+        }
+
+        return $response->json() ?? [];
+    }
+
+    /** Create a sales invoice / bill (PUT — create-only). */
+    public function createInvoice(XeroTenant $tenant, array $invoice, ?string $idempotencyKey = null): array
+    {
+        $data = $this->api($tenant, 'PUT', '/Invoices', ['Invoices' => [$invoice]], $idempotencyKey ?? (string) Str::uuid());
+
+        return $data['Invoices'][0] ?? [];
+    }
+
+    /** Update a DRAFT/SUBMITTED invoice (POST — create-or-update). */
+    public function updateInvoice(XeroTenant $tenant, string $invoiceId, array $invoice): array
+    {
+        $invoice['InvoiceID'] = $invoiceId;
+        $data = $this->api($tenant, 'POST', '/Invoices', ['Invoices' => [$invoice]], (string) Str::uuid());
+
+        return $data['Invoices'][0] ?? [];
+    }
+
+    /** Soft-delete a DRAFT/SUBMITTED invoice (Status → DELETED). */
+    public function deleteInvoice(XeroTenant $tenant, string $invoiceId, ?string $invoiceNumber = null): array
+    {
+        $payload = ['InvoiceID' => $invoiceId, 'Status' => 'DELETED'];
+
+        if ($invoiceNumber !== null) {
+            $payload['InvoiceNumber'] = $invoiceNumber;
+        }
+
+        return $this->updateInvoice($tenant, $invoiceId, $payload);
+    }
+
+    /** Void an AUTHORISED invoice (Status → VOIDED). */
+    public function voidInvoice(XeroTenant $tenant, string $invoiceId, ?string $invoiceNumber = null): array
+    {
+        $payload = ['InvoiceID' => $invoiceId, 'Status' => 'VOIDED'];
+
+        if ($invoiceNumber !== null) {
+            $payload['InvoiceNumber'] = $invoiceNumber;
+        }
+
+        return $this->updateInvoice($tenant, $invoiceId, $payload);
+    }
+
+    /** Authorise a DRAFT/SUBMITTED invoice (Status → AUTHORISED). */
+    public function authoriseInvoice(XeroTenant $tenant, string $invoiceId): array
+    {
+        return $this->updateInvoice($tenant, $invoiceId, ['Status' => 'AUTHORISED']);
+    }
+
+    /** Create a contact (PUT — create-only). Requires Name. */
+    public function createContactForTenant(XeroTenant $tenant, array $contact, ?string $idempotencyKey = null): array
+    {
+        $data = $this->api($tenant, 'PUT', '/Contacts', ['Contacts' => [$contact]], $idempotencyKey ?? (string) Str::uuid());
+
+        return $data['Contacts'][0] ?? [];
+    }
+
+    /** Update a contact (POST — partial update; omitted fields preserved). */
+    public function updateContactForTenant(XeroTenant $tenant, string $contactId, array $contact): array
+    {
+        $contact['ContactID'] = $contactId;
+        $data = $this->api($tenant, 'POST', '/Contacts', ['Contacts' => [$contact]], (string) Str::uuid());
+
+        return $data['Contacts'][0] ?? [];
+    }
+
+    /** Archive a contact (Xero has no hard delete for contacts). */
+    public function archiveContact(XeroTenant $tenant, string $contactId): array
+    {
+        return $this->updateContactForTenant($tenant, $contactId, ['ContactStatus' => 'ARCHIVED']);
+    }
+
+    /** Restore an archived contact. */
+    public function restoreContact(XeroTenant $tenant, string $contactId): array
+    {
+        return $this->updateContactForTenant($tenant, $contactId, ['ContactStatus' => 'ACTIVE']);
+    }
+
+    /** Fetch a single repeating-invoice template. */
+    public function getRepeatingInvoice(XeroTenant $tenant, string $repeatingInvoiceId): array
+    {
+        $data = $this->api($tenant, 'GET', "/RepeatingInvoices/{$repeatingInvoiceId}");
+
+        return $data['RepeatingInvoices'][0] ?? [];
+    }
+
+    /** Create a repeating-invoice template (PUT — DRAFT or AUTHORISED). */
+    public function createRepeatingInvoice(XeroTenant $tenant, array $template, ?string $idempotencyKey = null): array
+    {
+        $data = $this->api($tenant, 'PUT', '/RepeatingInvoices', ['RepeatingInvoices' => [$template]], $idempotencyKey ?? (string) Str::uuid());
+
+        return $data['RepeatingInvoices'][0] ?? [];
+    }
+
+    /** Update a repeating-invoice template (POST). */
+    public function updateRepeatingInvoice(XeroTenant $tenant, string $repeatingInvoiceId, array $template): array
+    {
+        $template['RepeatingInvoiceID'] = $repeatingInvoiceId;
+        $data = $this->api($tenant, 'POST', '/RepeatingInvoices', ['RepeatingInvoices' => [$template]], (string) Str::uuid());
+
+        return $data['RepeatingInvoices'][0] ?? [];
+    }
+
+    /** Delete a repeating-invoice template (Status → DELETED). */
+    public function deleteRepeatingInvoice(XeroTenant $tenant, string $repeatingInvoiceId): array
+    {
+        return $this->updateRepeatingInvoice($tenant, $repeatingInvoiceId, ['Status' => 'DELETED']);
+    }
+
+    /** Sales-capable accounts for the invoice line-item picker. */
+    public function getSalesAccounts(XeroTenant $tenant): array
+    {
+        $data = $this->api($tenant, 'GET', '/Accounts', ['where' => 'Type=="SALES"||Type=="REVENUE"']);
+
+        return $data['Accounts'] ?? [];
+    }
+
+    /** Tax rates for the invoice line-item picker. */
+    public function getTaxRates(XeroTenant $tenant): array
+    {
+        $data = $this->api($tenant, 'GET', '/TaxRates');
+
+        return $data['TaxRates'] ?? [];
+    }
+
+    /** Branding themes for the invoice form picker (best-effort; empty on failure). */
+    public function getBrandingThemes(XeroTenant $tenant): array
+    {
+        try {
+            $data = $this->api($tenant, 'GET', '/BrandingThemes');
+
+            return $data['BrandingThemes'] ?? [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Flatten Xero's nested ValidationErrors into a readable message.
+     */
+    private function friendlyError(string $method, string $uri, ?array $body, int $status): string
+    {
+        $candidates = [];
+
+        foreach (['Invoices', 'Contacts', 'RepeatingInvoices', 'Payments'] as $key) {
+            foreach ((array) ($body[$key] ?? []) as $row) {
+                foreach ((array) ($row['ValidationErrors'] ?? []) as $error) {
+                    if (! empty($error['Message'])) {
+                        $candidates[] = $error['Message'];
+                    }
+                }
+            }
+        }
+
+        if (! empty($body['Message'])) {
+            $candidates[] = $body['Message'];
+        }
+
+        if (! empty($body['Detail'])) {
+            $candidates[] = $body['Detail'];
+        }
+
+        $detail = $candidates !== [] ? implode(' ', array_unique($candidates)) : 'Unknown Xero error.';
+
+        return "Xero {$method} {$uri} failed [{$status}]: {$detail}";
     }
 }

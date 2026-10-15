@@ -64,8 +64,32 @@ class XeroContactController extends Controller
         );
     }
 
+    /**
+     * Auto-link exact (email/ABN) matches for one tenant's unmatched contacts.
+     */
+    public function autoMatch(Request $request, XeroMatchService $matcher): JsonResponse
+    {
+        $this->authorizeAction('edit-contact');
+
+        $data = $request->validate([
+            'tenant_id' => ['required', 'integer', 'exists:xero_tenants,id'],
+        ]);
+
+        $result = $matcher->autoMatchUnmatched($data['tenant_id']);
+
+        return response()->json([
+            'ok' => true,
+            'linked' => $result['linked'],
+            'suggested' => $result['suggested'],
+            'skipped' => $result['skipped'],
+            'message' => "Auto-matched {$result['linked']}, {$result['suggested']} still need review, {$result['skipped']} with no suggestion.",
+        ]);
+    }
+
     public function assign(Request $request): JsonResponse
     {
+        $this->authorizeAction('edit-contact');
+
         $data = $request->validate([
             'contact_id' => ['required', 'string'],
             'customer_id' => ['required', 'integer', 'exists:clients,id'],
@@ -101,6 +125,8 @@ class XeroContactController extends Controller
 
     public function bulkAssign(Request $request): JsonResponse
     {
+        $this->authorizeAction('edit-contact');
+
         $data = $request->validate([
             'assignments' => ['required', 'array', 'min:1', 'max:200'],
             'assignments.*.contact_id' => ['required', 'string'],
@@ -163,6 +189,8 @@ class XeroContactController extends Controller
 
     public function clearMatch(XeroContact $xeroContact): JsonResponse
     {
+        $this->authorizeAction('edit-contact');
+
         $xeroContact->clearMatch();
 
         return response()->json([
@@ -203,5 +231,10 @@ class XeroContactController extends Controller
             });
 
         return response()->json($contacts);
+    }
+
+    private function authorizeAction(string $permission): void
+    {
+        abort_unless(auth()->user()?->can($permission), 403);
     }
 }

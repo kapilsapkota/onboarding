@@ -49,4 +49,15 @@ class Company extends Model
     {
         return $this->hasMany(StripeAccount::class);
     }
+
+    /**
+     * Xero organisations attached to this business. The tenant is the
+     * source of truth for billing identity across Xero and Stripe.
+     *
+     * @return HasMany<XeroTenant, $this>
+     */
+    public function xeroTenants(): HasMany
+    {
+        return $this->hasMany(XeroTenant::class);
+    }
 }

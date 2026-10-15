@@ -27,20 +27,20 @@ class XeroContactSyncService
 
         $clients = Client::all();
 
-        $page   = 1;
+        $page = 1;
         $synced = 0;
         $failed = 0;
 
         do {
             $response = Http::withToken($connection->access_token)
                 ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-                ->get(self::BASE_URL . '/Contacts', ['page' => $page]);
+                ->get(self::BASE_URL.'/Contacts', ['page' => $page]);
 
             if ($response->failed()) {
                 Log::error('Xero contact sync failed', [
                     'tenant_id' => $tenant->id,
-                    'status'    => $response->status(),
-                    'body'      => $response->body(),
+                    'status' => $response->status(),
+                    'body' => $response->body(),
                 ]);
                 break;
             }
@@ -51,17 +51,17 @@ class XeroContactSyncService
                 break;
             }
 
-            DB::transaction(function () use ($contacts, $tenant, $clients, &$synced, &$failed) {
+            DB::transaction(function () use ($contacts, $tenant, &$synced, &$failed) {
                 foreach ($contacts as $raw) {
                     try {
                         $xeroContact = $this->upsertContact($raw, $tenant);
-//                        $this->runMatching($xeroContact, $raw, $clients);
+                        //                        $this->runMatching($xeroContact, $raw, $clients);
                         $synced++;
                     } catch (\Throwable $e) {
                         $failed++;
                         Log::warning('Failed to upsert Xero contact', [
                             'contact_id' => $raw['ContactID'] ?? null,
-                            'error'      => $e->getMessage(),
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
@@ -79,6 +79,41 @@ class XeroContactSyncService
         ];
     }
 
+    /**
+     * Fetch and upsert a single contact by its Xero UUID.
+     * Called from webhook handlers — no pagination needed.
+     */
+    public function syncOne(XeroConnection $connection, XeroTenant $tenant, string $xeroContactId): XeroContact
+    {
+        $connection = $this->xero->refreshToken($connection);
+
+        $response = Http::withToken($connection->access_token)
+            ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
+            ->get(self::BASE_URL.'/Contacts/'.$xeroContactId);
+
+        if ($response->failed()) {
+            Log::error('Xero contact single fetch failed', [
+                'tenant_id' => $tenant->id,
+                'contact_id' => $xeroContactId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new \RuntimeException("Xero contact fetch failed [{$response->status()}]");
+        }
+
+        $contacts = $response->json('Contacts', []);
+
+        if (empty($contacts)) {
+            throw new \RuntimeException("Xero contact {$xeroContactId} not found.");
+        }
+
+        $contact = DB::transaction(fn () => $this->upsertContact($contacts[0], $tenant));
+        $tenant->update(['last_contact_synced_at' => now()]);
+
+        return $contact;
+    }
+
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
@@ -87,7 +122,7 @@ class XeroContactSyncService
     {
         return XeroContact::updateOrCreate(
             [
-                'xero_tenant_id'  => $tenant->id,
+                'xero_tenant_id' => $tenant->id,
                 'xero_contact_id' => $contact['ContactID'],
             ],
             [
@@ -95,15 +130,15 @@ class XeroContactSyncService
                 'xero_account_number' => $contact['AccountNumber'] ?? null,
                 'xero_contact_status' => $contact['ContactStatus'] ?? null,
 
-                'name'       => $contact['Name'] ?? null,
+                'name' => $contact['Name'] ?? null,
                 'first_name' => $contact['FirstName'] ?? null,
-                'last_name'  => $contact['LastName'] ?? null,
-                'email'      => $contact['EmailAddress'] ?? null,
+                'last_name' => $contact['LastName'] ?? null,
+                'email' => $contact['EmailAddress'] ?? null,
 
                 'phone' => $contact['Phones'][0]['PhoneNumber'] ?? null,
 
                 'addresses' => $contact['Addresses'] ?? [],
-                'phones'    => $contact['Phones'] ?? [],
+                'phones' => $contact['Phones'] ?? [],
 
                 'is_supplier' => $contact['IsSupplier'] ?? false,
                 'is_customer' => $contact['IsCustomer'] ?? false,
@@ -138,17 +173,17 @@ class XeroContactSyncService
      * XeroMatchService must return ['client' => Client, 'score' => float, 'method' => string]
      * or null when no match is found.
      */
-//    private function runMatching(XeroContact $xeroContact, array $raw, Collection $clients): void
-//    {
-//        $result = $this->matcher->matchContact($raw, $clients);
-//
-//        if ($result === null) {
-//            return;
-//        }
-//        $xeroContact->markMatched(
-//            $result['customer'],
-//            $result['score'],
-//            $result['method'],
-//        );
-//    }
+    //    private function runMatching(XeroContact $xeroContact, array $raw, Collection $clients): void
+    //    {
+    //        $result = $this->matcher->matchContact($raw, $clients);
+    //
+    //        if ($result === null) {
+    //            return;
+    //        }
+    //        $xeroContact->markMatched(
+    //            $result['customer'],
+    //            $result['score'],
+    //            $result['method'],
+    //        );
+    //    }
 }

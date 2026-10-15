@@ -13,8 +13,13 @@ use App\Http\Controllers\Admin\StripeTransactionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\XeroConnectionController;
 use App\Http\Controllers\Admin\XeroContactController;
+use App\Http\Controllers\Admin\XeroCustomerController;
 use App\Http\Controllers\Admin\XeroInvoiceController;
+use App\Http\Controllers\Admin\XeroInvoiceManagerController;
+use App\Http\Controllers\Admin\XeroReconcileController;
+use App\Http\Controllers\Admin\XeroRepeatingInvoiceController;
 use App\Http\Controllers\Admin\XeroSyncController;
+use App\Http\Controllers\Admin\XeroTenantController;
 use App\Http\Controllers\Admin\XeroTenantSettingsController;
 use App\Http\Controllers\Admin\XeroWebhookController;
 use App\Http\Controllers\AdminChargeController;
@@ -130,6 +135,52 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/tenant/{tenant}/sync', [XeroSyncController::class, 'sync'])->name('tenants.sync');
         Route::get('tenants/{tenant}/bank-settings', [XeroTenantSettingsController::class, 'edit'])->name('tenants.bank-settings');
         Route::put('tenants/{tenant}/bank-settings', [XeroTenantSettingsController::class, 'update'])->name('tenants.bank-settings-update');
+
+        // ── Organisations (source-of-truth hub: tenant ↔ company ↔ Stripe) ─
+        Route::get('organisations', [XeroTenantController::class, 'index'])->name('organisations.index');
+        Route::get('organisations/{organisation}', [XeroTenantController::class, 'show'])->name('organisations.show');
+        Route::get('organisations/{organisation}/edit', [XeroTenantController::class, 'edit'])->name('organisations.edit');
+        Route::put('organisations/{organisation}', [XeroTenantController::class, 'update'])->name('organisations.update');
+
+        // ── Reconcile all customers (every organisation) ───────────────
+        Route::get('reconcile', [XeroReconcileController::class, 'index'])->name('reconcile.index');
+        Route::post('reconcile/auto-match', [XeroReconcileController::class, 'autoMatch'])->name('reconcile.auto-match');
+
+        // ── Invoices (all tenants, Xero write-through CRUD) ──────────────
+        Route::get('invoices', [XeroInvoiceManagerController::class, 'index'])->name('invoices.index');
+        Route::post('invoices/sync-all', [XeroInvoiceManagerController::class, 'syncAll'])->name('invoices.sync-all');
+        Route::get('invoices/create', [XeroInvoiceManagerController::class, 'create'])->name('invoices.create');
+        Route::post('invoices', [XeroInvoiceManagerController::class, 'store'])->name('invoices.store');
+        Route::get('invoices/{invoice}', [XeroInvoiceManagerController::class, 'show'])->name('invoices.show');
+        Route::get('invoices/{invoice}/edit', [XeroInvoiceManagerController::class, 'edit'])->name('invoices.edit');
+        Route::put('invoices/{invoice}', [XeroInvoiceManagerController::class, 'update'])->name('invoices.update');
+        Route::delete('invoices/{invoice}', [XeroInvoiceManagerController::class, 'destroy'])->name('invoices.destroy');
+        Route::post('invoices/{invoice}/authorise', [XeroInvoiceManagerController::class, 'authorise'])->name('invoices.authorise');
+        Route::post('invoices/tenant/{tenant}/sync', [XeroInvoiceManagerController::class, 'sync'])->name('invoices.sync');
+
+        // ── Customers (Xero contacts, all tenants) ────────────────────────
+        Route::get('customers', [XeroCustomerController::class, 'index'])->name('customers.index');
+        Route::post('customers/sync-all', [XeroCustomerController::class, 'syncAll'])->name('customers.sync-all');
+        Route::get('customers/create', [XeroCustomerController::class, 'create'])->name('customers.create');
+        Route::post('customers', [XeroCustomerController::class, 'store'])->name('customers.store');
+        Route::get('customers/{customer}', [XeroCustomerController::class, 'show'])->name('customers.show');
+        Route::get('customers/{customer}/edit', [XeroCustomerController::class, 'edit'])->name('customers.edit');
+        Route::put('customers/{customer}', [XeroCustomerController::class, 'update'])->name('customers.update');
+        Route::delete('customers/{customer}', [XeroCustomerController::class, 'destroy'])->name('customers.destroy');
+        Route::post('customers/{customer}/restore', [XeroCustomerController::class, 'restore'])->name('customers.restore');
+        Route::post('customers/tenant/{tenant}/sync', [XeroCustomerController::class, 'sync'])->name('customers.sync');
+
+        // ── Repeating invoices (all tenants, Xero write-through CRUD) ─────
+        Route::get('repeating-invoices', [XeroRepeatingInvoiceController::class, 'index'])->name('repeating-invoices.index');
+        Route::post('repeating-invoices/sync-all', [XeroRepeatingInvoiceController::class, 'syncAll'])->name('repeating-invoices.sync-all');
+        Route::get('repeating-invoices/create', [XeroRepeatingInvoiceController::class, 'create'])->name('repeating-invoices.create');
+        Route::post('repeating-invoices', [XeroRepeatingInvoiceController::class, 'store'])->name('repeating-invoices.store');
+        Route::get('repeating-invoices/{repeatingInvoice}', [XeroRepeatingInvoiceController::class, 'show'])->name('repeating-invoices.show');
+        Route::get('repeating-invoices/{repeatingInvoice}/edit', [XeroRepeatingInvoiceController::class, 'edit'])->name('repeating-invoices.edit');
+        Route::put('repeating-invoices/{repeatingInvoice}', [XeroRepeatingInvoiceController::class, 'update'])->name('repeating-invoices.update');
+        Route::delete('repeating-invoices/{repeatingInvoice}', [XeroRepeatingInvoiceController::class, 'destroy'])->name('repeating-invoices.destroy');
+        Route::post('repeating-invoices/{repeatingInvoice}/authorise', [XeroRepeatingInvoiceController::class, 'authorise'])->name('repeating-invoices.authorise');
+        Route::post('repeating-invoices/tenant/{tenant}/sync', [XeroRepeatingInvoiceController::class, 'sync'])->name('repeating-invoices.sync');
     });
 
     // ── Payments ──────────────────────────────────────────────────────────────
@@ -166,6 +217,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('bulk-charge/confirm', [StripeBulkChargeController::class, 'confirm'])->name('bulk-charge.confirm');
         Route::get('batches/{batch}', [StripeBulkChargeController::class, 'showBatch'])->name('batches.show');
         Route::get('batches', [StripeBulkChargeController::class, 'batches'])->name('batches.index');
+        Route::post('items/{item}/retry', [StripeBulkChargeController::class, 'retry'])->name('items.retry');
     });
 
     // ── Stripe Accounts (multi-tenant credentials, DDR links) ───────────────

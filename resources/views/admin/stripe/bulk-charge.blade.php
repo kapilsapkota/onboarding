@@ -28,11 +28,11 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                 </svg>
             </div>
-            <form method="GET" action="{{ route('admin.stripe.bulk-charge') }}" class="flex items-center gap-2">
+            <form method="GET" action="{{ route('admin.stripe.bulk-charge') }}" id="accountFilterForm" class="flex items-center gap-2">
                 @if($search)
                     <input type="hidden" name="search" value="{{ $search }}">
                 @endif
-                <select name="stripe_account" onchange="this.form.submit()"
+                <select name="stripe_account" id="accountFilter" onchange="handleAccountChange(this.form)"
                         class="py-2 pl-3 pr-8 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400">
                     <option value="all" @selected($selectedAccount === 'all')>All accounts</option>
                     <option value="unassigned" @selected($selectedAccount === 'unassigned')>Unassigned (legacy)</option>
@@ -43,6 +43,11 @@
                     @endforeach
                 </select>
             </form>
+            <label for="selectedFirstToggle" title="Pin selected customers to the top of the list"
+                   class="flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600 cursor-pointer select-none">
+                <input type="checkbox" id="selectedFirstToggle" class="rounded" onchange="toggleSelectedFirst()">
+                Selected first
+            </label>
             <span id="searchSpinner" class="hidden text-xs text-gray-400 animate-pulse">Searching...</span>
         </div>
 
@@ -148,8 +153,13 @@
     </div>
 
     <script>
-        // Persists selections across search results: customerId -> { pmId, name, pm, amount, description }
+        // Persists selections across search results, pagination and full page
+        // reloads: customerId -> { pmId, name, pm, amount, description }
+        const STORAGE_KEY = 'bulkChargeSelections.v1';
         const selections = new Map();
+        // Typed field values kept even for unchecked rows so a typed amount is
+        // never lost when the user searches, paginates or switches accounts.
+        const drafts = new Map();
 
         let debounceTimer = null;
 
@@ -157,34 +167,95 @@
         const spinner       = document.getElementById('searchSpinner');
         const tbody         = document.getElementById('customerTableBody');
         const pagination    = document.getElementById('paginationWrapper');
+        const accountFilter = document.getElementById('accountFilter');
+        const selectedFirstToggle = document.getElementById('selectedFirstToggle');
+
+        // When on, selected rows are pinned to the top of the visible list.
+        let selectedFirst = false;
+
+        function persistState() {
+            try {
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    selections: [...selections.entries()],
+                    drafts: [...drafts.entries()],
+                    selectedFirst,
+                }));
+            } catch (e) { /* storage unavailable - keep in-memory only */ }
+        }
+
+        function restoreFromStorage() {
+            try {
+                const raw = sessionStorage.getItem(STORAGE_KEY);
+                if (! raw) return;
+                const data = JSON.parse(raw);
+                (data.selections || []).forEach(([id, val]) => selections.set(String(id), val));
+                (data.drafts || []).forEach(([id, val]) => drafts.set(String(id), val));
+                selectedFirst = data.selectedFirst === true;
+                if (selectedFirstToggle) selectedFirstToggle.checked = selectedFirst;
+            } catch (e) { /* ignore corrupt storage */ }
+        }
+
+        function clearPersistedState() {
+            try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        }
 
         // ----------------------------------------------------------------
-        // Search
+        // Search (AJAX - selections/drafts survive tbody swaps)
         // ----------------------------------------------------------------
 
         searchInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(doSearch, 280);
+            debounceTimer = setTimeout(() => doSearch(1), 280);
         });
 
-        async function doSearch() {
+        function buildSearchUrl(page = 1) {
+            const url = new URL(window.location.href);
+            const q = searchInput.value.trim();
+            if (q) {
+                url.searchParams.set('search', q);
+            } else {
+                url.searchParams.delete('search');
+            }
+            if (accountFilter && accountFilter.value) {
+                url.searchParams.set('stripe_account', accountFilter.value);
+            }
+            if (page && page > 1) {
+                url.searchParams.set('page', page);
+            } else {
+                url.searchParams.delete('page');
+            }
+            return url;
+        }
+
+        async function doSearch(page = 1) {
+            captureVisibleRows();
             spinner.classList.remove('hidden');
 
-            const q   = searchInput.value.trim();
-            const url = new URL(window.location.href);
-            url.searchParams.set('search', q);
-            url.searchParams.delete('page');
+            const url = buildSearchUrl(page);
 
             try {
-                const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                const html = await res.text();
-                const doc  = new DOMParser().parseFromString(html, 'text/html');
+                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const contentType = res.headers.get('content-type') || '';
 
-                tbody.innerHTML      = doc.getElementById('customerTableBody').innerHTML;
-                pagination.innerHTML = doc.getElementById('paginationWrapper').innerHTML;
+                if (contentType.includes('application/json')) {
+                    const data = await res.json();
+                    tbody.innerHTML = data.rows;
+                    pagination.innerHTML = data.pagination;
+                } else {
+                    // Fallback: parse full-page HTML (old response shape).
+                    const html = await res.text();
+                    const doc  = new DOMParser().parseFromString(html, 'text/html');
+                    const newBody = doc.getElementById('customerTableBody');
+                    const newPagination = doc.getElementById('paginationWrapper');
+                    if (newBody) tbody.innerHTML = newBody.innerHTML;
+                    if (newPagination) pagination.innerHTML = newPagination.innerHTML;
+                }
+
+                window.history.replaceState({}, '', url);
 
                 bindRows();
                 restoreSelections();
+                applySelectedFirstSort();
                 updateSummary();
             } catch (e) {
                 console.error('Search failed', e);
@@ -193,40 +264,67 @@
             }
         }
 
+        // Pagination links fetch via AJAX so in-memory + stored selections survive.
+        pagination.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (! link) return;
+            e.preventDefault();
+            let page = 1;
+            try {
+                page = parseInt(new URL(link.href).searchParams.get('page') || '1', 10) || 1;
+            } catch (err) { /* keep page 1 */ }
+            doSearch(page);
+        });
+
+        function handleAccountChange(form) {
+            captureVisibleRows();
+            persistState();
+            form.submit();
+        }
+
         // ----------------------------------------------------------------
         // Row binding - call after any tbody swap
         // ----------------------------------------------------------------
 
         function bindRows() {
             document.querySelectorAll('.amount-input').forEach(input => {
-                input.addEventListener('input', () => {
-                    const cb = input.closest('tr').querySelector('.customer-checkbox');
+                input.oninput = () => {
+                    const tr = input.closest('tr');
+                    const cb = tr.querySelector('.customer-checkbox');
                     cb.checked = parseFloat(input.value) > 0;
-                    saveRowToSelections(input.closest('tr'));
+                    saveRowToSelections(tr);
+                    applySelectedFirstSort();
                     updateSummary();
-                });
+                };
             });
 
             document.querySelectorAll('.description-input').forEach(input => {
-                input.addEventListener('input', () => {
+                input.oninput = () => {
                     saveRowToSelections(input.closest('tr'));
-                });
+                };
             });
 
             document.querySelectorAll('.customer-checkbox').forEach(cb => {
-                cb.addEventListener('change', () => {
+                cb.onchange = () => {
                     saveRowToSelections(cb.closest('tr'));
+                    applySelectedFirstSort();
                     updateSummary();
-                });
+                };
             });
 
-            document.getElementById('selectAll').addEventListener('change', function () {
-                document.querySelectorAll('.customer-checkbox').forEach(cb => cb.checked = this.checked);
-                document.querySelectorAll('tr[data-customer-id]').forEach(tr => saveRowToSelections(tr));
-                updateSummary();
-            });
+            // Assigned (not added) so re-binding after a search never stacks handlers.
+            const selectAll = document.getElementById('selectAll');
+            if (selectAll) {
+                selectAll.onchange = function () {
+                    document.querySelectorAll('.customer-checkbox').forEach(cb => cb.checked = this.checked);
+                    document.querySelectorAll('tr[data-customer-id]').forEach(tr => saveRowToSelections(tr));
+                    applySelectedFirstSort();
+                    updateSummary();
+                };
+            }
         }
 
+        /** Saves typed values into drafts always; tracks checked+amount rows in selections. */
         function saveRowToSelections(tr) {
             const cb          = tr.querySelector('.customer-checkbox');
             const amountInput = tr.querySelector('.amount-input');
@@ -234,6 +332,15 @@
             const customerId  = tr.dataset.customerId;
 
             if (! customerId) return;
+
+            const amount      = (amountInput?.value ?? '').trim();
+            const description = (descInput?.value ?? '').trim();
+
+            if (amount !== '' || description !== '') {
+                drafts.set(customerId, { amount, description });
+            } else {
+                drafts.delete(customerId);
+            }
 
             if (cb.checked && parseFloat(amountInput?.value) > 0) {
                 selections.set(customerId, {
@@ -247,21 +354,67 @@
             } else {
                 selections.delete(customerId);
             }
+
+            persistState();
+        }
+
+        /** Captures all currently visible rows before a tbody swap/navigation. */
+        function captureVisibleRows() {
+            document.querySelectorAll('tr[data-customer-id]').forEach(tr => saveRowToSelections(tr));
         }
 
         function restoreSelections() {
             document.querySelectorAll('tr[data-customer-id]').forEach(tr => {
                 const id  = tr.dataset.customerId;
-                const sel = selections.get(id);
-                if (! sel) return;
-
                 const cb    = tr.querySelector('.customer-checkbox');
                 const amt   = tr.querySelector('.amount-input');
                 const desc  = tr.querySelector('.description-input');
 
-                cb.checked  = true;
+                const draft = drafts.get(id);
+                if (draft) {
+                    if (amt && draft.amount !== undefined) amt.value = draft.amount;
+                    if (desc && draft.description !== undefined) desc.value = draft.description;
+                }
+
+                const sel = selections.get(id);
+                if (! sel) {
+                    if (cb) cb.checked = false;
+                    return;
+                }
+
+                if (cb) cb.checked = true;
                 if (amt)  amt.value  = sel.amount;
                 if (desc) desc.value = sel.description;
+            });
+        }
+
+        // ----------------------------------------------------------------
+        // Selected-first sorting + row highlighting
+        // ----------------------------------------------------------------
+
+        function toggleSelectedFirst() {
+            selectedFirst = selectedFirstToggle.checked;
+            persistState();
+            applySelectedFirstSort();
+        }
+
+        /** Pins selected rows to the top of the currently visible list. Stable; keeps input focus. */
+        function applySelectedFirstSort() {
+            if (! selectedFirst) return;
+            const rows = [...tbody.querySelectorAll('tr[data-customer-id]')];
+            rows.sort((a, b) => {
+                const aSel = selections.has(a.dataset.customerId) ? 0 : 1;
+                const bSel = selections.has(b.dataset.customerId) ? 0 : 1;
+                return aSel - bSel;
+            });
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function refreshRowHighlights() {
+            document.querySelectorAll('tr[data-customer-id]').forEach(tr => {
+                const isSel = selections.has(tr.dataset.customerId);
+                tr.classList.toggle('bg-indigo-50', isSel);
+                tr.classList.toggle('dark:bg-indigo-900/30', isSel);
             });
         }
 
@@ -276,6 +429,7 @@
             document.getElementById('selectedCount').textContent = selections.size;
             document.getElementById('totalAmount').textContent   = '$' + total.toFixed(2);
             document.getElementById('reviewBtn').disabled        = selections.size === 0 || total <= 0;
+            refreshRowHighlights();
         }
 
         // ----------------------------------------------------------------
@@ -349,6 +503,7 @@
                 i++;
             });
 
+            clearPersistedState();
             form.submit();
         }
 
@@ -360,8 +515,13 @@
             })[m]);
         }
 
-        // Initial bind on page load
+        // Initial bind on page load - restores amounts typed before any
+        // search / pagination / account-filter navigation.
+        restoreFromStorage();
         bindRows();
+        restoreSelections();
+        applySelectedFirstSort();
+        updateSummary();
     </script>
 
 </x-app-layout>

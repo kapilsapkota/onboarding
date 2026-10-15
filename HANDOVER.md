@@ -102,6 +102,16 @@ php artisan test --compact
 - Optional: `LEGACY_STRIPE_COMPANY_ID=<id>` to pin the legacy account's owner.
 - Post-deploy per company: register its webhook URL (shown on Stripe Accounts page: `/webhooks/stripe/{id}`) in that company's Stripe dashboard; share its DDR link (`/ddr/{public_id}`).
 
+### G. Xero organisations hub + global reconcile + luxurious UI
+- `xero_tenants` gained nullable `company_id` + `default_stripe_account_id` (FKs, nullOnDelete; migration `2026_10_15_020133_...`). Tenant is now the source-of-truth hub: `XeroTenant::company/defaultStripeAccount/invoices/repeatingInvoices` (+ fixed `contacts()` local key, was `xero_tenant_id`), `Company::xeroTenants()`, `StripeAccount::defaultForTenants()`.
+- `XeroTenantController` (`admin/xero/organisations` index/show/edit/update): index with linked/unlinked filter; show hub with company card, default-account card, Stripe customers w/ Client + Xero-link badges, sync status; edit via `UpdateXeroTenantRequest` (account must belong to linked company or be company-less; clearing company drops company-owned default). Gates: `view-xero` / `configure-xero` (no new perms). Sidebar "Organisations" link added.
+- Global reconcile (`admin/xero/reconcile`): all-org unmatched contacts with suggestions, tenant/search filters, per-row + bulk match (per-row POSTs, since bulk-assign is single-tenant), auto-match-exact form. `XeroMatchService::autoMatchUnmatched(?tenant, threshold 95)` links email/ABN only (`auto:email`/`auto:abn`); fuzzy names stay suggestions.
+- Fixed dangling `POST admin/xero/contacts/auto-match` route (had no controller method): `XeroContactController::autoMatch` now implements it per-tenant. `assign/bulkAssign/clearMatch` now gated with `edit-contact` (were auth-only).
+- UI: new `x-ui.hero/card/field/stat` components (slate-950 hero, #F06927 accents, rounded-2xl ring cards — dashboard trend); **all** `admin/xero/**` views restyled (index, tenant-settings, contacts, customers×3, invoices×3, repeating×3, organisations×3, reconcile). Nested components use dot notation (`<x-ui.hero>`).
+- Tests: `tests/Feature/Xero/XeroOrganisationsTest.php` (18 tests: hub render, gates, link validation, clear-company cascade, reconcile + auto-match email/abn/fuzzy, JSON endpoint, company/stripe-account filters + scoped auto-match, scoped customer dropdown ×4). Suite: 162 passed, same 2 pre-existing failures.
+- Reconcile filters: company + Stripe account selects scope the unmatched list, stats, and auto-match (account covers default-use + company-owned orgs). `XeroMatchService::autoMatchUnmatched()` takes `?array $tenantIds`; tenant dropdown narrows to the selected company.
+- Reconcile dropdown: `XeroReconcileController::clientsForScope()` limits "Match to our customer" options (and suggestions) to the filtered scope — company clients + Stripe-linked clients (`company_id` OR `stripe_customer_id` in scope). Lone unlinked organisation falls back to all; explicit company/account filter with no customers shows empty + note. Options read `Name — email · cus_id`; Xero contact itself untouched.
+
 ## 6. Open / suggested next steps
 
 - Batches **list** has filter+badges; all detail pages covered. Nothing known pending.

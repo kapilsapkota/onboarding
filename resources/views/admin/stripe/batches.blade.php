@@ -20,6 +20,14 @@
         </div>
     @endif
 
+    @if ($errors->any())
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+            @foreach ($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
+    @endif
+
     <div class="mb-6">
         <div
             class="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 shadow-sm">
@@ -374,6 +382,11 @@
                     Error
                 </th>
 
+                <th class="px-5 py-3.5 text-left text-[11px]
+                           font-semibold text-gray-500 uppercase tracking-wider">
+                    Action
+                </th>
+
             </tr>
 
             </thead>
@@ -538,13 +551,27 @@
                         {{ $item->error_message ?? '-' }}
                     </td>
 
+                    <td class="px-5 py-4 whitespace-nowrap">
+                        @if($item->status === 'failed' && ! $item->stripe_payment_intent_id)
+                            <form method="POST" action="{{ route('admin.stripe.items.retry', $item) }}" class="inline">
+                                @csrf
+                                <button type="submit"
+                                        class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
+                                    Retry
+                                </button>
+                            </form>
+                        @else
+                            <span class="text-gray-300">-</span>
+                        @endif
+                    </td>
+
                 </tr>
 
             @empty
 
                 <tr>
                     <td
-                        colspan="14"
+                        colspan="15"
                         class="py-14 text-center"
                     >
                         <svg class="w-10 h-10 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
