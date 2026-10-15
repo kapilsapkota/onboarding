@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\DirectDebitConfigured;
+use App\Mail\DirectDebitMandateConfirmation;
 use App\Mail\NewClientCreated;
 use App\Models\Client;
 use App\Services\StripeAccountResolver;
@@ -141,10 +142,6 @@ class OnboardingController extends Controller
                 if (! $customerId) {
                     throw new \Exception('Missing Stripe customer_id');
                 }
-
-                // Verify against the account that owns this customer id —
-                // never trust browser ids to pick credentials. Unknown ids
-                // fall back to the legacy keys (public onboarding form).
                 $stripe = $this->accounts->clientFor(
                     $this->accounts->forStripeCustomer($customerId)
                 );
@@ -200,8 +197,6 @@ class OnboardingController extends Controller
     public function createSetupIntent(Request $request)
     {
         try {
-            // Brand-new customer from the public form: no account context yet,
-            // so the legacy keys apply (per-account links use DdrController).
             $stripe = $this->accounts->clientFor(null);
 
             $customer = $stripe->customers->create([
@@ -268,8 +263,6 @@ class OnboardingController extends Controller
                 $customerId = $request->input('stripe_customer_id');
 
                 if ($customerId) {
-                    // Same ownership check as store(): resolve credentials from
-                    // the customer id, falling back to the legacy keys.
                     $stripe = $this->accounts->clientFor(
                         $this->accounts->forStripeCustomer($customerId)
                     );
@@ -311,6 +304,15 @@ class OnboardingController extends Controller
                 $client->company,
                 'the direct debit form',
             ));
+
+        if ($customerEmail = ($client->primary_email ?? $client->billing_email)) {
+            Mail::to($customerEmail)
+                ->queue(new DirectDebitMandateConfirmation(
+                    $client,
+                    $client->company,
+                    'the direct debit form',
+                ));
+        }
 
         return redirect()->route('onboarding.thanks');
     }

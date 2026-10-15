@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\XeroConnection;
 use App\Models\XeroContact;
 use App\Models\XeroInvoice;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 
 class SyncXeroRepeatingInvoices implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
@@ -30,24 +32,32 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
     public function __construct(
         public int $connectionId,
         public int $tenantId,
-    ) {}
+        ?string $activityBatch = null,
+    ) {
+        $this->activityBatch = $activityBatch;
+    }
 
     public function handle(XeroService $xero): void
     {
+        $this->runInActivityBatch(fn () => $this->handleBatched($xero));
+    }
+
+    private function handleBatched(XeroService $xero): void
+    {
         $connection = XeroConnection::findOrFail($this->connectionId);
-        $tenant     = XeroTenant::findOrFail($this->tenantId);
+        $tenant = XeroTenant::findOrFail($this->tenantId);
 
         $connection = $xero->refreshToken($connection);
 
         $response = Http::withToken($connection->access_token)
             ->withHeaders(['Xero-tenant-id' => $tenant->tenant_id])
-            ->get(self::BASE_URL . '/RepeatingInvoices');
+            ->get(self::BASE_URL.'/RepeatingInvoices');
 
         if ($response->failed()) {
             Log::error('SyncXeroRepeatingInvoices: fetch failed', [
                 'tenant_id' => $tenant->id,
-                'status'    => $response->status(),
-                'body'      => $response->body(),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
             throw new \RuntimeException("Xero RepeatingInvoices fetch failed [{$response->status()}]");
         }
@@ -56,7 +66,7 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
 
         Log::info('SyncXeroRepeatingInvoices: fetched templates', [
             'tenant_id' => $tenant->id,
-            'count'     => count($templates),
+            'count' => count($templates),
         ]);
 
         DB::transaction(function () use ($templates, $tenant) {
@@ -67,7 +77,7 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
                 } catch (\Throwable $e) {
                     Log::warning('SyncXeroRepeatingInvoices: failed to upsert template', [
                         'repeating_invoice_id' => $raw['RepeatingInvoiceID'] ?? null,
-                        'error'                => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -81,7 +91,7 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
     private function upsertTemplate(array $raw, XeroTenant $tenant): XeroRepeatingInvoice
     {
         $xeroContactXeroId = $raw['Contact']['ContactID'] ?? null;
-        $localContactId    = $xeroContactXeroId
+        $localContactId = $xeroContactXeroId
             ? XeroContact::where('xero_contact_id', $xeroContactXeroId)->value('id')
             : null;
 
@@ -90,30 +100,30 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
         return XeroRepeatingInvoice::updateOrCreate(
             ['xero_repeating_invoice_id' => $raw['RepeatingInvoiceID']],
             [
-                'xero_tenant_id'         => $tenant->id,
-                'type'                   => $raw['Type'] ?? null,
-                'status'                 => $raw['Status'] ?? null,
+                'xero_tenant_id' => $tenant->id,
+                'type' => $raw['Type'] ?? null,
+                'status' => $raw['Status'] ?? null,
 
-                'xero_contact_id'        => $localContactId,
-                'xero_contact_xero_id'   => $xeroContactXeroId,
+                'xero_contact_id' => $localContactId,
+                'xero_contact_xero_id' => $xeroContactXeroId,
 
-                'schedule_period'              => $schedule['Period'] ?? null,
-                'schedule_period_type'         => $schedule['Unit'] ?? null,
-                'schedule_due_date'            => $schedule['DueDate'] ?? null,
-                'schedule_due_date_type'       => $schedule['DueDateType'] ?? null,
-                'schedule_start_date'          => $this->parseDate($schedule['StartDate'] ?? null),
+                'schedule_period' => $schedule['Period'] ?? null,
+                'schedule_period_type' => $schedule['Unit'] ?? null,
+                'schedule_due_date' => $schedule['DueDate'] ?? null,
+                'schedule_due_date_type' => $schedule['DueDateType'] ?? null,
+                'schedule_start_date' => $this->parseDate($schedule['StartDate'] ?? null),
                 'schedule_next_scheduled_date' => $this->parseDate($schedule['NextScheduledDate'] ?? null),
-                'schedule_end_date'            => $this->parseDate($schedule['EndDate'] ?? null),
+                'schedule_end_date' => $this->parseDate($schedule['EndDate'] ?? null),
 
-                'currency_code'          => $raw['CurrencyCode'] ?? null,
-                'sub_total'              => $raw['SubTotal'] ?? null,
-                'total_tax'              => $raw['TotalTax'] ?? null,
-                'total'                  => $raw['Total'] ?? null,
-                'line_items'             => $this->serializeLineItems($raw['LineItems'] ?? []),
-                'reference'              => $raw['Reference'] ?? null,
+                'currency_code' => $raw['CurrencyCode'] ?? null,
+                'sub_total' => $raw['SubTotal'] ?? null,
+                'total_tax' => $raw['TotalTax'] ?? null,
+                'total' => $raw['Total'] ?? null,
+                'line_items' => $this->serializeLineItems($raw['LineItems'] ?? []),
+                'reference' => $raw['Reference'] ?? null,
                 'xero_branding_theme_id' => $raw['BrandingThemeID'] ?? null,
-                'has_attachments'        => (bool) ($raw['HasAttachments'] ?? false),
-                'last_synced_at'         => now(),
+                'has_attachments' => (bool) ($raw['HasAttachments'] ?? false),
+                'last_synced_at' => now(),
             ]
         );
     }
@@ -142,8 +152,7 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
             ->where('type', $repeating->type)
             ->whereNull('xero_repeating_invoice_id')
             ->where('total', $repeating->total)
-            ->when($repeating->schedule_start_date, fn ($q) =>
-                $q->where('invoice_date', '>=', $repeating->schedule_start_date)
+            ->when($repeating->schedule_start_date, fn ($q) => $q->where('invoice_date', '>=', $repeating->schedule_start_date)
             )
             ->update(['xero_repeating_invoice_id' => $repeating->id]);
     }
@@ -169,12 +178,12 @@ class SyncXeroRepeatingInvoices implements ShouldQueue
 
         return array_map(fn (array $item) => [
             'line_item_id' => $item['LineItemID'] ?? null,
-            'description'  => $item['Description'] ?? null,
-            'quantity'     => $item['Quantity'] ?? null,
-            'unit_amount'  => $item['UnitAmount'] ?? null,
+            'description' => $item['Description'] ?? null,
+            'quantity' => $item['Quantity'] ?? null,
+            'unit_amount' => $item['UnitAmount'] ?? null,
             'account_code' => $item['AccountCode'] ?? null,
-            'tax_type'     => $item['TaxType'] ?? null,
-            'line_amount'  => $item['LineAmount'] ?? null,
+            'tax_type' => $item['TaxType'] ?? null,
+            'line_amount' => $item['LineAmount'] ?? null,
         ], $items);
     }
 }

@@ -6,9 +6,47 @@ use App\Models\ActivityLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class Activity
 {
+    /**
+     * Batch shared by every entry recorded during one HTTP request / job,
+     * so the log viewer can group trigger + side-effects together.
+     */
+    protected static ?string $batchUuid = null;
+
+    public static function setBatchUuid(?string $batchUuid): void
+    {
+        static::$batchUuid = $batchUuid;
+    }
+
+    public static function getBatchUuid(): ?string
+    {
+        return static::$batchUuid;
+    }
+
+    public static function resetBatchUuid(): void
+    {
+        static::$batchUuid = null;
+    }
+
+    /**
+     * Run a callback with a batch set (handy for queued jobs / console).
+     * Generates one when null is given.
+     */
+    public static function withBatch(?string $batchUuid, callable $callback): mixed
+    {
+        $previous = static::$batchUuid;
+        static::$batchUuid = $batchUuid ?? (string) Str::uuid();
+
+        try {
+            return $callback(static::$batchUuid);
+        } finally {
+            static::$batchUuid = $previous;
+        }
+    }
+
     /**
      * Record an activity entry. Never throws — logging must not break the request.
      */
@@ -31,6 +69,7 @@ class Activity
             return ActivityLog::create([
                 'log_name' => $logName,
                 'event' => $event,
+                'batch_uuid' => static::$batchUuid,
                 'description' => $description,
                 'subject_type' => $subject ? $subject->getMorphClass() : null,
                 'subject_id' => $subject && $subject->exists ? $subject->getKey() : null,

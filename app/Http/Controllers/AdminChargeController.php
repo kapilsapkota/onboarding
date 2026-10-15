@@ -128,7 +128,7 @@ class AdminChargeController extends Controller
             )
         );
 
-        ProcessSingleDirectDebit::dispatch($ddPayment->id);
+        ProcessSingleDirectDebit::dispatch($ddPayment->id, Activity::getBatchUuid());
 
         Activity::record(
             description: "Initiated direct debit of \${$ddPayment->amount} {$ddPayment->currency_code} for invoice {$invoice->xero_invoice_number}",

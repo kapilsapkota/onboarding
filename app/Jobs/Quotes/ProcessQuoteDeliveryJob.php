@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Quotes;
 
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Mail\Quotes\QuoteDeliveryMail;
 use App\Models\QuoteDelivery;
 use App\Models\QuoteDeliveryAttempt;
@@ -20,30 +21,50 @@ use Throwable;
 
 /**
  * Orchestrates the full quote delivery pipeline.
- *
  */
 class ProcessQuoteDeliveryJob implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 1;
+    public int $tries = 1;
+
     public int $timeout = 300;
 
     public function __construct(
-        private readonly int     $deliveryId,
+        private readonly int $deliveryId,
         private readonly ?string $retryType = null,
-    ) {}
+        ?string $activityBatch = null,
+    ) {
+        $this->activityBatch = $activityBatch;
+    }
 
     // =========================================================================
     // Entry point
     // =========================================================================
 
     public function handle(
-        QuotePdfService        $pdfService,
+        QuotePdfService $pdfService,
         QuotePublicLinkService $publicLinkService,
         QuoteSharePointService $sharePointService,
-        EmailService           $emailService,
-        SmsService             $smsService,
+        EmailService $emailService,
+        SmsService $smsService,
+    ): void {
+        $this->runInActivityBatch(fn () => $this->handleBatched(
+            $pdfService,
+            $publicLinkService,
+            $sharePointService,
+            $emailService,
+            $smsService,
+        ));
+    }
+
+    private function handleBatched(
+        QuotePdfService $pdfService,
+        QuotePublicLinkService $publicLinkService,
+        QuoteSharePointService $sharePointService,
+        EmailService $emailService,
+        SmsService $smsService,
     ): void {
         $delivery = QuoteDelivery::with([
             'quote.items.product.category',
@@ -52,8 +73,8 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         Log::info('quote_delivery.job_started', [
             'delivery_id' => $delivery->id,
-            'quote_id'    => $delivery->quote_id,
-            'retry_type'  => $this->retryType,
+            'quote_id' => $delivery->quote_id,
+            'retry_type' => $this->retryType,
         ]);
 
         if (in_array($delivery->status, [
@@ -62,7 +83,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             QuoteDelivery::STATUS_PARTIALLY_FAILED,
         ])) {
             $delivery->update([
-                'status'     => QuoteDelivery::STATUS_PROCESSING,
+                'status' => QuoteDelivery::STATUS_PROCESSING,
                 'started_at' => $delivery->started_at ?? now(),
             ]);
         }
@@ -83,10 +104,10 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
         } else {
             // PDF failed — mark SharePoint as blocked by it.
             $this->blockDependentStep(
-                delivery:  $delivery,
-                type:      QuoteDeliveryAttempt::TYPE_SHAREPOINT_UPLOAD,
+                delivery: $delivery,
+                type: QuoteDeliveryAttempt::TYPE_SHAREPOINT_UPLOAD,
                 errorCode: 'sharepoint_blocked_no_pdf',
-                message:   'SharePoint upload could not proceed because the PDF was not generated successfully. Retry PDF generation first.',
+                message: 'SharePoint upload could not proceed because the PDF was not generated successfully. Retry PDF generation first.',
             );
         }
 
@@ -94,10 +115,10 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
         // Requires PDF. SharePoint result is irrelevant.
         if ($delivery->send_email) {
             $this->stepEmail(
-                delivery:           $delivery,
-                emailService:       $emailService,
-                pdfService:         $pdfService,
-                pdfSucceeded:       $pdfSucceeded,
+                delivery: $delivery,
+                emailService: $emailService,
+                pdfService: $pdfService,
+                pdfSucceeded: $pdfSucceeded,
                 publicUrlSucceeded: $publicUrlSucceeded,
             );
         }
@@ -115,8 +136,8 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         Log::info('quote_delivery.job_finished', [
             'delivery_id' => $delivery->id,
-            'status'      => $delivery->status,
-            'retry_type'  => $this->retryType,
+            'status' => $delivery->status,
+            'retry_type' => $this->retryType,
         ]);
     }
 
@@ -126,28 +147,30 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        Log::error('quote_delivery.job_crashed', [
-            'delivery_id' => $this->deliveryId,
-            'retry_type'  => $this->retryType,
-            'error'       => $exception->getMessage(),
-            'class'       => $exception::class,
-        ]);
+        $this->runInActivityBatch(function () use ($exception): void {
+            Log::error('quote_delivery.job_crashed', [
+                'delivery_id' => $this->deliveryId,
+                'retry_type' => $this->retryType,
+                'error' => $exception->getMessage(),
+                'class' => $exception::class,
+            ]);
 
-        try {
-            $delivery = QuoteDelivery::find($this->deliveryId);
+            try {
+                $delivery = QuoteDelivery::find($this->deliveryId);
 
-            if ($delivery && ! in_array($delivery->status, [
+                if ($delivery && ! in_array($delivery->status, [
                     QuoteDelivery::STATUS_COMPLETED,
                     QuoteDelivery::STATUS_CANCELLED,
                 ])) {
-                $delivery->update([
-                    'status'    => QuoteDelivery::STATUS_FAILED,
-                    'failed_at' => $delivery->failed_at ?? now(),
-                ]);
+                    $delivery->update([
+                        'status' => QuoteDelivery::STATUS_FAILED,
+                        'failed_at' => $delivery->failed_at ?? now(),
+                    ]);
+                }
+            } catch (Throwable) {
+                // Never throw from failed().
             }
-        } catch (Throwable) {
-            // Never throw from failed().
-        }
+        });
     }
 
     // =========================================================================
@@ -155,7 +178,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
     // =========================================================================
 
     private function stepGeneratePdf(
-        QuoteDelivery   $delivery,
+        QuoteDelivery $delivery,
         QuotePdfService $pdfService,
     ): bool {
         if ($delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_GENERATE_PDF)) {
@@ -176,14 +199,14 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             $delivery->refresh();
 
             $attempt->markSucceeded([
-                'path'     => $path,
+                'path' => $path,
                 'filename' => $delivery->pdf_filename,
-                'size'     => $delivery->pdf_size,
+                'size' => $delivery->pdf_size,
             ]);
 
             Log::info('quote_delivery.pdf_generated', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
+                'attempt_id' => $attempt->id,
             ]);
 
             // Unblock anything that was waiting on the PDF.
@@ -196,15 +219,15 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         } catch (Throwable $e) {
             $attempt->markFailed(
-                errorCode:    'pdf_generation_failed',
+                errorCode: 'pdf_generation_failed',
                 errorMessage: 'The PDF could not be generated. Please try again.',
                 errorDetails: $this->exceptionDetail($e),
             );
 
             Log::error('quote_delivery.pdf_failed', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
-                'error'       => $e->getMessage(),
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
             ]);
 
             return false;
@@ -212,7 +235,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
     }
 
     private function stepGeneratePublicUrl(
-        QuoteDelivery          $delivery,
+        QuoteDelivery $delivery,
         QuotePublicLinkService $publicLinkService,
     ): bool {
         if ($delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_GENERATE_PUBLIC_URL)) {
@@ -236,7 +259,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
             Log::info('quote_delivery.public_url_generated', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
+                'attempt_id' => $attempt->id,
             ]);
 
             $this->unblockDownstream($delivery, ['sms_blocked_no_url']);
@@ -245,15 +268,15 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         } catch (Throwable $e) {
             $attempt->markFailed(
-                errorCode:    'public_url_failed',
+                errorCode: 'public_url_failed',
                 errorMessage: 'The public quote link could not be generated. Please try again.',
                 errorDetails: $this->exceptionDetail($e),
             );
 
             Log::error('quote_delivery.public_url_failed', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
-                'error'       => $e->getMessage(),
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
             ]);
 
             return false;
@@ -261,7 +284,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
     }
 
     private function stepSharePoint(
-        QuoteDelivery          $delivery,
+        QuoteDelivery $delivery,
         QuoteSharePointService $sharePointService,
     ): void {
         // ── Idempotency ───────────────────────────────────────────────────────
@@ -282,6 +305,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             $attempt->markSkipped(
                 'SharePoint upload skipped: SharePoint is not configured on this environment.'
             );
+
             return;
         }
 
@@ -295,7 +319,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             $delivery->refresh();
 
             $attempt->markSucceeded([
-                'sharepoint_url'     => $webUrl,
+                'sharepoint_url' => $webUrl,
                 'sharepoint_file_id' => $delivery->sharepoint_file_id,
             ]);
             // Save the SharePoint PDF URL against the quote.
@@ -308,24 +332,24 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             }
 
             Log::info('quote_delivery.sharepoint_uploaded', [
-                'delivery_id'    => $delivery->id,
-                'quote_id'       => $delivery->quote_id,
-                'attempt_id'     => $attempt->id,
+                'delivery_id' => $delivery->id,
+                'quote_id' => $delivery->quote_id,
+                'attempt_id' => $attempt->id,
                 'sharepoint_url' => $webUrl,
             ]);
 
         } catch (Throwable $e) {
             $attempt->markFailed(
-                errorCode:    'sharepoint_upload_failed',
+                errorCode: 'sharepoint_upload_failed',
                 errorMessage: $sharePointService->humaniseError($e),
                 errorDetails: $this->exceptionDetail($e),
             );
 
             Log::error('quote_delivery.sharepoint_failed', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
-                'error'       => $e->getMessage(),
-                'class'       => $e::class,
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
+                'class' => $e::class,
             ]);
 
             // SharePoint failure does NOT throw — email and SMS proceed normally.
@@ -333,11 +357,11 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
     }
 
     private function stepEmail(
-        QuoteDelivery   $delivery,
-        EmailService    $emailService,
+        QuoteDelivery $delivery,
+        EmailService $emailService,
         QuotePdfService $pdfService,
-        bool            $pdfSucceeded,
-        bool            $publicUrlSucceeded,
+        bool $pdfSucceeded,
+        bool $publicUrlSucceeded,
     ): void {
         if ($delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_EMAIL)) {
             return;
@@ -354,16 +378,18 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             $attempt->markSkipped(
                 'Email skipped: the quote does not have an email address.'
             );
+
             return;
         }
 
         // ── Guard: PDF required ───────────────────────────────────────────────
         if (! $pdfSucceeded || ! $pdfService->pdfExists($delivery)) {
             $attempt->markFailed(
-                errorCode:    'email_blocked_no_pdf',
+                errorCode: 'email_blocked_no_pdf',
                 errorMessage: 'Email could not be sent because the PDF was not generated successfully. Retry PDF generation first.',
                 errorDetails: ['pdf_path' => $delivery->pdf_path],
             );
+
             return;
         }
 
@@ -373,51 +399,51 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             $delivery->refresh();
 
             $mailable = new QuoteDeliveryMail($delivery, $pdfService);
-            $result   = $emailService->send($delivery->email_address, $mailable);
+            $result = $emailService->send($delivery->email_address, $mailable);
 
             if ($result->success) {
                 $attempt->markSucceeded([
                     'message_id' => $result->messageId,
-                    'to'         => $delivery->email_address,
+                    'to' => $delivery->email_address,
                 ]);
 
                 Log::info('quote_delivery.email_sent', [
                     'delivery_id' => $delivery->id,
-                    'attempt_id'  => $attempt->id,
+                    'attempt_id' => $attempt->id,
                 ]);
             } else {
                 $attempt->markFailed(
-                    errorCode:    'email_delivery_failed',
+                    errorCode: 'email_delivery_failed',
                     errorMessage: $result->errorMessage ?? 'The email could not be delivered. Please try again.',
                     errorDetails: $this->exceptionDetail($result->exception),
                 );
 
                 Log::error('quote_delivery.email_failed', [
                     'delivery_id' => $delivery->id,
-                    'attempt_id'  => $attempt->id,
-                    'error'       => $result->errorMessage,
+                    'attempt_id' => $attempt->id,
+                    'error' => $result->errorMessage,
                 ]);
             }
 
         } catch (Throwable $e) {
             $attempt->markFailed(
-                errorCode:    'email_exception',
+                errorCode: 'email_exception',
                 errorMessage: 'An unexpected error occurred while sending the email. Please try again.',
                 errorDetails: $this->exceptionDetail($e),
             );
 
             Log::error('quote_delivery.email_exception', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
-                'error'       => $e->getMessage(),
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }
 
     private function stepSms(
         QuoteDelivery $delivery,
-        SmsService    $smsService,
-        bool          $publicUrlSucceeded,
+        SmsService $smsService,
+        bool $publicUrlSucceeded,
     ): void {
         if ($delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_SMS)) {
             return;
@@ -434,6 +460,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             $attempt->markSkipped(
                 'SMS skipped: the quote does not have a mobile number.'
             );
+
             return;
         }
 
@@ -442,10 +469,11 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         if (! $publicUrlSucceeded || empty($delivery->public_url)) {
             $attempt->markFailed(
-                errorCode:    'sms_blocked_no_url',
+                errorCode: 'sms_blocked_no_url',
                 errorMessage: 'SMS could not be sent because the public quote link was not generated. Retry link generation first.',
                 errorDetails: [],
             );
+
             return;
         }
 
@@ -453,45 +481,45 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         try {
             $message = $this->buildSmsMessage($delivery);
-            $result  = $smsService->send($delivery->phone_number, $message);
+            $result = $smsService->send($delivery->phone_number, $message);
 
             if ($result->success) {
                 $attempt->markSucceeded([
-                    'provider_sid'    => $result->providerSid,
+                    'provider_sid' => $result->providerSid,
                     'provider_status' => $result->providerStatus,
-                    'to'              => $delivery->phone_number,
+                    'to' => $delivery->phone_number,
                 ]);
 
                 Log::info('quote_delivery.sms_sent', [
                     'delivery_id' => $delivery->id,
-                    'attempt_id'  => $attempt->id,
-                    'sid'         => $result->providerSid,
+                    'attempt_id' => $attempt->id,
+                    'sid' => $result->providerSid,
                 ]);
             } else {
                 $attempt->markFailed(
-                    errorCode:    $result->errorCode ?? 'sms_delivery_failed',
+                    errorCode: $result->errorCode ?? 'sms_delivery_failed',
                     errorMessage: $result->errorMessage ?? 'The SMS could not be delivered. Please try again.',
                     errorDetails: $this->exceptionDetail($result->exception),
                 );
 
                 Log::error('quote_delivery.sms_failed', [
                     'delivery_id' => $delivery->id,
-                    'attempt_id'  => $attempt->id,
-                    'error'       => $result->errorMessage,
+                    'attempt_id' => $attempt->id,
+                    'error' => $result->errorMessage,
                 ]);
             }
 
         } catch (Throwable $e) {
             $attempt->markFailed(
-                errorCode:    'sms_exception',
+                errorCode: 'sms_exception',
                 errorMessage: 'An unexpected error occurred while sending the SMS. Please try again.',
                 errorDetails: $this->exceptionDetail($e),
             );
 
             Log::error('quote_delivery.sms_exception', [
                 'delivery_id' => $delivery->id,
-                'attempt_id'  => $attempt->id,
-                'error'       => $e->getMessage(),
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -507,9 +535,9 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
      */
     private function blockDependentStep(
         QuoteDelivery $delivery,
-        string        $type,
-        string        $errorCode,
-        string        $message,
+        string $type,
+        string $errorCode,
+        string $message,
     ): void {
         if ($delivery->hasSucceeded($type)) {
             return;
@@ -522,7 +550,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
         }
 
         $attempt->markFailed(
-            errorCode:    $errorCode,
+            errorCode: $errorCode,
             errorMessage: $message,
             errorDetails: [],
         );
@@ -552,14 +580,14 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
             }
 
             $delivery->attempts()->create([
-                'type'           => $blockedAttempt->type,
-                'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+                'type' => $blockedAttempt->type,
+                'status' => QuoteDeliveryAttempt::STATUS_PENDING,
                 'attempt_number' => $delivery->nextAttemptNumber($blockedAttempt->type),
             ]);
 
             Log::info('quote_delivery.attempt_unblocked', [
-                'delivery_id'  => $delivery->id,
-                'type'         => $blockedAttempt->type,
+                'delivery_id' => $delivery->id,
+                'type' => $blockedAttempt->type,
                 'unblocked_by' => $blockedAttempt->error_code,
             ]);
         }
@@ -567,7 +595,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
     private function findPendingAttempt(
         QuoteDelivery $delivery,
-        string        $type,
+        string $type,
     ): ?QuoteDeliveryAttempt {
         return $delivery->attempts()
             ->where('type', $type)
@@ -579,12 +607,12 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
     private function buildSmsMessage(QuoteDelivery $delivery): string
     {
         $quote = $delivery->quote;
-        $name  = $quote->contact_name ?? $quote->client_name ?? 'there';
+        $name = $quote->contact_name ?? $quote->client_name ?? 'there';
 
-        $lines   = [];
+        $lines = [];
         $lines[] = "Hi {$name},";
 
-        $lines[] = "Thank you for choosing All in IT Solutions. See below link with your quote.";
+        $lines[] = 'Thank you for choosing All in IT Solutions. See below link with your quote.';
 
         if (! empty($delivery->sms_message)) {
             $lines[] = trim($delivery->sms_message);
@@ -592,7 +620,7 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         $lines[] = $delivery->public_url;
 
-        $lines[] = "www.allinit.solutions";
+        $lines[] = 'www.allinit.solutions';
 
         return implode("\n\n", $lines);
     }
@@ -600,16 +628,16 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
     private function maybeMarkQuoteAsSent(QuoteDelivery $delivery): void
     {
         $emailDelivered = $delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_EMAIL);
-        $smsDelivered   = $delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_SMS);
+        $smsDelivered = $delivery->hasSucceeded(QuoteDeliveryAttempt::TYPE_SMS);
 
         if ($emailDelivered || $smsDelivered) {
             $delivery->quote->markAsSent();
 
             Log::info('quote_delivery.quote_marked_sent', [
                 'delivery_id' => $delivery->id,
-                'quote_id'    => $delivery->quote_id,
-                'via_email'   => $emailDelivered,
-                'via_sms'     => $smsDelivered,
+                'quote_id' => $delivery->quote_id,
+                'via_email' => $emailDelivered,
+                'via_sms' => $smsDelivered,
             ]);
         }
     }
@@ -635,11 +663,11 @@ class ProcessQuoteDeliveryJob implements ShouldQueue
 
         return [
             'exception' => $e::class,
-            'message'   => $e->getMessage(),
-            'code'      => $e->getCode(),
-            'file'      => $e->getFile(),
-            'line'      => $e->getLine(),
-            'trace'     => collect(explode("\n", $e->getTraceAsString()))
+            'message' => $e->getMessage(),
+            'code' => $e->getCode(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => collect(explode("\n", $e->getTraceAsString()))
                 ->take(15)
                 ->values()
                 ->all(),

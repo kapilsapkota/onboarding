@@ -12,6 +12,7 @@ use App\Models\StripePaymentMethod;
 use App\Models\XeroContact;
 use App\Models\XeroInvoice;
 use App\Services\StripeAccountResolver;
+use App\Support\Activity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -471,7 +472,7 @@ class ClientController extends Controller
             return back()->with('error', 'No settled payment found that needs Xero sync.');
         }
 
-        WriteXeroPayment::dispatch($dd->id)->onQueue('payments');
+        WriteXeroPayment::dispatch($dd->id, Activity::getBatchUuid())->onQueue('payments');
 
         return back()->with('success', "Xero sync queued for invoice {$invoice->xero_invoice_number}.");
     }

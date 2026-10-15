@@ -7,6 +7,7 @@ use App\Models\StripeChargeBatch;
 use App\Models\StripeChargeBatchItem;
 use App\Models\StripeCustomer;
 use App\Models\StripePaymentMethod;
+use App\Support\Activity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -47,7 +48,7 @@ class StripeBulkChargeService
                     'status' => 'pending',
                 ]);
 
-                ProcessStripeCharge::dispatch($batchItem);
+                ProcessStripeCharge::dispatch($batchItem, Activity::getBatchUuid());
             }
 
             $batch->update(['started_at' => now(), 'status' => 'processing']);

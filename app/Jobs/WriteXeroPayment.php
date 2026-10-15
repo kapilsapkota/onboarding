@@ -1,8 +1,8 @@
 <?php
 
-
 namespace App\Jobs;
 
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\DirectDebitPayment;
 use App\Services\XeroPaymentWritebackService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,23 +14,30 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Posts a settled DirectDebitPayment to Xero as a Payment record.
- *
  */
 class WriteXeroPayment implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
 
     public int $tries = 5;
+
     public int $backoff = 60;
 
-    public function __construct(public int $directDebitPaymentId)
+    public function __construct(public int $directDebitPaymentId, ?string $activityBatch = null)
     {
+        $this->activityBatch = $activityBatch;
     }
 
     public function handle(XeroPaymentWritebackService $service): void
+    {
+        $this->runInActivityBatch(fn () => $this->handleBatched($service));
+    }
+
+    private function handleBatched(XeroPaymentWritebackService $service): void
     {
         $ddPayment = DirectDebitPayment::with(['invoice.tenant.connection'])
             ->findOrFail($this->directDebitPaymentId);
@@ -40,6 +47,7 @@ class WriteXeroPayment implements ShouldQueue
                 'id' => $ddPayment->id,
                 'xero_payment_id' => $ddPayment->xero_payment_id,
             ]);
+
             return;
         }
 
@@ -48,6 +56,7 @@ class WriteXeroPayment implements ShouldQueue
                 'id' => $ddPayment->id,
                 'status' => $ddPayment->status,
             ]);
+
             return;
         }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\DirectDebitConfigured;
+use App\Mail\DirectDebitMandateConfirmation;
 use App\Models\Client;
 use App\Models\StripeAccount;
 use App\Models\StripeCustomer;
@@ -142,6 +143,15 @@ class DdrController extends Controller
                 $client->company ?? $account->company,
                 $account->display_name,
             ));
+
+        if ($customerEmail = ($client->primary_email ?? $client->billing_email)) {
+            Mail::to($customerEmail)
+                ->queue(new DirectDebitMandateConfirmation(
+                    $client,
+                    $client->company ?? $account->company,
+                    $account->display_name,
+                ));
+        }
 
         return redirect()->route('onboarding.thanks');
     }

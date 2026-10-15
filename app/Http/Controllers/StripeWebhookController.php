@@ -18,6 +18,7 @@ use App\Notifications\StripePayoutSuccessNotification;
 use App\Services\StripeAccountResolver;
 use App\Services\StripeBecsService;
 use App\Services\StripePayoutSyncService;
+use App\Support\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -290,7 +291,7 @@ class StripeWebhookController extends Controller
                     'payment_intent_id' => $intent->id,
                 ]));
 
-                WriteXeroPayment::dispatch($ddPayment->id);
+                WriteXeroPayment::dispatch($ddPayment->id, Activity::getBatchUuid());
             }
         }
 
@@ -350,7 +351,7 @@ class StripeWebhookController extends Controller
                     'reason' => $reason,
                 ]));
 
-                HandleFailedDirectDebitPayment::dispatch($ddPayment->id);
+                HandleFailedDirectDebitPayment::dispatch($ddPayment->id, Activity::getBatchUuid());
             }
         }
 

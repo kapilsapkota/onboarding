@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\XeroAuthException;
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\DirectDebitPayment;
 use App\Models\XeroTenant;
 use App\Notifications\DirectDebitFailedAdminNotification;
@@ -12,14 +13,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Http;
 
 class HandleFailedDirectDebitPayment implements ShouldQueue
 {
-    use Queueable;
+    use CarriesActivityBatch;
     use InteractsWithQueue;
+    use Queueable;
     use SerializesModels;
 
     public int $tries = 3;
@@ -29,9 +31,17 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
         return [60, 120, 240];
     }
 
-    public function __construct(public int $ddPaymentId) {}
+    public function __construct(public int $ddPaymentId, ?string $activityBatch = null)
+    {
+        $this->activityBatch = $activityBatch;
+    }
 
     public function handle(XeroService $xero): void
+    {
+        $this->runInActivityBatch(fn () => $this->handleBatched($xero));
+    }
+
+    private function handleBatched(XeroService $xero): void
     {
         $ddPayment = DirectDebitPayment::with([
             'invoice',
@@ -41,8 +51,8 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
         ])->findOrFail($this->ddPaymentId);
 
         $invoice = $ddPayment->invoice;
-        $client  = $invoice->client;
-        $tenant  = $invoice->tenant;
+        $client = $invoice->client;
+        $tenant = $invoice->tenant;
 
         $adminEmail = 'kapils@allinit.com.au';
 
@@ -54,7 +64,7 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::error('Failed DD: admin notification failed', [
                     'dd_payment_id' => $ddPayment->id,
-                    'error'         => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -66,8 +76,8 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::error('Failed DD: customer notification failed', [
                     'dd_payment_id' => $ddPayment->id,
-                    'client_id'     => $client->id,
-                    'error'         => $e->getMessage(),
+                    'client_id' => $client->id,
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -76,6 +86,7 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
             Log::warning('Failed DD: no Xero connection — skipping fee invoice', [
                 'dd_payment_id' => $ddPayment->id,
             ]);
+
             return;
         }
 
@@ -84,7 +95,7 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
         } catch (XeroAuthException $e) {
             Log::error('Failed DD: Xero auth error, skipping invoice creation', [
                 'dd_payment_id' => $ddPayment->id,
-                'reason'        => $e->getMessage(),
+                'reason' => $e->getMessage(),
             ]);
 
             $this->fail($e);
@@ -92,31 +103,31 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
     }
 
     private function createFailedDirectDebitFeeInvoice(
-        XeroService        $xero,
+        XeroService $xero,
         DirectDebitPayment $ddPayment,
-        XeroTenant         $tenant,
+        XeroTenant $tenant,
     ): void {
-        $connection      = $xero->refreshToken($tenant->connection);
+        $connection = $xero->refreshToken($tenant->connection);
         $originalInvoice = $ddPayment->invoice;
 
         $feeAmount = config('services.xero.direct_debit_failure_fee', 10.00);
 
         $payload = [
-            'Type'         => 'ACCREC',
-            'Status'       => 'AUTHORISED',
-            'Contact'      => [
+            'Type' => 'ACCREC',
+            'Status' => 'AUTHORISED',
+            'Contact' => [
                 'ContactID' => $originalInvoice->xero_contact_xero_id,
             ],
-            'Date'         => now()->format('Y-m-d'),
-            'DueDate'      => now()->format('Y-m-d'),
-            'Reference'    => 'Direct Debit Failure Fee For ' .
-                ($originalInvoice->xero_invoice_number ?? $originalInvoice->xero_invoice_id) . ')',
+            'Date' => now()->format('Y-m-d'),
+            'DueDate' => now()->format('Y-m-d'),
+            'Reference' => 'Direct Debit Failure Fee For '.
+                ($originalInvoice->xero_invoice_number ?? $originalInvoice->xero_invoice_id).')',
             'CurrencyCode' => 'AUD',
-            'LineItems'    => [
+            'LineItems' => [
                 [
                     'Description' => 'Direct Debit Failed Payment Fee',
-                    'Quantity'    => 1,
-                    'UnitAmount'  => $feeAmount,
+                    'Quantity' => 1,
+                    'UnitAmount' => $feeAmount,
                     'AccountCode' => config('services.xero.default_account_code', '200'),
                 ],
             ],
@@ -125,7 +136,7 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
         $response = Http::withToken($connection->access_token)
             ->withHeaders([
                 'Xero-tenant-id' => $tenant->tenant_id,
-                'Accept'         => 'application/json',
+                'Accept' => 'application/json',
             ])
             ->put('https://api.xero.com/api.xro/2.0/Invoices', [
                 'Invoices' => [$payload],
@@ -134,8 +145,8 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
         if ($response->failed()) {
             Log::error('Failed DD: Xero fee invoice creation failed', [
                 'dd_payment_id' => $ddPayment->id,
-                'status'        => $response->status(),
-                'body'          => $response->body(),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
             throw new \RuntimeException(
@@ -145,14 +156,14 @@ class HandleFailedDirectDebitPayment implements ShouldQueue
 
         $created = $response->json('Invoices.0', []);
 
-//        $ddPayment->update([
-//            'xero_invoice_id' => $created['InvoiceID'] ?? null,
-//        ]);
+        //        $ddPayment->update([
+        //            'xero_invoice_id' => $created['InvoiceID'] ?? null,
+        //        ]);
 
         Log::info('Failed DD: fee invoice created', [
-            'dd_payment_id'   => $ddPayment->id,
+            'dd_payment_id' => $ddPayment->id,
             'xero_invoice_id' => $created['InvoiceID'] ?? null,
-            'invoice_number'  => $created['InvoiceNumber'] ?? null,
+            'invoice_number' => $created['InvoiceNumber'] ?? null,
         ]);
     }
 

@@ -284,7 +284,7 @@ class DirectDebitPaymentController extends Controller
             ]);
         });
 
-        ProcessSingleDirectDebit::dispatch($retry->id);
+        ProcessSingleDirectDebit::dispatch($retry->id, Activity::getBatchUuid());
 
         Log::info('DirectDebitPayment retry created', [
             'original_id' => $directDebitPayment->id,

@@ -30,6 +30,7 @@ class ActivityLogController extends Controller
             ->when($request->filled('log_name'), fn ($query) => $query->where('log_name', $request->input('log_name')))
             ->when($request->filled('event'), fn ($query) => $query->where('event', $request->input('event')))
             ->when($request->filled('causer_id'), fn ($query) => $query->where('causer_id', $request->input('causer_id')))
+            ->when($request->filled('batch'), fn ($query) => $query->where('batch_uuid', $request->input('batch')))
             ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->input('date_from')))
             ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->input('date_to')))
             ->latest()
@@ -48,6 +49,7 @@ class ActivityLogController extends Controller
             'events' => ActivityLog::distinct()->whereNotNull('event')->orderBy('event')->pluck('event'),
             'users' => User::orderBy('name')->get(['id', 'name']),
             'viewMode' => $viewMode,
+            'activeBatch' => $request->input('batch'),
         ]);
     }
 

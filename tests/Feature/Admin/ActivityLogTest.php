@@ -3,7 +3,9 @@
 use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Activity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -147,4 +149,47 @@ test('mutating admin requests are logged without passwords', function () {
 
     expect($requestLog)->not->toBeNull()
         ->and(json_encode($requestLog->properties))->not->toContain('super-secret-123');
+});
+
+test('one user action shares a batch across its request and model logs', function () {
+    Permission::firstOrCreate(['name' => 'view-user', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'create-user', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'view-activity-log', 'guard_name' => 'web']);
+    $role = Role::firstOrCreate(['name' => 'activity-creator', 'guard_name' => 'web']);
+    $role->syncPermissions(['view-user', 'create-user', 'view-activity-log']);
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $this->actingAs($admin)->post('/admin/users', [
+        'name' => 'Batched Guy',
+        'email' => 'batched@example.com',
+        'password' => 'super-secret-123',
+    ])->assertRedirect();
+
+    $requestLog = ActivityLog::where('log_name', 'request')->latest()->first();
+    $modelLog = ActivityLog::where('log_name', 'model')
+        ->where('description', 'like', '%Batched Guy%')
+        ->latest()->first();
+
+    expect($requestLog)->not->toBeNull()
+        ->and($modelLog)->not->toBeNull()
+        ->and($requestLog->batch_uuid)->not->toBeNull()
+        ->and($modelLog->batch_uuid)->toBe($requestLog->batch_uuid);
+});
+
+test('timeline groups entries triggered by one action and filters by batch', function () {
+    $viewer = makeActivityViewer(['view-activity-log']);
+
+    $batch = (string) Str::uuid();
+    Activity::withBatch($batch, function () {
+        $company = Company::create(['name' => 'Batch Co', 'slug' => 'batch-co']);
+        Activity::record('POST admin.companies.update', logName: 'request', event: 'post');
+    });
+
+    $this->actingAs($viewer)
+        ->get(route('admin.activity-logs.index', ['batch' => $batch]))
+        ->assertOk()
+        ->assertSee('Showing one action', false)
+        ->assertSee('1 action', false)
+        ->assertSee('Trigger:', false);
 });

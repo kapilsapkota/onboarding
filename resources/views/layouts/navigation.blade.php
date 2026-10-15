@@ -25,6 +25,9 @@
     }"
     x-cloak>
 
+    <!-- Brand accent bar -->
+    <div class="h-1 bg-[#F06927] shrink-0"></div>
+
     <!-- Branding Header Panel Container -->
     <div class="flex items-center justify-between h-16 px-4 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden">
         <div class="flex items-center shrink-0 min-w-0">
@@ -44,7 +47,7 @@
         </div>
 
         <!-- Mobile Sidebar Dismiss Cross Trigger Button Icon -->
-        <button @click="mobileOpen = false" type="button" class="p-1 -mr-1 rounded-md lg:hidden hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button @click="mobileOpen = false" type="button" class="p-1 -mr-1 rounded-md lg:hidden hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500">
             <span class="sr-only">Close sidebar</span>
             <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -60,6 +63,7 @@
         {{-- ================================================================ --}}
 
         <div>
+            @canany(['view-user', 'view-role', 'view-permission', 'view-activity-log'])
 
             <div
                 x-show="!collapsed"
@@ -68,16 +72,17 @@
             >
                 {{ __('Admin') }}
             </div>
+            @endcanany
 
             <div class="space-y-1">
 
                 {{-- Dashboard --}}
                 <a href="{{ route('dashboard') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->routeIs('dashboard') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->routeIs('dashboard') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Dashboard') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('dashboard') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('dashboard') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -103,10 +108,10 @@
                 @can('view-user')
                     <a href="{{ route('admin.users.index') }}"
                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/users*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/users*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                        :title="collapsed ? '{{ __('Users') }}' : ''">
 
-                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/users*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/users*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                              fill="none"
                              viewBox="0 0 24 24"
                              stroke="currentColor"
@@ -129,10 +134,10 @@
                 @can('view-role')
                     <a href="{{ route('admin.roles.index') }}"
                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/roles*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/roles*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                        :title="collapsed ? '{{ __('Roles') }}' : ''">
 
-                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/roles*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/roles*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                              fill="none"
                              viewBox="0 0 24 24"
                              stroke="currentColor"
@@ -155,10 +160,10 @@
                 @can('view-permission')
                     <a href="{{ route('admin.permissions.index') }}"
                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/permissions*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/permissions*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                        :title="collapsed ? '{{ __('Permissions') }}' : ''">
 
-                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/permissions*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/permissions*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                              fill="none"
                              viewBox="0 0 24 24"
                              stroke="currentColor"
@@ -181,10 +186,10 @@
                 @can('view-activity-log')
                     <a href="{{ route('admin.activity-logs.index') }}"
                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/activity-logs*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/activity-logs*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                        :title="collapsed ? '{{ __('Activity Logs') }}' : ''">
 
-                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/activity-logs*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/activity-logs*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                              fill="none"
                              viewBox="0 0 24 24"
                              stroke="currentColor"
@@ -205,6 +210,7 @@
 
                 <div class="space-y-1">
 
+                @can('view-client')
                 <div
                     x-show="!collapsed"
                     x-transition
@@ -219,10 +225,10 @@
                 {{-- Companies --}}
                 <a href="{{ route('admin.companies.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->routeIs('admin.companies*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->routeIs('admin.companies*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Companies') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('admin.companies*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('admin.companies*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -249,10 +255,10 @@
                 {{-- Clients --}}
                 <a href="{{ route('clients.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->routeIs('clients.index') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->routeIs('clients.index') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Clients') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('clients.index') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->routeIs('clients.index') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -269,7 +275,9 @@
                 </span>
 
                 </a>
+                @endcan
 
+                @canany(['view-xero', 'view-direct-debit', 'view-payment', 'view-stripe-account'])
                 <div
                     x-show="!collapsed"
                     x-transition
@@ -277,17 +285,19 @@
                 >
                     {{ __('Direct Debit') }}
                 </div>
+                @endcanany
 
                 <div class="space-y-1">
 
 
                 {{-- Xero --}}
+                @can('view-xero')
                 <a href="{{ route('admin.xero.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/xero*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/xero*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Xero') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/xero*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/xero*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -304,15 +314,17 @@
                 </span>
 
                 </a>
+                @endcan
 
 
                 {{-- Direct Debit Payments --}}
+                @can('view-direct-debit')
                 <a href="{{ route('admin.directDebitPayment.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/directDebitPayment*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/directDebitPayment*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Direct Debit Payments') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/directDebitPayment*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/directDebitPayment*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -329,13 +341,15 @@
                 </span>
 
                 </a>
+                @endcan
 
+                @can('view-direct-debit')
                 <a href="{{ route('admin.stripe.batches.index') }}"
                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/stripe/batches*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/stripe/batches*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                        :title="collapsed ? '{{ __('Direct Debit Payments') }}' : ''">
 
-                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe/batches*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                        <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe/batches*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                              fill="none"
                              viewBox="0 0 24 24"
                              stroke="currentColor"
@@ -352,15 +366,17 @@
                 </span>
 
                     </a>
+                @endcan
 
 
                 {{-- Stripe Payouts --}}
+                @can('view-payment')
                 <a href="{{ route('admin.payouts.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/payouts*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/payouts*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Stripe Payouts') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/payouts*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/payouts*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -377,15 +393,17 @@
                 </span>
 
                 </a>
+                @endcan
 
 
                 {{-- Stripe Transactions --}}
+                @can('view-payment')
                 <a href="{{ route('admin.stripe.transactions.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/stripe/transactions*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/stripe/transactions*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Stripe Transactions') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe/transactions*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe/transactions*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -402,15 +420,16 @@
                 </span>
 
                 </a>
+                @endcan
 
                 {{-- Stripe Accounts --}}
                 @can('view-stripe-account')
                 <a href="{{ route('admin.stripe-accounts.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/stripe-accounts*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/stripe-accounts*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Stripe Accounts') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe-accounts*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/stripe-accounts*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -451,10 +470,10 @@
                 {{-- Categories --}}
                 <a href="{{ route('admin.categories.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/categories*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/categories*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Categories') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/categories*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/categories*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -476,10 +495,10 @@
                 {{-- Products --}}
                 <a href="{{ route('admin.products.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/products*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/products*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Products') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/products*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/products*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -501,10 +520,10 @@
                 {{-- Quotes --}}
                 <a href="{{ route('admin.quotes.index') }}"
                    class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                      {{ request()->is('admin/quotes*') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
+                      {{ request()->is('admin/quotes*') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100' }}"
                    :title="collapsed ? '{{ __('Quotes') }}' : ''">
 
-                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/quotes*') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
+                    <svg class="shrink-0 w-5 h-5 {{ request()->is('admin/quotes*') ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300' }}"
                          fill="none"
                          viewBox="0 0 24 24"
                          stroke="currentColor"
@@ -531,7 +550,7 @@
     <div class="hidden lg:flex justify-end px-3 pb-2 shrink-0">
         <button @click="collapsed = !collapsed"
                 type="button"
-                class="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
                 :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'">
             <!-- Collapse icon: < > -->
             <svg x-show="!collapsed" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -559,11 +578,16 @@
                         class="flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
                         :title="collapsed ? '{{ Auth::user()->name }}' : ''">
                     <!-- User Avatar Icon -->
-                    <div class="shrink-0 w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                        <span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase">
-                            {{ substr(Auth::user()->name, 0, 1) }}
-                        </span>
-                    </div>
+                    @if (Auth::user()->avatar_url)
+                        <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}"
+                             class="shrink-0 w-7 h-7 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-600">
+                    @else
+                        <div class="shrink-0 w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                            <span class="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                {{ substr(Auth::user()->name, 0, 1) }}
+                            </span>
+                        </div>
+                    @endif
                     <div x-show="!collapsed"
                          x-transition:enter="transition-opacity duration-150 delay-75"
                          x-transition:enter-start="opacity-0"

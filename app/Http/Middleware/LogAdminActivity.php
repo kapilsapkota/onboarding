@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Support\Activity;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class LogAdminActivity
@@ -34,51 +35,59 @@ class LogAdminActivity
 
     public function handle(Request $request, Closure $next): Response
     {
-        /** @var Response $response */
-        $response = $next($request);
+        // One batch per HTTP request so model/mail/sms rows can be grouped
+        // under the user action (or webhook) that triggered them.
+        Activity::setBatchUuid((string) Str::uuid());
 
         try {
-            if (! $request->user()) {
-                return $response;
-            }
+            /** @var Response $response */
+            $response = $next($request);
 
-            $path = trim($request->path(), '/');
-
-            foreach ($this->excludedPrefixes as $prefix) {
-                if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
+            try {
+                if (! $request->user()) {
                     return $response;
                 }
+
+                $path = trim($request->path(), '/');
+
+                foreach ($this->excludedPrefixes as $prefix) {
+                    if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
+                        return $response;
+                    }
+                }
+
+                $isMutating = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+                $isAdminArea = str_starts_with($path, 'admin');
+
+                if (! $isMutating && ! $isAdminArea) {
+                    return $response;
+                }
+
+                if ($response->isServerError()) {
+                    return $response;
+                }
+
+                $route = $request->route();
+                $action = $route ? $route->getName() ?? $route->getActionName() : $path;
+
+                Activity::record(
+                    description: "{$request->method()} {$action}",
+                    event: $request->isMethod('get') ? 'view' : strtolower($request->method()),
+                    properties: [
+                        'route' => $action,
+                        'status' => $response->getStatusCode(),
+                        'input' => $this->filteredInput($request),
+                    ],
+                    logName: 'request',
+                );
+            } catch (\Throwable $e) {
+                // Logging must never break the request.
             }
 
-            $isMutating = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
-            $isAdminArea = str_starts_with($path, 'admin');
-
-            if (! $isMutating && ! $isAdminArea) {
-                return $response;
-            }
-
-            if ($response->isServerError()) {
-                return $response;
-            }
-
-            $route = $request->route();
-            $action = $route ? $route->getName() ?? $route->getActionName() : $path;
-
-            Activity::record(
-                description: "{$request->method()} {$action}",
-                event: $request->isMethod('get') ? 'view' : strtolower($request->method()),
-                properties: [
-                    'route' => $action,
-                    'status' => $response->getStatusCode(),
-                    'input' => $this->filteredInput($request),
-                ],
-                logName: 'request',
-            );
-        } catch (\Throwable $e) {
-            // Logging must never break the request.
+            return $response;
+        } finally {
+            Activity::resetBatchUuid();
         }
-
-        return $response;
     }
 
     /**

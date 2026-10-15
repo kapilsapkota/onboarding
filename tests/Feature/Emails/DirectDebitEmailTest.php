@@ -1,6 +1,7 @@
 <?php
 
 use App\Mail\DirectDebitConfigured;
+use App\Mail\DirectDebitMandateConfirmation;
 use App\Mail\NewClientCreated;
 use App\Models\Client;
 use App\Models\Company;
@@ -92,4 +93,77 @@ test('full onboarding form keeps the original notification email', function () {
         return $mail->envelope()->subject === 'New Client Onboarded: Onboard Co';
     });
     Mail::assertNotQueued(DirectDebitConfigured::class);
+});
+
+test('ddr submission sends the mandate confirmation to the customer', function () {
+    Mail::fake();
+
+    $company = makeDdrCompany();
+    $account = makeDdrAccount($company);
+
+    $this->post(route('ddr.account.store', $account->public_id), [
+        'company_name' => 'Acme Pty Ltd',
+        'account_name' => 'Acme Trading',
+        'bsb' => '123456',
+        'account_number' => '12345678',
+        'contacts' => [
+            ['full_name' => 'Jane Doe', 'email' => 'jane@acme.test', 'phone' => '0400000000'],
+        ],
+    ])->assertRedirect(route('onboarding.thanks'));
+
+    Mail::assertQueued(DirectDebitMandateConfirmation::class, function (DirectDebitMandateConfirmation $mail) {
+        return $mail->hasTo('jane@acme.test')
+            && $mail->envelope()->subject === 'Your Direct Debit Authority Confirmation — Ryze IT';
+    });
+
+    $client = Client::firstWhere('company_name', 'Acme Pty Ltd');
+
+    $html = (string) (new DirectDebitMandateConfirmation(
+        $client,
+        $company,
+        $account->display_name,
+    ))->render();
+
+    expect($html)->toContain('All invoices issued and communicated to you by')
+        ->and($html)->toContain('Ryze IT')
+        ->and($html)->toContain('•••• 5678')
+        ->and($html)->toContain('DDR-'.$client->id)
+        ->and($html)->toContain('Your Rights')
+        ->and($html)->toContain('14 days')
+        ->and($html)->not->toContain('clients.show');
+});
+
+test('legacy direct debit form sends the mandate confirmation to the customer', function () {
+    Mail::fake();
+
+    $this->post(route('onboarding.direct-debit'), [
+        'full_name' => 'Bob Smith',
+        'company_name' => 'Bob Co',
+        'email' => 'bob@bobco.test',
+        'mobile' => '0411111111',
+        'account_name' => 'Bob Trading',
+        'bsb' => '654321',
+        'account_number' => '87654321',
+    ])->assertRedirect(route('onboarding.thanks'));
+
+    Mail::assertQueued(DirectDebitMandateConfirmation::class, function (DirectDebitMandateConfirmation $mail) {
+        return $mail->hasTo('bob@bobco.test');
+    });
+});
+
+test('ddr submission without a customer email skips the mandate email', function () {
+    Mail::fake();
+
+    $company = makeDdrCompany();
+    $account = makeDdrAccount($company);
+
+    $this->post(route('ddr.account.store', $account->public_id), [
+        'company_name' => 'No Mail Pty Ltd',
+        'account_name' => 'No Mail Trading',
+        'bsb' => '123456',
+        'account_number' => '12345678',
+    ])->assertRedirect(route('onboarding.thanks'));
+
+    Mail::assertQueued(DirectDebitConfigured::class);
+    Mail::assertNotQueued(DirectDebitMandateConfirmation::class);
 });

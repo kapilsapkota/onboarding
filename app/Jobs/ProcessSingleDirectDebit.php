@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\DirectDebitPayment;
 use App\Services\StripeBecsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,26 +18,37 @@ use Stripe\Exception\ApiErrorException;
  */
 class ProcessSingleDirectDebit implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
 
-    public int $tries   = 1;
+    public int $tries = 1;
+
     public int $backoff = 300; // 5 min between retries
 
-    public function __construct(public int $directDebitPaymentId) {}
+    public function __construct(public int $directDebitPaymentId, ?string $activityBatch = null)
+    {
+        $this->activityBatch = $activityBatch;
+    }
 
     public function handle(StripeBecsService $stripe): void
+    {
+        $this->runInActivityBatch(fn () => $this->handleBatched($stripe));
+    }
+
+    private function handleBatched(StripeBecsService $stripe): void
     {
         $ddPayment = DirectDebitPayment::with(['invoice', 'client'])
             ->findOrFail($this->directDebitPaymentId);
 
         if (in_array($ddPayment->status, ['processing', 'settled', 'cancelled'])) {
             Log::info('ProcessSingleDirectDebit: skipping — already in non-pending state', [
-                'id'     => $ddPayment->id,
+                'id' => $ddPayment->id,
                 'status' => $ddPayment->status,
             ]);
+
             return;
         }
 
@@ -45,14 +57,14 @@ class ProcessSingleDirectDebit implements ShouldQueue
 
             $ddPayment->markSubmitted(
                 gatewayPaymentId: $paymentIntentId,
-                batchId:          null,
+                batchId: null,
             );
             $ddPayment->invoice->markPaymentInitiated('direct_debit', $paymentIntentId);
 
             Log::info('ProcessSingleDirectDebit: submitted to Stripe', [
-                'id'               => $ddPayment->id,
+                'id' => $ddPayment->id,
                 'payment_intent_id' => $paymentIntentId,
-                'amount'           => $ddPayment->amount,
+                'amount' => $ddPayment->amount,
             ]);
 
         } catch (ApiErrorException $e) {
@@ -60,20 +72,18 @@ class ProcessSingleDirectDebit implements ShouldQueue
             $ddPayment->invoice->markPaymentFailed($e->getMessage());
 
             Log::error('ProcessSingleDirectDebit: Stripe API error', [
-                'id'          => $ddPayment->id,
+                'id' => $ddPayment->id,
                 'stripe_code' => $e->getStripeCode(),
-                'error'       => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
-
             throw $e;
-
         } catch (\Throwable $e) {
             $ddPayment->markFailed($e->getMessage());
             $ddPayment->invoice->markPaymentFailed($e->getMessage());
 
             Log::error('ProcessSingleDirectDebit: unexpected error', [
-                'id'    => $ddPayment->id,
+                'id' => $ddPayment->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -83,9 +93,11 @@ class ProcessSingleDirectDebit implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        Log::critical('ProcessSingleDirectDebit: permanently failed after all retries', [
-            'id'    => $this->directDebitPaymentId,
-            'error' => $e->getMessage(),
-        ]);
+        $this->runInActivityBatch(function () use ($e): void {
+            Log::critical('ProcessSingleDirectDebit: permanently failed after all retries', [
+                'id' => $this->directDebitPaymentId,
+                'error' => $e->getMessage(),
+            ]);
+        });
     }
 }

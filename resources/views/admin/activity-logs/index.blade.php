@@ -40,7 +40,7 @@
                     </p>
                 </div>
 
-                @if(request()->hasAny(['search', 'log_name', 'event', 'causer_id', 'date_from', 'date_to']))
+                    @if(request()->hasAny(['search', 'log_name', 'event', 'causer_id', 'batch', 'date_from', 'date_to']))
                     <a href="{{ route('admin.activity-logs.index', ['view' => $viewMode]) }}"
                        class="text-xs font-medium text-gray-500 transition hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400">
                         Clear all
@@ -205,7 +205,7 @@
             <div class="mx-auto flex max-w-full flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                     {{ $logs->total() }} {{ \Illuminate\Support\Str::plural('activity', $logs->total()) }}
-                    @if(request()->hasAny(['search', 'log_name', 'event', 'causer_id', 'date_from', 'date_to']))
+                @if(request()->hasAny(['search', 'log_name', 'event', 'causer_id', 'batch', 'date_from', 'date_to']))
                         for these filters
                     @endif
                     · click any row for details
@@ -241,6 +241,13 @@
                     $grouped = $logs->getCollection()->groupBy(fn ($log) => $log->created_at->format('Y-m-d'));
                 @endphp
 
+                @if (! empty($activeBatch))
+                    <div class="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-800 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200">
+                        <span class="font-semibold">Showing one action (batch {{ substr((string) $activeBatch, 0, 8) }}) — {{ $logs->total() }} {{ \Illuminate\Support\Str::plural('entry', $logs->total()) }} triggered together.</span>
+                        <a href="{{ route('admin.activity-logs.index', ['view' => $viewMode]) }}" class="font-semibold underline hover:no-underline">Clear batch filter</a>
+                    </div>
+                @endif
+
                 @forelse ($grouped as $day => $dayLogs)
                     @php
                         $dayCarbon = $dayLogs->first()->created_at;
@@ -263,8 +270,90 @@
                         </div>
 
                         <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach ($dayLogs as $log)
+                            @php
+                                $batches = $dayLogs->groupBy(fn ($log) => $log->batch_uuid ?: 'single-'.$log->id);
+                            @endphp
+                            @foreach ($batches as $batchKey => $batchLogs)
+                                @if ($batchLogs->count() > 1)
+                                    @php
+                                        $trigger = $batchLogs->firstWhere('log_name', 'request') ?? $batchLogs->sortBy('created_at')->first();
+                                        $batchId = $batchLogs->first()->batch_uuid;
+                                    @endphp
+                                    <li class="bg-indigo-50/50 dark:bg-indigo-900/10">
+                                        <div class="flex flex-wrap items-center gap-2 px-4 pb-1 pt-3">
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                                1 action · {{ $batchLogs->count() }} entries
+                                            </span>
+                                            <span class="min-w-0 flex-1 truncate text-xs text-gray-500 dark:text-gray-400">
+                                                Trigger: {{ $trigger->description }}
+                                            </span>
+                                            <a href="{{ route('admin.activity-logs.index', ['view' => $viewMode, 'batch' => $batchId]) }}"
+                                               class="shrink-0 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+                                                View full batch
+                                            </a>
+                                        </div>
+                                        <ul class="divide-y divide-gray-100 px-2 pb-2 dark:divide-gray-700">
+                                            @foreach ($batchLogs->sortBy('created_at') as $log)
+                                                @php
+                                                    $theme = $log->eventTheme();
+                                                    $firstChange = $log->changesList(1)[0] ?? null;
+                                                @endphp
+                                                <li class="overflow-hidden rounded-xl">
+                                                    <button
+                                                        type="button"
+                                                        @click="openLog({{ $log->id }})"
+                                                        class="flex w-full items-center gap-3 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 text-left transition hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:border-indigo-900/30 dark:bg-gray-800 dark:hover:bg-gray-700/40"
+                                                    >
+                                                        <span class="relative shrink-0 self-center">
+                                                            @if ($log->avatarUrl())
+                                                                <img src="{{ $log->avatarUrl() }}" alt="{{ $log->causer_name }}"
+                                                                     class="h-8 w-8 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-600" />
+                                                            @else
+                                                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold {{ $log->avatarColor() }}">
+                                                                    {{ $log->initials() }}
+                                                                </span>
+                                                            @endif
+                                                            <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 {{ $theme['dot'] }}"></span>
+                                                        </span>
+                                                        <span class="min-w-0 flex-1">
+                                                            <span class="block truncate text-sm text-gray-900 dark:text-gray-100">
+                                                                @if ($log->log_name === 'request')
+                                                                    <span class="mr-1 inline-flex rounded bg-indigo-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">trigger</span>
+                                                                @endif
+                                                                <span class="font-semibold">{{ $log->causer_name }}</span>
+                                                                <span class="font-normal text-gray-500 dark:text-gray-400"> {{ $log->description }}</span>
+                                                            </span>
+                                                            <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
+                                                                @if ($log->event)
+                                                                    <span class="inline-flex rounded-full px-1.5 py-px text-[11px] font-medium {{ $theme['badge'] }}">{{ $log->event }}</span>
+                                                                @endif
+                                                                @if ($log->subject_type)
+                                                                    <span>{{ class_basename($log->subject_type) }} #{{ $log->subject_id }}</span>
+                                                                @endif
+                                                                @if ($firstChange)
+                                                                    <span class="inline-flex min-w-0 items-center gap-1">
+                                                                        <span class="font-medium text-gray-500 dark:text-gray-400">{{ str_replace('_', ' ', $firstChange['field']) }}:</span>
+                                                                        <span class="truncate line-through">{{ $log->previewValue($firstChange['old']) }}</span>
+                                                                        <span>→</span>
+                                                                        <span class="truncate font-medium text-gray-600 dark:text-gray-300">{{ $log->previewValue($firstChange['new']) }}</span>
+                                                                    </span>
+                                                                @endif
+                                                            </span>
+                                                        </span>
+                                                        <span class="flex shrink-0 items-center gap-1 self-center">
+                                                            <span class="block whitespace-nowrap text-xs text-gray-400" title="{{ $log->created_at->format('d M Y H:i:s') }}">{{ $log->created_at->format('H:i:s') }}</span>
+                                                            <svg class="h-4 w-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                                            </svg>
+                                                        </span>
+                                                    </button>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </li>
+                                @else
                                 @php
+                                    $log = $batchLogs->first();
                                     $theme = $log->eventTheme();
                                     $firstChange = $log->changesList(1)[0] ?? null;
                                 @endphp
@@ -326,6 +415,7 @@
                                         </span>
                                     </button>
                                 </li>
+                                @endif
                             @endforeach
                         </ul>
                     </div>
@@ -395,6 +485,13 @@
                                                 <div class="text-xs text-gray-400">
                                                     {{ class_basename($log->subject_type) }} #{{ $log->subject_id }}
                                                 </div>
+                                            @endif
+                                            @if ($log->batch_uuid)
+                                                <a href="{{ route('admin.activity-logs.index', ['view' => $viewMode, 'batch' => $log->batch_uuid]) }}"
+                                                   class="mt-1 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                   title="Show all entries triggered by this action">
+                                                    batch {{ substr($log->batch_uuid, 0, 8) }}
+                                                </a>
                                             @endif
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3">
@@ -498,6 +595,9 @@
                                     </template>
                                     <template x-if="active.subject">
                                         <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300" x-text="active.subject"></span>
+                                    </template>
+                                    <template x-if="active.batch">
+                                        <a :href="active.batchUrl" class="inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300" x-text="'batch ' + active.batch"></a>
                                     </template>
                                 </div>
 
@@ -653,6 +753,8 @@
                                     'eventBadge' => $theme['badge'],
                                     'logName' => $log->log_name,
                                     'subject' => $log->subject_type ? class_basename($log->subject_type).' #'.$log->subject_id : null,
+                                    'batch' => $log->batch_uuid ? substr($log->batch_uuid, 0, 8) : null,
+                                    'batchUrl' => $log->batch_uuid ? route('admin.activity-logs.index', ['view' => $viewMode, 'batch' => $log->batch_uuid]) : null,
                                     'timeFull' => $log->created_at->format('d M Y H:i:s'),
                                     'timeHuman' => $log->created_at->diffForHumans(),
                                     'method' => $log->method,

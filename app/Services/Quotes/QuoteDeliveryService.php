@@ -6,6 +6,7 @@ use App\Jobs\Quotes\ProcessQuoteDeliveryJob;
 use App\Models\Quote;
 use App\Models\QuoteDelivery;
 use App\Models\QuoteDeliveryAttempt;
+use App\Support\Activity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,6 @@ class QuoteDeliveryService
      *     email_message:  string|null,
      *     sms_message:    string|null,
      * }  $validated
-     *
      * @return array{delivery: QuoteDelivery, already_pending: bool}
      */
     public function createAndDispatch(Quote $quote, array $validated, int $userId): array
@@ -44,7 +44,7 @@ class QuoteDeliveryService
 
             if ($existing) {
                 Log::info('quote_delivery.duplicate_prevented', [
-                    'quote_id'    => $quote->id,
+                    'quote_id' => $quote->id,
                     'delivery_id' => $existing->id,
                 ]);
 
@@ -62,37 +62,37 @@ class QuoteDeliveryService
 
             // ── Create delivery record ────────────────────────────────────────
             $delivery = QuoteDelivery::create([
-                'quote_id'      => $quote->id,
-                'requested_by'  => $userId,
-                'status'        => QuoteDelivery::STATUS_PENDING,
-                'send_email'    => $validated['send_email'],
-                'send_sms'      => $validated['send_sms'],
+                'quote_id' => $quote->id,
+                'requested_by' => $userId,
+                'status' => QuoteDelivery::STATUS_PENDING,
+                'send_email' => $validated['send_email'],
+                'send_sms' => $validated['send_sms'],
                 'email_address' => $emailAddress,
-                'phone_number'  => $phoneNumber,
+                'phone_number' => $phoneNumber,
                 'email_subject' => $quote->getEmailSubjectAttribute(),
                 'email_message' => $validated['email_message'] ?? null,
-                'sms_message'   => $validated['sms_message'] ?? null,
+                'sms_message' => $validated['sms_message'] ?? null,
             ]);
 
             $this->createInitialAttempts($delivery);
 
             Log::info('quote_delivery.created', [
-                'delivery_id'  => $delivery->id,
-                'quote_id'     => $quote->id,
+                'delivery_id' => $delivery->id,
+                'quote_id' => $quote->id,
                 'requested_by' => $userId,
-                'send_email'   => $validated['send_email'],
-                'send_sms'     => $validated['send_sms'],
+                'send_email' => $validated['send_email'],
+                'send_sms' => $validated['send_sms'],
             ]);
 
             return [$delivery, false];
         });
 
         if (! $alreadyPending) {
-            dispatch(new ProcessQuoteDeliveryJob($delivery->id));
+            dispatch(new ProcessQuoteDeliveryJob($delivery->id, null, Activity::getBatchUuid()));
         }
 
         return [
-            'delivery'        => $delivery,
+            'delivery' => $delivery,
             'already_pending' => $alreadyPending,
         ];
     }
@@ -112,21 +112,21 @@ class QuoteDeliveryService
 
         $newAttempt = DB::transaction(function () use ($delivery, $attempt) {
             return $delivery->attempts()->create([
-                'type'           => $attempt->type,
-                'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+                'type' => $attempt->type,
+                'status' => QuoteDeliveryAttempt::STATUS_PENDING,
                 'attempt_number' => $delivery->nextAttemptNumber($attempt->type),
             ]);
         });
 
         Log::info('quote_delivery.retry_requested', [
-            'delivery_id'    => $delivery->id,
-            'quote_id'       => $delivery->quote_id,
-            'type'           => $attempt->type,
+            'delivery_id' => $delivery->id,
+            'quote_id' => $delivery->quote_id,
+            'type' => $attempt->type,
             'new_attempt_id' => $newAttempt->id,
             'attempt_number' => $newAttempt->attempt_number,
         ]);
 
-        dispatch(new ProcessQuoteDeliveryJob($delivery->id, $attempt->type));
+        dispatch(new ProcessQuoteDeliveryJob($delivery->id, $attempt->type, Activity::getBatchUuid()));
 
         return $newAttempt;
     }
@@ -155,31 +155,31 @@ class QuoteDeliveryService
     {
         // PDF — always required.
         $delivery->attempts()->create([
-            'type'           => QuoteDeliveryAttempt::TYPE_GENERATE_PDF,
-            'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+            'type' => QuoteDeliveryAttempt::TYPE_GENERATE_PDF,
+            'status' => QuoteDeliveryAttempt::STATUS_PENDING,
             'attempt_number' => 1,
         ]);
 
         // Public URL — always required.
         $delivery->attempts()->create([
-            'type'           => QuoteDeliveryAttempt::TYPE_GENERATE_PUBLIC_URL,
-            'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+            'type' => QuoteDeliveryAttempt::TYPE_GENERATE_PUBLIC_URL,
+            'status' => QuoteDeliveryAttempt::STATUS_PENDING,
             'attempt_number' => 1,
         ]);
 
         // SharePoint — always attempted.
         // The job skips gracefully if SharePoint is not configured.
         $delivery->attempts()->create([
-            'type'           => QuoteDeliveryAttempt::TYPE_SHAREPOINT_UPLOAD,
-            'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+            'type' => QuoteDeliveryAttempt::TYPE_SHAREPOINT_UPLOAD,
+            'status' => QuoteDeliveryAttempt::STATUS_PENDING,
             'attempt_number' => 1,
         ]);
 
         // Email — only when requested.
         if ($delivery->send_email) {
             $delivery->attempts()->create([
-                'type'           => QuoteDeliveryAttempt::TYPE_EMAIL,
-                'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+                'type' => QuoteDeliveryAttempt::TYPE_EMAIL,
+                'status' => QuoteDeliveryAttempt::STATUS_PENDING,
                 'attempt_number' => 1,
             ]);
         }
@@ -187,8 +187,8 @@ class QuoteDeliveryService
         // SMS — only when requested.
         if ($delivery->send_sms) {
             $delivery->attempts()->create([
-                'type'           => QuoteDeliveryAttempt::TYPE_SMS,
-                'status'         => QuoteDeliveryAttempt::STATUS_PENDING,
+                'type' => QuoteDeliveryAttempt::TYPE_SMS,
+                'status' => QuoteDeliveryAttempt::STATUS_PENDING,
                 'attempt_number' => 1,
             ]);
         }

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\XeroAuthException;
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\XeroConnection;
 use App\Models\XeroTenant;
 use App\Services\XeroInvoiceSyncService;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 class SyncTenantInvoiceJob implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
@@ -33,38 +35,44 @@ class SyncTenantInvoiceJob implements ShouldQueue
     }
 
     /**
-     * @param int         $connectionId
-     * @param int         $tenantId
-     * @param string|null $invoiceId     When provided, sync only this invoice (webhook path).
-     *                                   When null, sync all invoices for the tenant (scheduled path).
-     * @param string|null $modifiedAfter ISO-8601 date; when set only invoices updated after
-     *                                   this timestamp are fetched. Defaults to the tenant's
-     *                                   last_invoice_synced_at. Ignored when $invoiceId is set.
-     * @param bool        $fullResync    Ignore modifiedAfter and pull all invoices
-     *                                   (expensive – use sparingly). Ignored when $invoiceId is set.
+     * @param  string|null  $invoiceId  When provided, sync only this invoice (webhook path).
+     *                                  When null, sync all invoices for the tenant (scheduled path).
+     * @param  string|null  $modifiedAfter  ISO-8601 date; when set only invoices updated after
+     *                                      this timestamp are fetched. Defaults to the tenant's
+     *                                      last_invoice_synced_at. Ignored when $invoiceId is set.
+     * @param  bool  $fullResync  Ignore modifiedAfter and pull all invoices
+     *                            (expensive – use sparingly). Ignored when $invoiceId is set.
      */
     public function __construct(
-        public int     $connectionId,
-        public int     $tenantId,
-        public ?string $invoiceId     = null,
+        public int $connectionId,
+        public int $tenantId,
+        public ?string $invoiceId = null,
         public ?string $modifiedAfter = null,
-        public bool    $fullResync    = false,
-    ) {}
+        public bool $fullResync = false,
+        ?string $activityBatch = null,
+    ) {
+        $this->activityBatch = $activityBatch;
+    }
 
     public function handle(XeroInvoiceSyncService $syncService): void
     {
+        $this->runInActivityBatch(fn () => $this->handleBatched($syncService));
+    }
+
+    private function handleBatched(XeroInvoiceSyncService $syncService): void
+    {
         $connection = XeroConnection::findOrFail($this->connectionId);
-        $tenant     = XeroTenant::findOrFail($this->tenantId);
+        $tenant = XeroTenant::findOrFail($this->tenantId);
 
         try {
             if ($this->invoiceId !== null) {
                 $syncService->syncOne($connection, $tenant, $this->invoiceId);
             } else {
                 $modifiedAfter = match (true) {
-                    $this->fullResync                        => null,
-                    $this->modifiedAfter !== null            => $this->modifiedAfter,
+                    $this->fullResync => null,
+                    $this->modifiedAfter !== null => $this->modifiedAfter,
                     $tenant->last_invoice_synced_at !== null => $tenant->last_invoice_synced_at->toIso8601String(),
-                    default                                  => null,
+                    default => null,
                 };
 
                 $syncService->sync($connection, $tenant, $modifiedAfter);
@@ -75,9 +83,9 @@ class SyncTenantInvoiceJob implements ShouldQueue
         } catch (XeroAuthException $e) {
             Log::error('SyncTenantInvoiceJob: aborting — Xero re-authorization required', [
                 'connection_id' => $this->connectionId,
-                'tenant_id'     => $this->tenantId,
-                'invoice_id'    => $this->invoiceId,
-                'reason'        => $e->getMessage(),
+                'tenant_id' => $this->tenantId,
+                'invoice_id' => $this->invoiceId,
+                'reason' => $e->getMessage(),
             ]);
 
             $this->fail($e);

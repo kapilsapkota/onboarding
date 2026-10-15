@@ -113,7 +113,7 @@
              TOP BAR
         ============================================================= --}}
         <header
-            class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm sticky top-0 z-30 w-full print:hidden"
+            class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 border-t-4 border-t-[#F06927] shadow-sm sticky top-0 z-30 w-full print:hidden"
         >
             <div class="px-4 py-4 sm:px-6 lg:px-8 flex items-center gap-4">
 
@@ -124,7 +124,7 @@
                     class="p-2 -ml-2 text-gray-500 rounded-md lg:hidden
                            hover:bg-gray-100 dark:hover:bg-gray-700
                            focus:outline-none focus:ring-2
-                           focus:ring-inset focus:ring-indigo-500 shrink-0"
+                           focus:ring-inset focus:ring-orange-500 shrink-0"
                 >
                     <span class="sr-only">Open sidebar</span>
 

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\StripeChargeBatchItem;
 use App\Services\StripeAccountResolver;
 use Illuminate\Bus\Queueable;
@@ -13,15 +14,24 @@ use Stripe\Exception\ApiErrorException;
 
 class ProcessStripeCharge implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
 
     public int $backoff = 60;
 
-    public function __construct(private StripeChargeBatchItem $item) {}
+    public function __construct(private StripeChargeBatchItem $item, ?string $activityBatch = null)
+    {
+        $this->activityBatch = $activityBatch;
+    }
 
     public function handle(): void
+    {
+        $this->runInActivityBatch(fn () => $this->handleBatched());
+    }
+
+    private function handleBatched(): void
     {
         // Reload fresh to avoid stale status
         $this->item->refresh();
@@ -94,12 +104,14 @@ class ProcessStripeCharge implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        $this->item->update([
-            'status' => 'failed',
-            'error_message' => $e->getMessage(),
-            'processed_at' => now(),
-        ]);
+        $this->runInActivityBatch(function () use ($e): void {
+            $this->item->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+                'processed_at' => now(),
+            ]);
 
-        $this->item->batch->recalculateStatus();
+            $this->item->batch->recalculateStatus();
+        });
     }
 }

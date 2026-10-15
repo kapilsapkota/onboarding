@@ -2,8 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Models\XeroInvoice;
+use App\Jobs\Concerns\CarriesActivityBatch;
 use App\Models\DirectDebitPayment;
+use App\Models\XeroInvoice;
+use App\Support\Activity;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -21,12 +23,18 @@ use Illuminate\Support\Facades\Log;
  */
 class ProcessDueDirectDebitJob implements ShouldQueue
 {
+    use CarriesActivityBatch;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
 
     public function handle(): void
+    {
+        $this->runInActivityBatch(fn () => $this->handleBatched());
+    }
+
+    private function handleBatched(): void
     {
         $invoices = XeroInvoice::query()
             ->receivable()
@@ -44,33 +52,34 @@ class ProcessDueDirectDebitJob implements ShouldQueue
 
         Log::info('ProcessDueDirectDebits: found invoices to collect', [
             'count' => $invoices->count(),
-            'date'  => today()->toDateString(),
+            'date' => today()->toDateString(),
         ]);
 
         foreach ($invoices as $invoice) {
             if (! $invoice->tenant?->connection) {
                 Log::warning('ProcessDueDirectDebits: skipping invoice — no active Xero connection', [
-                    'invoice_id'     => $invoice->id,
+                    'invoice_id' => $invoice->id,
                     'xero_invoice_number' => $invoice->xero_invoice_number,
                 ]);
+
                 continue;
             }
 
             $ddPayment = DirectDebitPayment::create([
-                'xero_invoice_id'      => $invoice->id,
-                'xero_tenant_id'       => $invoice->xero_tenant_id,
-                'client_id'            => $invoice->client_id,
+                'xero_invoice_id' => $invoice->id,
+                'xero_tenant_id' => $invoice->xero_tenant_id,
+                'client_id' => $invoice->client_id,
                 'xero_invoice_xero_id' => $invoice->xero_invoice_id,
-                'xero_invoice_number'  => $invoice->xero_invoice_number,
-                'amount'               => $invoice->amount_due,
-                'currency_code'        => $invoice->currency_code ?? 'AUD',
-                'payment_method'       => 'direct_debit',
-                'our_reference'        => 'DD-' . $invoice->xero_invoice_number . '-' . today()->format('Ymd'),
-                'status'               => 'pending',
-                'initiated_at'         => now(),
+                'xero_invoice_number' => $invoice->xero_invoice_number,
+                'amount' => $invoice->amount_due,
+                'currency_code' => $invoice->currency_code ?? 'AUD',
+                'payment_method' => 'direct_debit',
+                'our_reference' => 'DD-'.$invoice->xero_invoice_number.'-'.today()->format('Ymd'),
+                'status' => 'pending',
+                'initiated_at' => now(),
             ]);
 
-            ProcessSingleDirectDebit::dispatch($ddPayment->id);
+            ProcessSingleDirectDebit::dispatch($ddPayment->id, Activity::getBatchUuid());
         }
     }
 }

@@ -2,10 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SyncXeroTenantContacts;
 use App\Jobs\SyncTenantInvoiceJob;
 use App\Jobs\SyncXeroRepeatingInvoices;
+use App\Jobs\SyncXeroTenantContacts;
 use App\Models\XeroTenant;
+use App\Support\Activity;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -21,18 +22,27 @@ class SyncXeroCommand extends Command
 
     public function handle(): int
     {
+        // One batch for the whole command run so every dispatched job's
+        // activity rows group under this single sync action.
+        return Activity::withBatch(null, fn () => $this->runSync());
+    }
+
+    private function runSync(): int
+    {
         $tenants = $this->resolveTenants();
 
         if ($tenants->isEmpty()) {
             $this->error('No active Xero tenants found.');
+
             return self::FAILURE;
         }
 
-        $mode   = $this->option('mode');
+        $mode = $this->option('mode');
         $runNow = (bool) $this->option('now');
 
-        if (! in_array($mode, ['contacts','invoices','repeating','all','full'])) {
+        if (! in_array($mode, ['contacts', 'invoices', 'repeating', 'all', 'full'])) {
             $this->error("Invalid mode: {$mode}");
+
             return self::FAILURE;
         }
 
@@ -46,6 +56,7 @@ class SyncXeroCommand extends Command
 
                 if (! $tenant->connection) {
                     $this->warn("Tenant {$tenant->tenant_name} skipped (no connection)");
+
                     continue;
                 }
 
@@ -53,6 +64,7 @@ class SyncXeroCommand extends Command
 
                 if (Cache::has($lockKey)) {
                     $this->warn("Skipping {$tenant->tenant_name} (already syncing)");
+
                     continue;
                 }
 
@@ -101,7 +113,7 @@ class SyncXeroCommand extends Command
         return match ($mode) {
 
             'contacts' => $this->dispatchJob(
-                new SyncXeroTenantContacts($tenant->connection->id, $tenant->id),
+                new SyncXeroTenantContacts($tenant->connection->id, $tenant->id, null, Activity::getBatchUuid()),
                 $runNow,
                 'contacts',
                 $delay
@@ -112,7 +124,8 @@ class SyncXeroCommand extends Command
                     connectionId: $tenant->connection->id,
                     tenantId: $tenant->id,
                     modifiedAfter: $tenant->last_invoice_synced_at,
-                    fullResync: false
+                    fullResync: false,
+                    activityBatch: Activity::getBatchUuid(),
                 ),
                 $runNow,
                 'invoices',
@@ -120,7 +133,7 @@ class SyncXeroCommand extends Command
             ),
 
             'repeating' => $this->dispatchJob(
-                new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id),
+                new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id, Activity::getBatchUuid()),
                 $runNow,
                 'repeating invoices',
                 $delay
@@ -140,7 +153,7 @@ class SyncXeroCommand extends Command
         $count = 0;
 
         $count += $this->dispatchJob(
-            new SyncXeroTenantContacts($tenant->connection->id, $tenant->id),
+            new SyncXeroTenantContacts($tenant->connection->id, $tenant->id, null, Activity::getBatchUuid()),
             $runNow,
             'contacts',
             $delay
@@ -151,7 +164,8 @@ class SyncXeroCommand extends Command
                 connectionId: $tenant->connection->id,
                 tenantId: $tenant->id,
                 modifiedAfter: $full ? null : $tenant->last_invoice_synced_at,
-                fullResync: $full
+                fullResync: $full,
+                activityBatch: Activity::getBatchUuid(),
             ),
             $runNow,
             'invoices',
@@ -159,7 +173,7 @@ class SyncXeroCommand extends Command
         );
 
         $count += $this->dispatchJob(
-            new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id),
+            new SyncXeroRepeatingInvoices($tenant->connection->id, $tenant->id, Activity::getBatchUuid()),
             $runNow,
             'repeating invoices',
             $delay
@@ -176,6 +190,7 @@ class SyncXeroCommand extends Command
             $this->line(" → Running {$label}...");
             app()->call([$job, 'handle']);
             $this->line(" ✓ {$label} done.");
+
             return 1;
         }
 
