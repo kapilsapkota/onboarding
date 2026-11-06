@@ -75,7 +75,7 @@
                                 <input type="checkbox" id="selectAll" class="rounded">
                             </th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Customer</th>
-                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Email / Phone</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Account</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Payment Method</th>
                             <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Amount ($)</th>

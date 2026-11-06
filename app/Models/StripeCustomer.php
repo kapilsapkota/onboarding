@@ -56,4 +56,17 @@ class StripeCustomer extends Model
             ->orderByDesc('is_default')
             ->first();
     }
+
+    /**
+     * Best available phone number: the linked client's primary contact first,
+     * then the phone stored on the Stripe customer object.
+     */
+    public function primaryPhone(): ?string
+    {
+        return $this->clients
+            ->map(fn (Client $client) => $client->primary_phone)
+            ->filter()
+            ->first()
+            ?? data_get($this->stripe_data, 'phone');
+    }
 }

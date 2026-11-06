@@ -79,8 +79,6 @@ class StripeAccountSeeder extends Seeder
             }
         }
 
-        // Denormalize company onto direct debit payments via their client.
-        // Done per-client (not a join update) so it works on MySQL and SQLite.
         if (Schema::hasColumn('direct_debit_payments', 'company_id')) {
             DB::table('clients')->whereNotNull('company_id')->select('id', 'company_id')
                 ->orderBy('id')->chunk(500, function ($clients): void {

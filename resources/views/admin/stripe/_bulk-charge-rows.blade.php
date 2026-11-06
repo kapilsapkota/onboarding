@@ -3,6 +3,7 @@
         $pm = $customer->paymentMethods->first();
         if (! $pm) continue;
         $accountLabel = $customer->stripeAccount?->display_name ?? 'Legacy pool';
+        $phone = $customer->primaryPhone();
     @endphp
 
     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
@@ -19,7 +20,10 @@
             >
         </td>
         <td class="px-5 py-4 font-medium">{{ $customer->name ?? '-' }}</td>
-        <td class="px-5 py-4 text-sm text-gray-500">{{ $customer->email ?? '-' }}</td>
+        <td class="px-5 py-4 text-sm text-gray-500">
+            <div>{{ $customer->email ?? '-' }}</div>
+            <div class="mt-0.5 text-xs text-gray-400">{{ $phone ?? '-' }}</div>
+        </td>
         <td class="px-5 py-4">
             <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                 {{ $accountLabel }}

@@ -42,6 +42,7 @@ class StripeBulkChargeController extends Controller
                 ->where('status', 'active')
                 ->orderByDesc('is_default'),
                 'stripeAccount.company',
+                'clients.contacts',
             ])
             ->when($selectedAccount === 'unassigned', fn ($q) => $q->whereNull('stripe_account_id'))
             ->when($selectedAccount instanceof StripeAccount, fn ($q) => $q->where('stripe_account_id', $selectedAccount->id))

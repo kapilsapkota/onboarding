@@ -276,6 +276,33 @@ test('bulk confirm stamps the account and charges through it', function () {
     expect($item->stripe_account_id)->toBe($account->id);
 });
 
+test('bulk charge customer list shows the primary contact phone under the email', function () {
+    $company = makeTenantCompany('Phone Co');
+    $account = makeTenantAccount($company);
+    $customer = makeBecsCustomer($account, 'cus_phone', 'pm_phone');
+
+    $client = Client::create([
+        'company_name' => 'Phone Co',
+        'company_id' => $company->id,
+        'stripe_customer_id' => $customer->stripe_customer_id,
+    ]);
+
+    $client->contacts()->create([
+        'full_name' => 'Phone Person',
+        'contact_type' => 'Main Contact',
+        'email' => 'phone@example.com',
+        'phone' => '0400 111 222',
+        'is_primary' => true,
+    ]);
+
+    $admin = makeTenantSuperAdmin();
+
+    $this->actingAs($admin)->get('/admin/stripe/bulk-charge?stripe_account='.$account->id)
+        ->assertOk()
+        ->assertSee('tenant@example.com', false)
+        ->assertSee('0400 111 222', false);
+});
+
 test('bulk confirm rejects cross-account customers', function () {
     $accountA = makeTenantAccount(makeTenantCompany('Co A'));
     $accountB = makeTenantAccount(makeTenantCompany('Co B'));
